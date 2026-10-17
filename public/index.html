@@ -19,9 +19,9 @@
   <div id="modal-modalidad" class="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4">
     <div class="bg-stone-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl relative overflow-hidden">
       
-      <!-- Mascota Grande en Bienvenida -->
+      <!-- Mascota Grande en Bienvenida con detección segura -->
       <div class="flex justify-center -mt-2 mb-2">
-        <img src="/img/mascota.png" onerror="this.src='https://placehold.co/140x140/facc15/000?text=Ary'" class="w-28 h-28 object-contain drop-shadow-[0_10px_10px_rgba(250,204,21,0.3)]">
+        <img src="/img/mascota.png" onerror="cargarMascotaSegura(this)" class="w-28 h-28 object-contain drop-shadow-[0_10px_10px_rgba(250,204,21,0.3)]">
       </div>
 
       <h1 class="text-3xl font-black uppercase text-yellow-400 tracking-wider">ARY LA AREPA</h1>
@@ -66,7 +66,7 @@
   <!-- Header con Mascota -->
   <header class="sticky top-0 z-20 bg-neutral-900/95 backdrop-blur border-b border-stone-800 p-3 flex justify-between items-center shadow-md">
     <div class="flex items-center gap-3">
-      <img src="/img/mascota.png" onerror="this.src='https://placehold.co/60x60/facc15/000?text=Ary'" class="w-12 h-12 object-contain drop-shadow">
+      <img src="/img/mascota.png" onerror="cargarMascotaSegura(this)" class="w-12 h-12 object-contain drop-shadow">
       <div>
         <h2 class="text-lg font-black text-yellow-400 leading-none">ARY LA AREPA</h2>
         <span class="font-script text-sm text-stone-300">De Popayán para el mundo.</span>
@@ -207,7 +207,9 @@
     </button>
   </div>
 
-  <!-- AQUI COMIENZA EL CODIGO JAVASCRIPT PROTEGIDO DENTRO DE SCRIPT -->
+  <!-- ========================================== -->
+  <!-- AQUI EMPIEZA EL SCRIPT AL FINAL DEL ARCHIVO -->
+  <!-- ========================================== -->
   <script>
     const socket = io();
     let DATA = { info: {}, productos: [], extras: [], barrios: [], bebidas: [] };
@@ -215,6 +217,38 @@
     let modalidadActual = 'Domicilio';
     let metodoPago = 'Nequi / Bancolombia';
     let arepaSeleccionada = null;
+
+    // Función inteligente para encontrar la mascota sin importar mayúsculas/formato
+    const variantesMascota = [
+      '/img/mascota.png',
+      '/img/mascota.jpg',
+      '/img/Mascota.png',
+      '/img/Mascota.jpg',
+      '/img/mascota.PNG',
+      '/img/mascota.jpeg',
+      '/mascota.png'
+    ];
+    let intentoMascota = 0;
+
+    function cargarMascotaSegura(img) {
+      intentoMascota++;
+      if (intentoMascota < variantesMascota.length) {
+        img.src = variantesMascota[intentoMascota];
+      }
+    }
+
+    // Función inteligente para cargar las fotos de las arepas
+    function intentarCargarImagen(imgElement, rutaBase) {
+      if (imgElement.src.endsWith('.png')) {
+        imgElement.src = rutaBase.replace('.png', '.jpg');
+      } else if (imgElement.src.endsWith('.jpg')) {
+        imgElement.src = rutaBase.replace('.jpg', '.jpeg');
+      } else if (imgElement.src.endsWith('.jpeg')) {
+        imgElement.src = rutaBase.replace('.jpeg', '.PNG');
+      } else {
+        imgElement.src = 'https://placehold.co/100x100/333/facc15?text=Arepa';
+      }
+    }
 
     window.onload = async () => {
       try {
@@ -248,16 +282,6 @@
         document.getElementById('campo-barrio').classList.remove('hidden');
       }
       calcularTotales();
-    }
-
-    function intentarCargarImagen(imgElement, rutaBase) {
-      if (imgElement.src.endsWith('.png')) {
-        imgElement.src = rutaBase.replace('.png', '.jpg');
-      } else if (imgElement.src.endsWith('.jpg')) {
-        imgElement.src = rutaBase.replace('.jpg', '.jpeg');
-      } else {
-        imgElement.src = 'https://placehold.co/100x100/333/facc15?text=Ary+Arepa';
-      }
     }
 
     function renderArepas() {
