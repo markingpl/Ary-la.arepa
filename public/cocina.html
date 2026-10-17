@@ -10,23 +10,32 @@
 </head>
 <body class="bg-neutral-950 text-white min-h-screen p-4 font-sans select-none">
   
-  <header class="flex justify-between items-center pb-4 border-b border-stone-800">
+  <header class="flex flex-wrap justify-between items-center gap-3 pb-4 border-b border-stone-800">
     <div class="flex items-center gap-3">
       <img src="/img/mascota.png" onerror="this.src='https://placehold.co/40x40/facc15/000?text=Ary'" class="w-10 h-10 object-contain">
       <div>
         <h1 class="text-base font-black text-yellow-400 leading-tight">ARY LA AREPA • COCINA KDS</h1>
-        <p class="text-[10px] text-stone-400">Comandas en tiempo real</p>
+        <p class="text-[10px] text-stone-400">Control de comandas en vivo</p>
       </div>
       <span id="contador-pendientes" class="ml-2 bg-red-600 text-white text-xs px-3 py-1 rounded-full font-black animate-pulse">
         0 Pendientes
       </span>
     </div>
 
-    <!-- Filtros de comanda -->
-    <div class="flex gap-2">
-      <button onclick="setFiltro('TODOS')" id="f-TODOS" class="px-3.5 py-1.5 rounded-xl text-xs font-black bg-yellow-400 text-black">Todos</button>
-      <button onclick="setFiltro('PENDIENTE')" id="f-PENDIENTE" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-neutral-900 border border-stone-800 text-stone-300">Pendientes</button>
-      <button onclick="setFiltro('PREPARANDO')" id="f-PREPARANDO" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-neutral-900 border border-stone-800 text-stone-300">En Preparación</button>
+    <!-- Pestañas de Filtros -->
+    <div class="flex flex-wrap gap-2">
+      <button onclick="setFiltro('TODOS')" id="f-TODOS" class="px-3.5 py-1.5 rounded-xl text-xs font-black bg-yellow-400 text-black">
+        Todos (<span id="c-todos">0</span>)
+      </button>
+      <button onclick="setFiltro('PENDIENTE')" id="f-PENDIENTE" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-neutral-900 border border-stone-800 text-stone-300">
+        Pendientes (<span id="c-pendientes">0</span>)
+      </button>
+      <button onclick="setFiltro('PREPARANDO')" id="f-PREPARANDO" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-neutral-900 border border-stone-800 text-stone-300">
+        En Preparación (<span id="c-preparando">0</span>)
+      </button>
+      <button onclick="setFiltro('LISTO')" id="f-LISTO" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-neutral-900 border border-stone-800 text-stone-300">
+        Listos para Entrega (<span id="c-listos">0</span>)
+      </button>
     </div>
   </header>
 
@@ -42,14 +51,14 @@
     let pedidos = [];
     let filtroActual = 'TODOS';
 
-    // Sonido tipo "Ding" cuando llega un pedido
+    // Alarma sonora tipo "Ding"
     function reproducirAlarma() {
       try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, audioCtx.currentTime); // Nota La5
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
         gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.8);
         osc.connect(gain);
@@ -71,7 +80,7 @@
 
     function setFiltro(f) {
       filtroActual = f;
-      document.querySelectorAll('#f-TODOS, #f-PENDIENTE, #f-PREPARANDO').forEach(btn => {
+      document.querySelectorAll('#f-TODOS, #f-PENDIENTE, #f-PREPARANDO, #f-LISTO').forEach(btn => {
         btn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold bg-neutral-900 border border-stone-800 text-stone-300';
       });
       document.getElementById(`f-${f}`).className = 'px-3.5 py-1.5 rounded-xl text-xs font-black bg-yellow-400 text-black';
@@ -80,14 +89,24 @@
 
     function renderComandas() {
       const grid = document.getElementById('grid-comandas');
-      const activos = pedidos.filter(p => p.estado !== 'ENTREGADO' && p.estado !== 'CANCELADO');
       
+      // Comandas activas en cocina (ocultamos las ya entregadas o canceladas)
+      const activos = pedidos.filter(p => p.estado !== 'ENTREGADO' && p.estado !== 'CANCELADO');
+
+      // Actualizar contadores numéricos en las pestañas
+      const nPendientes = pedidos.filter(p => p.estado === 'PENDIENTE').length;
+      const nPreparando = pedidos.filter(p => p.estado === 'PREPARANDO').length;
+      const nListos = pedidos.filter(p => p.estado === 'LISTO').length;
+
+      document.getElementById('c-todos').innerText = activos.length;
+      document.getElementById('c-pendientes').innerText = nPendientes;
+      document.getElementById('c-preparando').innerText = nPreparando;
+      document.getElementById('c-listos').innerText = nListos;
+      document.getElementById('contador-pendientes').innerText = `${nPendientes} Pendientes`;
+
       const filtrados = filtroActual === 'TODOS' 
         ? activos 
         : activos.filter(p => p.estado === filtroActual);
-
-      const pendientes = pedidos.filter(p => p.estado === 'PENDIENTE').length;
-      document.getElementById('contador-pendientes').innerText = `${pendientes} Pendientes`;
 
       if (filtrados.length === 0) {
         grid.innerHTML = `<div class="col-span-full text-center py-16 text-stone-500 italic">No hay comandas activas en esta sección.</div>`;
@@ -96,12 +115,25 @@
 
       grid.innerHTML = filtrados.map(p => {
         const mins = Math.floor((Date.now() - (p.timestamp || Date.now())) / 60000);
-        let colorBadge = p.estado === 'PENDIENTE' ? 'bg-red-600 text-white' : 'bg-yellow-400 text-black';
+        
+        let colorBorde = 'border-stone-800';
+        let colorBadge = 'bg-stone-800 text-stone-300';
+
+        if (p.estado === 'PENDIENTE') {
+          colorBorde = 'border-red-600/70';
+          colorBadge = 'bg-red-600 text-white';
+        } else if (p.estado === 'PREPARANDO') {
+          colorBorde = 'border-blue-500/70';
+          colorBadge = 'bg-blue-600 text-white';
+        } else if (p.estado === 'LISTO') {
+          colorBorde = 'border-green-500/70';
+          colorBadge = 'bg-green-500 text-black';
+        }
 
         return `
-          <div class="bg-neutral-900 border-2 ${p.estado === 'PENDIENTE' ? 'border-red-600/60' : 'border-yellow-400/60'} rounded-2xl flex flex-col justify-between overflow-hidden shadow-xl">
+          <div class="bg-neutral-900 border-2 ${colorBorde} rounded-2xl flex flex-col justify-between overflow-hidden shadow-xl">
             <div>
-              <!-- Cabecera Comanda -->
+              <!-- Cabecera -->
               <div class="flex justify-between items-center p-3 border-b border-stone-800 bg-neutral-950">
                 <span class="text-3xl font-black text-yellow-400 tracking-wider">${p.numero}</span>
                 <span class="text-[10px] font-black px-2.5 py-0.5 rounded-full ${colorBadge} uppercase">${p.estado}</span>
@@ -115,20 +147,18 @@
                 ${p.cliente && p.cliente.celular ? `<div class="text-[10px] text-stone-400 mt-0.5"><i class="fa-solid fa-phone text-yellow-400"></i> ${p.cliente.celular}</div>` : ''}
               </div>
 
-              <!-- Desglose de Arepas y Extras -->
+              <!-- Lista de arepas y extras -->
               <div class="p-3 space-y-3">
                 ${(p.items || []).map(it => `
                   <div class="border-b border-stone-800/60 pb-2.5">
                     <div class="font-black text-base text-yellow-300">1x ${it.nombre}</div>
                     
-                    <!-- EXTRAS DE LA AREPA -->
                     ${it.extras && it.extras.length ? `
                       <div class="text-xs text-stone-200 mt-1 pl-2 border-l-2 border-yellow-400 font-semibold">
                         + Extras: ${it.extras.map(e => typeof e === 'object' ? e.nombre : e).join(', ')}
                       </div>
                     ` : ''}
 
-                    <!-- NOTAS DE COCINA -->
                     ${it.notas ? `
                       <div class="text-xs text-amber-300 bg-amber-950/40 border border-amber-800/60 p-1.5 rounded-lg mt-1 font-bold">
                         ⚠️ Nota: ${it.notas}
@@ -139,16 +169,24 @@
               </div>
             </div>
 
-            <!-- Botones de Acción de Cocina -->
+            <!-- Botones de Acción de Cocina (3 Estados) -->
             <div class="p-3 border-t border-stone-800 bg-neutral-950">
               ${p.estado === 'PENDIENTE' ? `
-                <button onclick="cambiarEstadoComanda('${p.id}', 'PREPARANDO')" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-white shadow-lg">
-                  Comenzar a Preparar
+                <button onclick="cambiarEstadoComanda('${p.id}', 'PREPARANDO')" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-white shadow-lg transition">
+                  🔥 Comenzar a Preparar
+                </button>
+              ` : p.estado === 'PREPARANDO' ? `
+                <button onclick="cambiarEstadoComanda('${p.id}', 'LISTO')" class="w-full bg-yellow-400 hover:bg-yellow-300 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-black shadow-lg transition">
+                  ✓ Marcar Listo para Entrega
+                </button>
+              ` : p.estado === 'LISTO' ? `
+                <button onclick="cambiarEstadoComanda('${p.id}', 'ENTREGADO')" class="w-full bg-green-600 hover:bg-green-500 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-white shadow-lg transition">
+                  🚀 Marcar como Entregado
                 </button>
               ` : `
-                <button onclick="cambiarEstadoComanda('${p.id}', 'LISTO')" class="w-full bg-green-500 hover:bg-green-400 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-black shadow-lg">
-                  ✓ Marcar Listo para Despacho
-                </button>
+                <span class="block text-center text-xs font-bold text-stone-500 py-2">
+                  ✓ Comanda Despachada
+                </span>
               `}
             </div>
           </div>
@@ -160,14 +198,13 @@
       socket.emit('cambiar-estado', { id, nuevoEstado });
     }
 
-    // Llega pedido nuevo en vivo
+    // Eventos Socket en Vivo
     socket.on('pedido-creado', (p) => {
       pedidos.unshift(p);
       reproducirAlarma();
       renderComandas();
     });
 
-    // Se actualiza el estado
     socket.on('estado-actualizado', ({ id, nuevoEstado }) => {
       const p = pedidos.find(x => x.id === id);
       if (p) p.estado = nuevoEstado;
@@ -175,7 +212,7 @@
     });
 
     cargarPedidos();
-    setInterval(renderComandas, 30000); // Actualiza los minutos transcurridos
+    setInterval(renderComandas, 30000); // Actualiza minutos
   </script>
 </body>
 </html>
