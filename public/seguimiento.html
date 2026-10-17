@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seguimiento de Pedido</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-stone-950 text-white min-h-screen p-4 flex justify-center items-center">
+  <div class="bg-stone-900 border border-stone-800 rounded-3xl p-6 max-w-sm w-full space-y-6 shadow-2xl">
+    
+    <div class="text-center space-y-1">
+      <div class="inline-flex p-3 rounded-full bg-green-500/10 text-green-400 mb-1">
+        <i class="fa-solid fa-circle-check text-2xl"></i>
+      </div>
+      <p class="text-xs text-stone-400 font-bold uppercase">Estado de tu orden</p>
+      <h1 id="num-pedido" class="text-4xl font-black text-amber-400 tracking-wider">#---</h1>
+      <span id="badge-tipo" class="inline-block text-[10px] bg-stone-800 px-3 py-1 rounded-full uppercase font-bold text-stone-300">Cargando...</span>
+    </div>
+
+    <!-- Stepper de Estados -->
+    <div class="space-y-4 border-y border-stone-800 py-6">
+      <div id="step-PENDIENTE" class="flex items-center gap-4 text-stone-500 transition">
+        <div class="w-8 h-8 rounded-full border border-current flex items-center justify-center font-bold text-xs step-circle">1</div>
+        <div>
+          <div class="font-bold text-sm text-white">Pedido recibido</div>
+          <div class="text-[10px]">Tu orden ya llegó a la cocina</div>
+        </div>
+      </div>
+
+      <div id="step-PREPARANDO" class="flex items-center gap-4 text-stone-500 transition">
+        <div class="w-8 h-8 rounded-full border border-current flex items-center justify-center font-bold text-xs step-circle">2</div>
+        <div>
+          <div class="font-bold text-sm text-white">En preparación</div>
+          <div class="text-[10px]">Cocinando tus salchipapas al toque</div>
+        </div>
+      </div>
+
+      <div id="step-LISTO" class="flex items-center gap-4 text-stone-500 transition">
+        <div class="w-8 h-8 rounded-full border border-current flex items-center justify-center font-bold text-xs step-circle">3</div>
+        <div>
+          <div class="font-bold text-sm text-white">Listo para entrega / mesa</div>
+          <div class="text-[10px]">Empacado o listo para servir</div>
+        </div>
+      </div>
+
+      <div id="step-ENTREGADO" class="flex items-center gap-4 text-stone-500 transition">
+        <div class="w-8 h-8 rounded-full border border-current flex items-center justify-center font-bold text-xs step-circle">4</div>
+        <div>
+          <div class="font-bold text-sm text-white">Entregado</div>
+          <div class="text-[10px]">¡Buen provecho!</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resumen -->
+    <div class="space-y-2 text-xs">
+      <div class="font-bold text-stone-400 uppercase text-[10px]">Detalle del pedido:</div>
+      <div id="lista-items" class="space-y-1 text-stone-300"></div>
+      <div class="border-t border-stone-800 pt-2 flex justify-between font-black text-sm">
+        <span>Total:</span>
+        <span id="txt-total" class="text-red-500">$0</span>
+      </div>
+    </div>
+
+    <a href="/" class="block text-center w-full bg-stone-800 hover:bg-stone-700 py-3 rounded-xl font-bold text-xs text-stone-300">
+      Hacer otro pedido
+    </a>
+  </div>
+
+  <script>
+    const socket = io();
+    const urlParams = new URLSearchParams(window.location.search);
+    const pedidoId = urlParams.get('id');
+
+    async function cargarPedido() {
+      const res = await fetch(`/api/pedido/${pedidoId}`);
+      if (!res.ok) return alert('Pedido no encontrado');
+      const p = await res.json();
+
+      document.getElementById('num-pedido').innerText = p.numero;
+      document.getElementById('badge-tipo').innerText = p.modalidad;
+      document.getElementById('txt-total').innerText = `$${p.total.toLocaleString()}`;
+
+      document.getElementById('lista-items').innerHTML = p.items.map(i => `
+        <div class="flex justify-between">
+          <span>${i.nombre}</span>
+          <span class="font-bold">$${i.precio.toLocaleString()}</span>
+        </div>
+      `).join('');
+
+      actualizarStepper(p.estado);
+    }
+
+    function actualizarStepper(estado) {
+      const orden = ['PENDIENTE', 'PREPARANDO', 'LISTO', 'ENTREGADO'];
+      const indexActual = orden.indexOf(estado);
+
+      orden.forEach((est, idx) => {
+        const el = document.getElementById(`step-${est}`);
+        const circle = el.querySelector('.step-circle');
+        if (idx <= indexActual) {
+          el.className = 'flex items-center gap-4 text-green-400 transition';
+          circle.className = 'w-8 h-8 rounded-full bg-green-500 text-black flex items-center justify-center font-bold text-xs step-circle';
+          circle.innerHTML = '✓';
+        } else {
+          el.className = 'flex items-center gap-4 text-stone-600 transition';
+          circle.className = 'w-8 h-8 rounded-full border border-stone-700 flex items-center justify-center font-bold text-xs step-circle';
+          circle.innerHTML = idx + 1;
+        }
+      });
+    }
+
+    socket.on('estado-actualizado', ({ id, nuevoEstado }) => {
+      if (id === pedidoId) actualizarStepper(nuevoEstado);
+    });
+
+    cargarPedido();
+  </script>
+</body>
+</html>

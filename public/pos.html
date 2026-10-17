@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POS Caja - Ary la arepa</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Estilos de Impresión Térmica 80mm -->
+  <style>
+    @media print {
+      body * { visibility: hidden; }
+      #ticket-impresion, #ticket-impresion * { visibility: visible; }
+      #ticket-impresion {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 72mm;
+        margin: 0;
+        padding: 2mm 0;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 11px;
+        line-height: 1.25;
+        color: #000;
+      }
+    }
+  </style>
+</head>
+<body class="bg-neutral-950 text-white min-h-screen flex flex-col font-sans select-none overflow-hidden">
+
+  <!-- Modal Login Cajero -->
+  <div id="modal-login" class="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4">
+    <div class="bg-neutral-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-xs w-full text-center space-y-4 shadow-2xl">
+      <img src="/img/mascota.png" onerror="this.src='https://placehold.co/80x80/facc15/000?text=Ary'" class="w-16 h-16 mx-auto object-contain">
+      <h2 class="text-xl font-black text-yellow-400">ACCESO CAJA POS</h2>
+      <p class="text-xs text-stone-400">Ingresa con tus credenciales de cajero</p>
+      
+      <div class="space-y-2 text-left text-xs">
+        <div>
+          <label class="block font-bold mb-1 text-stone-300">Usuario</label>
+          <input type="text" id="login-user" value="cajero1" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white">
+        </div>
+        <div>
+          <label class="block font-bold mb-1 text-stone-300">Contraseña</label>
+          <input type="password" id="login-pass" value="2024" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white">
+        </div>
+      </div>
+      <p id="login-error" class="text-xs text-red-500 font-bold hidden">Credenciales inválidas</p>
+      <button onclick="iniciarSesionCajero()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-3 rounded-xl font-black text-xs uppercase">
+        Entrar al Turno
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal Abrir Turno / Base Inicial -->
+  <div id="modal-apertura" class="fixed inset-0 z-50 bg-black/95 hidden flex items-center justify-center p-4">
+    <div class="bg-neutral-900 border-2 border-green-500 rounded-3xl p-6 max-w-xs w-full text-center space-y-4">
+      <i class="fa-solid fa-cash-register text-3xl text-green-400"></i>
+      <h3 class="text-lg font-black text-green-400 uppercase">Apertura de Turno</h3>
+      <p class="text-xs text-stone-300">Ingresa el dinero base en efectivo con el que inicias en caja:</p>
+      
+      <div class="text-left text-xs">
+        <label class="block font-bold mb-1 text-stone-400">Base en Efectivo ($)</label>
+        <input type="number" id="caja-base" value="50000" class="w-full bg-neutral-800 border border-stone-700 p-3 rounded-xl text-lg font-black text-white text-center">
+      </div>
+
+      <button onclick="confirmarAperturaCaja()" class="w-full bg-green-500 hover:bg-green-400 text-black py-3 rounded-xl font-black text-xs uppercase">
+        Abrir Turno de Venta
+      </button>
+    </div>
+  </div>
+
+  <!-- Barra Superior -->
+  <header class="bg-neutral-900 border-b border-stone-800 p-3 flex justify-between items-center h-16">
+    <div class="flex items-center gap-3">
+      <img src="/img/mascota.png" onerror="this.src='https://placehold.co/40x40/facc15/000?text=Ary'" class="w-9 h-9 object-contain">
+      <div>
+        <h1 class="text-sm font-black text-yellow-400 leading-tight">ARY LA AREPA • POS CAJA</h1>
+        <div class="text-[10px] text-stone-400 flex items-center gap-2">
+          <span><i class="fa-solid fa-user"></i> <strong id="lbl-cajero" class="text-stone-200">--</strong></span>
+          <span>•</span>
+          <span class="text-green-400 font-bold"><i class="fa-solid fa-circle text-[7px] animate-pulse"></i> CAJA ABIERTA</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button onclick="abrirModalArqueo()" class="bg-neutral-800 hover:bg-neutral-700 text-stone-300 border border-stone-700 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2">
+        <i class="fa-solid fa-calculator text-yellow-400"></i> Cuadre / Cerrar Turno
+      </button>
+      <button onclick="location.reload()" class="bg-red-950 hover:bg-red-900 text-red-400 px-3 py-1.5 rounded-xl text-xs font-bold border border-red-800">
+        <i class="fa-solid fa-power-off"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Cuerpo Principal (Pantalla dividida) -->
+  <div class="flex-1 flex overflow-hidden">
+    
+    <!-- Lado Izquierdo: Catálogo de Productos y Adiciones -->
+    <div class="w-7/12 flex flex-col border-r border-stone-800 bg-neutral-950 p-3 space-y-3 overflow-y-auto">
+      
+      <!-- Pestañas Rápidas -->
+      <div class="flex gap-2">
+        <button onclick="mostrarSeccion('arepas')" id="tab-arepas" class="px-4 py-2 bg-yellow-400 text-black font-black text-xs rounded-xl shadow">Arepas Principales</button>
+        <button onclick="mostrarSeccion('extras')" id="tab-extras" class="px-4 py-2 bg-neutral-800 text-stone-300 font-bold text-xs rounded-xl border border-stone-700">Extras & Adiciones</button>
+        <button onclick="mostrarSeccion('bebidas')" id="tab-bebidas" class="px-4 py-2 bg-neutral-800 text-stone-300 font-bold text-xs rounded-xl border border-stone-700">Bebidas Frías</button>
+      </div>
+
+      <!-- Grid Arepas -->
+      <div id="grid-pos-arepas" class="grid grid-cols-3 gap-2.5"></div>
+
+      <!-- Grid Extras -->
+      <div id="grid-pos-extras" class="grid grid-cols-3 gap-2 hidden"></div>
+
+      <!-- Grid Bebidas -->
+      <div id="grid-pos-bebidas" class="grid grid-cols-3 gap-2 hidden"></div>
+    </div>
+
+    <!-- Lado Derecho: Comanda Activa y Facturación -->
+    <div class="w-5/12 flex flex-col justify-between bg-neutral-900 p-3 space-y-2">
+      
+      <!-- Datos Cliente Frecuente -->
+      <div class="bg-neutral-950 border border-stone-800 p-2.5 rounded-2xl text-xs space-y-1.5">
+        <div class="flex justify-between items-center">
+          <span class="font-black text-yellow-400 uppercase text-[10px]"><i class="fa-solid fa-address-book"></i> Cliente Frecuente</span>
+          <select id="pos-tipo-orden" class="bg-neutral-800 text-white rounded-lg p-1 text-[10px] font-bold border border-stone-700">
+            <option value="Mesa">En Local / Mesa</option>
+            <option value="Domicilio">Domicilio Popayán</option>
+            <option value="Para Llevar">Para Llevar</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <input type="tel" id="pos-cli-tel" oninput="buscarClienteFrecuente()" placeholder="Celular (ej: 311...)" class="bg-neutral-800 border border-stone-700 p-1.5 rounded-lg text-white text-xs">
+          <input type="text" id="pos-cli-nombre" placeholder="Nombre completo" class="bg-neutral-800 border border-stone-700 p-1.5 rounded-lg text-white text-xs">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <input type="text" id="pos-cli-dir" placeholder="Dirección / Mesa #" class="bg-neutral-800 border border-stone-700 p-1.5 rounded-lg text-white text-xs">
+          <select id="pos-cli-barrio" onchange="recalcularTotalPOS()" class="bg-neutral-800 border border-stone-700 p-1.5 rounded-lg text-white text-[11px]"></select>
+        </div>
+      </div>
+
+      <!-- Lista de Ítems en la Comanda -->
+      <div class="flex-1 bg-neutral-950 border border-stone-800 rounded-2xl p-2.5 overflow-y-auto space-y-1.5" id="pos-items-lista">
+        <p class="text-stone-500 text-xs text-center py-10 italic">Toca una arepa para comenzar la orden...</p>
+      </div>
+
+      <!-- Descuentos y Modos de Pago -->
+      <div class="bg-neutral-950 border border-stone-800 p-2.5 rounded-2xl text-xs space-y-2">
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-1.5">
+            <button onclick="aplicarDescuentoPrompt()" class="bg-stone-800 hover:bg-stone-700 border border-stone-700 text-yellow-400 px-2.5 py-1 rounded-lg text-[10px] font-black">
+              <i class="fa-solid fa-tag"></i> Descuento: <span id="lbl-descuento">$0</span>
+            </button>
+          </div>
+          <div class="flex gap-1.5">
+            <button onclick="setMetodoPagoPOS('Efectivo')" id="pos-btn-efec" class="px-3 py-1 rounded-lg font-bold text-xs bg-yellow-400 text-black">Efectivo</button>
+            <button onclick="setMetodoPagoPOS('Nequi / Transferencia')" id="pos-btn-nequi" class="px-3 py-1 rounded-lg font-bold text-xs bg-neutral-800 text-stone-300 border border-stone-700">Nequi</button>
+          </div>
+        </div>
+
+        <!-- Totales -->
+        <div class="border-t border-stone-800 pt-1.5 space-y-0.5 text-[11px]">
+          <div class="flex justify-between text-stone-400"><span>Subtotal:</span><span id="pos-subtotal">$0</span></div>
+          <div class="flex justify-between text-stone-400"><span>Envío:</span><span id="pos-envio">$0</span></div>
+          <div class="flex justify-between text-base font-black text-white pt-1 border-t border-stone-800">
+            <span>TOTAL:</span><span id="pos-total" class="text-yellow-400 text-lg">$0</span>
+          </div>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button onclick="limpiarComandaPOS()" class="bg-neutral-800 hover:bg-neutral-700 py-3 rounded-xl font-bold text-xs text-stone-400">
+            Limpiar
+          </button>
+          <button onclick="cobrarEImprimirPOS()" class="bg-yellow-400 hover:bg-yellow-300 text-black py-3 rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/20">
+            <i class="fa-solid fa-print"></i> Cobrar e Imprimir
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Arqueo de Caja / Cierre de Turno -->
+  <div id="modal-arqueo" class="fixed inset-0 z-50 bg-black/95 hidden flex items-center justify-center p-4">
+    <div class="bg-neutral-900 border border-stone-800 rounded-3xl p-6 max-w-sm w-full space-y-4">
+      <div class="flex justify-between items-center border-b border-stone-800 pb-2">
+        <h3 class="font-black text-yellow-400">CUADRE Y CIERRE DE CAJA</h3>
+        <button onclick="cerrarModalArqueo()" class="text-stone-400">✕</button>
+      </div>
+
+      <div class="space-y-2 text-xs" id="arqueo-datos">
+        <div class="flex justify-between"><span>Base inicial:</span><strong id="arq-base">$0</strong></div>
+        <div class="flex justify-between text-green-400"><span>Ventas Efectivo (+):</span><strong id="arq-efectivo">$0</strong></div>
+        <div class="flex justify-between text-blue-400"><span>Ventas Nequi (+):</span><strong id="arq-digital">$0</strong></div>
+        <div class="border-t border-stone-800 pt-2 flex justify-between font-black text-sm text-yellow-400">
+          <span>Total Esperado en Caja:</span><strong id="arq-total-caja">$0</strong>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 pt-3">
+        <button onclick="imprimirCierreTurno()" class="bg-neutral-800 border border-stone-700 py-2.5 rounded-xl font-bold text-xs">
+          <i class="fa-solid fa-print"></i> Imprimir Tirilla
+        </button>
+        <button onclick="cerrarTurnoDefinitivo()" class="bg-red-600 hover:bg-red-500 text-white py-2.5 rounded-xl font-black text-xs">
+          Cerrar Turno
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLANTILLA OCULTA DE IMPRESIÓN TÉRMICA 80MM -->
+  <div id="ticket-impresion" class="hidden"></div>
+
+  <script>
+    const socket = io();
+    let DATA = { info: {}, productos: [], extras: [], bebidas: [], barrios: [], clientesFrecuentes: [] };
+    let cajeroActivo = null;
+    let comandaPOS = [];
+    let descuentoTotal = 0;
+    let metodoPagoActual = 'Efectivo';
+
+    window.onload = async () => {
+      const res = await fetch('/api/data-inicial');
+      DATA = await res.json();
+      renderCatalogoPOS();
+      renderBarriosPOS();
+    };
+
+    // Login
+    async function iniciarSesionCajero() {
+      const usuario = document.getElementById('login-user').value.trim();
+      const clave = document.getElementById('login-pass').value.trim();
+
+      const res = await fetch('/api/cajero/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario, clave })
+      });
+
+      const data = await res.json();
+      if (data.ok) {
+        cajeroActivo = data.usuario;
+        document.getElementById('lbl-cajero').innerText = cajeroActivo.nombre;
+        document.getElementById('modal-login').classList.add('hidden');
+        
+        // Verificar si hay turno activo o pedir apertura
+        const rCaja = await fetch('/api/caja/resumen');
+        const stCaja = await rCaja.json();
+        if (!stCaja.turnoActivo) {
+          document.getElementById('modal-apertura').classList.remove('hidden');
+        }
+      } else {
+        document.getElementById('login-error').classList.remove('hidden');
+      }
+    }
+
+    // Apertura Caja
+    async function confirmarAperturaCaja() {
+      const base = document.getElementById('caja-base').value;
+      await fetch('/api/caja/abrir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cajeroNombre: cajeroActivo.nombre, baseInicial: base })
+      });
+      document.getElementById('modal-apertura').classList.add('hidden');
+    }
+
+    // Render Catalogo
+    function renderCatalogoPOS() {
+      const gArepas = document.getElementById('grid-pos-arepas');
+      gArepas.innerHTML = DATA.productos.map(p => `
+        <button onclick="agregarArepaComanda(${p.id})" class="bg-neutral-900 border-2 border-yellow-500/40 hover:border-yellow-400 p-2.5 rounded-2xl text-left flex flex-col justify-between h-28 shadow transition">
+          <div class="font-black text-xs text-yellow-400 leading-tight">${p.nombre}</div>
+          <div class="text-[9px] text-stone-400 line-clamp-2">${p.desc}</div>
+          <div class="font-black text-xs text-white">$${p.precio.toLocaleString()}</div>
+        </button>
+      `).join('');
+
+      const gExtras = document.getElementById('grid-pos-extras');
+      gExtras.innerHTML = DATA.extras.map(e => `
+        <button onclick="agregarExtraUltimaArepa('${e.nombre}', ${e.precio})" class="bg-neutral-900 border border-stone-800 hover:border-yellow-400 p-2 rounded-xl text-left h-20 flex flex-col justify-between">
+          <div class="font-bold text-xs text-stone-200">+ ${e.nombre}</div>
+          <div class="font-black text-xs text-yellow-400">$${e.precio.toLocaleString()}</div>
+        </button>
+      `).join('');
+
+      const gBebidas = document.getElementById('grid-pos-bebidas');
+      gBebidas.innerHTML = DATA.bebidas.map(b => `
+        <button onclick="agregarBebidaComanda(${b.id})" class="bg-neutral-900 border border-stone-800 hover:border-yellow-400 p-2 rounded-xl text-left h-20 flex flex-col justify-between">
+          <div class="font-bold text-xs text-stone-200">${b.nombre}</div>
+          <div class="font-black text-xs text-yellow-400">$${b.precio.toLocaleString()}</div>
+        </button>
+      `).join('');
+    }
+
+    function mostrarSeccion(sec) {
+      document.getElementById('grid-pos-arepas').classList.toggle('hidden', sec !== 'arepas');
+      document.getElementById('grid-pos-extras').classList.toggle('hidden', sec !== 'extras');
+      document.getElementById('grid-pos-bebidas').classList.toggle('hidden', sec !== 'bebidas');
+
+      document.getElementById('tab-arepas').className = sec === 'arepas' ? 'px-4 py-2 bg-yellow-400 text-black font-black text-xs rounded-xl shadow' : 'px-4 py-2 bg-neutral-800 text-stone-300 font-bold text-xs rounded-xl border border-stone-700';
+      document.getElementById('tab-extras').className = sec === 'extras' ? 'px-4 py-2 bg-yellow-400 text-black font-black text-xs rounded-xl shadow' : 'px-4 py-2 bg-neutral-800 text-stone-300 font-bold text-xs rounded-xl border border-stone-700';
+      document.getElementById('tab-bebidas').className = sec === 'bebidas' ? 'px-4 py-2 bg-yellow-400 text-black font-black text-xs rounded-xl shadow' : 'px-4 py-2 bg-neutral-800 text-stone-300 font-bold text-xs rounded-xl border border-stone-700';
+    }
+
+    function renderBarriosPOS() {
+      const s = document.getElementById('pos-cli-barrio');
+      s.innerHTML = `<option value="0">En Local / Sin Domicilio ($0)</option>` + 
+        DATA.barrios.map(b => `<option value="${b.costo}">${b.nombre} (+$${b.costo})</option>`).join('');
+    }
+
+    // Manejo de la comanda
+    function agregarArepaComanda(id) {
+      const p = DATA.productos.find(x => x.id === id);
+      comandaPOS.push({
+        id: p.id,
+        nombre: p.nombre,
+        precio: p.precio,
+        extras: [],
+        notas: ''
+      });
+      renderComandaActiva();
+    }
+
+    function agregarExtraUltimaArepa(nombre, precio) {
+      if (comandaPOS.length === 0) return alert('Primero selecciona una arepa para añadirle este extra.');
+      const ultimaArepa = comandaPOS[comandaPOS.length - 1];
+      ultimaArepa.extras.push({ nombre, precio });
+      ultimaArepa.precio += precio;
+      renderComandaActiva();
+    }
+
+    function agregarBebidaComanda(id) {
+      const b = DATA.bebidas.find(x => x.id === id);
+      comandaPOS.push({ id: b.id, nombre: b.nombre, precio: b.precio, extras: [], notas: '' });
+      renderComandaActiva();
+    }
+
+    function renderComandaActiva() {
+      const box = document.getElementById('pos-items-lista');
+      if (comandaPOS.length === 0) {
+        box.innerHTML = `<p class="text-stone-500 text-xs text-center py-10 italic">Toca una arepa para comenzar la orden...</p>`;
+        recalcularTotalPOS();
+        return;
+      }
+
+      box.innerHTML = comandaPOS.map((item, idx) => `
+        <div class="bg-neutral-900 border border-stone-800 p-2 rounded-xl flex justify-between items-start text-xs">
+          <div>
+            <div class="font-black text-yellow-400">${item.nombre}</div>
+            ${item.extras && item.extras.length ? `<div class="text-[10px] text-stone-300">+ ${item.extras.map(e => e.nombre).join(', ')}</div>` : ''}
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="font-black">$${item.precio.toLocaleString()}</span>
+            <button onclick="eliminarItemPOS(${idx})" class="text-red-500 font-bold hover:text-red-400">✕</button>
+          </div>
+        </div>
+      `).join('');
+
+      recalcularTotalPOS();
+    }
+
+    function eliminarItemPOS(idx) {
+      comandaPOS.splice(idx, 1);
+      renderComandaActiva();
+    }
+
+    function recalcularTotalPOS() {
+      const subtotal = comandaPOS.reduce((acc, i) => acc + i.precio, 0);
+      const envio = parseInt(document.getElementById('pos-cli-barrio').value || 0);
+      const total = Math.max(0, subtotal + envio - descuentoTotal);
+
+      document.getElementById('pos-subtotal').innerText = `$${subtotal.toLocaleString()}`;
+      document.getElementById('pos-envio').innerText = `$${envio.toLocaleString()}`;
+      document.getElementById('pos-total').innerText = `$${total.toLocaleString()}`;
+    }
+
+    // Clientes Frecuentes
+    function buscarClienteFrecuente() {
+      const cel = document.getElementById('pos-cli-tel').value.trim();
+      if (cel.length >= 7) {
+        const cli = DATA.clientesFrecuentes.find(c => c.celular.includes(cel));
+        if (cli) {
+          document.getElementById('pos-cli-nombre').value = cli.nombre;
+          document.getElementById('pos-cli-dir').value = cli.direccion;
+          // Seleccionar barrio si coincide
+          const sel = document.getElementById('pos-cli-barrio');
+          for (let i = 0; i < sel.options.length; i++) {
+            if (sel.options[i].text.includes(cli.barrio)) {
+              sel.selectedIndex = i;
+              break;
+            }
+          }
+          recalcularTotalPOS();
+        }
+      }
+    }
+
+    function setMetodoPagoPOS(m) {
+      metodoPagoActual = m;
+      document.getElementById('pos-btn-efec').className = m === 'Efectivo' ? 'px-3 py-1 rounded-lg font-bold text-xs bg-yellow-400 text-black' : 'px-3 py-1 rounded-lg font-bold text-xs bg-neutral-800 text-stone-300 border border-stone-700';
+      document.getElementById('pos-btn-nequi').className = m.includes('Nequi') ? 'px-3 py-1 rounded-lg font-bold text-xs bg-yellow-400 text-black' : 'px-3 py-1 rounded-lg font-bold text-xs bg-neutral-800 text-stone-300 border border-stone-700';
+    }
+
+    function aplicarDescuentoPrompt() {
+      const desc = prompt('Ingresa el valor del descuento en pesos (ej: 2000):', '0');
+      if (desc !== null) {
+        descuentoTotal = parseInt(desc) || 0;
+        document.getElementById('lbl-descuento').innerText = `-$${descuentoTotal.toLocaleString()}`;
+        recalcularTotalPOS();
+      }
+    }
+
+    function limpiarComandaPOS() {
+      comandaPOS = [];
+      descuentoTotal = 0;
+      document.getElementById('lbl-descuento').innerText = '$0';
+      document.getElementById('pos-cli-tel').value = '';
+      document.getElementById('pos-cli-nombre').value = '';
+      document.getElementById('pos-cli-dir').value = '';
+      document.getElementById('pos-cli-barrio').selectedIndex = 0;
+      renderComandaActiva();
+    }
+
+    // Cobrar e Imprimir Ticket 80mm
+    function cobrarEImprimirPOS() {
+      if (comandaPOS.length === 0) return alert('La comanda está vacía');
+
+      const nombre = document.getElementById('pos-cli-nombre').value.trim() || 'Cliente Mostrador';
+      const celular = document.getElementById('pos-cli-tel').value.trim() || 'Local';
+      const direccion = document.getElementById('pos-cli-dir').value.trim() || 'Mesa / Local';
+      const barrioSel = document.getElementById('pos-cli-barrio');
+      const costoEnvio = parseInt(barrioSel.value || 0);
+      const subtotal = comandaPOS.reduce((a, b) => a + b.precio, 0);
+      const total = Math.max(0, subtotal + costoEnvio - descuentoTotal);
+
+      const pedidoPayload = {
+        cliente: { nombre, celular, direccion, barrio: barrioSel.options[barrioSel.selectedIndex].text },
+        modalidad: document.getElementById('pos-tipo-orden').value,
+        cajero: cajeroActivo ? cajeroActivo.nombre : 'Cajero 1',
+        items: comandaPOS,
+        metodoPago: metodoPagoActual,
+        subtotal,
+        descuento: descuentoTotal,
+        costoEnvio,
+        total
+      };
+
+      // Emitir comanda a la cocina por Sockets
+      socket.emit('nuevo-pedido', pedidoPayload);
+    }
+
+    // Al confirmarse el pedido, generamos el ticket térmico y llamamos a imprimir
+    socket.on('confirmacion-pedido', ({ id, numero }) => {
+      imprimirTicket80mm(numero);
+      limpiarComandaPOS();
+    });
+
+    function imprimirTicket80mm(numero) {
+      const nombre = document.getElementById('pos-cli-nombre').value || 'Cliente Mostrador';
+      const celular = document.getElementById('pos-cli-tel').value || 'Mostrador';
+      const direccion = document.getElementById('pos-cli-dir').value || 'En mesa';
+      const subtotal = comandaPOS.reduce((a, b) => a + b.precio, 0);
+      const envio = parseInt(document.getElementById('pos-cli-barrio').value || 0);
+      const total = Math.max(0, subtotal + envio - descuentoTotal);
+
+      const ticket = document.getElementById('ticket-impresion');
+      ticket.innerHTML = `
+        <div style="text-align: center; font-weight: bold; font-size: 14px;">ARY LA AREPA</div>
+        <div style="text-align: center; font-size: 10px;">De Popayan para el mundo</div>
+        <div style="text-align: center; font-size: 10px;">NIT: 1061789456-1</div>
+        <div style="text-align: center; font-size: 10px;">Cra 7 #10N-22 B (Prados del norte)</div>
+        <div style="text-align: center; font-size: 10px;">Tel: 321 5035691</div>
+        <div style="text-align: center;">================================</div>
+        <div style="font-size: 15px; font-weight: bold; text-align: center;">ORDEN: ${numero}</div>
+        <div>Fecha: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+        <div>Atendido por: ${cajeroActivo ? cajeroActivo.nombre : 'Caja'}</div>
+        <div>Cliente: ${nombre}</div>
+        <div>Tel: ${celular}</div>
+        <div>Dir: ${direccion}</div>
+        <div style="text-align: center;">--------------------------------</div>
+        <div style="font-weight: bold;">CANT  DESCRIPCION            TOTAL</div>
+        ${comandaPOS.map(i => `
+          <div>1x  ${i.nombre.padEnd(18, ' ').substring(0, 18)} $${i.precio.toLocaleString()}</div>
+          ${i.extras.map(e => `<div style="font-size: 9px; padding-left: 10px;">+ ${e.nombre} (+$${e.precio})</div>`).join('')}
+        `).join('')}
+        <div style="text-align: center;">--------------------------------</div>
+        <div>Subtotal:                 $${subtotal.toLocaleString()}</div>
+        ${descuentoTotal > 0 ? `<div>Descuento:               -$${descuentoTotal.toLocaleString()}</div>` : ''}
+        ${envio > 0 ? `<div>Domicilio:                +$${envio.toLocaleString()}</div>` : ''}
+        <div style="font-weight: bold; font-size: 13px;">TOTAL A PAGAR:        $${total.toLocaleString()}</div>
+        <div>Metodo de Pago: ${metodoPagoActual}</div>
+        <div style="text-align: center;">================================</div>
+        <div style="text-align: center; font-size: 10px; margin-top: 5px;">
+          ¡Gracias por tu compra!<br>
+          Base de arepa con abundante queso.
+        </div>
+        <div style="height: 30px;">.</div>
+      `;
+
+      ticket.classList.remove('hidden');
+      window.print();
+      ticket.classList.add('hidden');
+    }
+
+    // Modal Arqueo de Turno
+    async function abrirModalArqueo() {
+      const res = await fetch('/api/caja/resumen');
+      const data = await res.json();
+      if (!data.turnoActivo) return alert('No hay turno abierto actualmente.');
+
+      document.getElementById('arq-base').innerText = `$${data.turno.baseInicial.toLocaleString()}`;
+      document.getElementById('arq-efectivo').innerText = `$${data.ventasEfectivo.toLocaleString()}`;
+      document.getElementById('arq-digital').innerText = `$${data.ventasDigital.toLocaleString()}`;
+      document.getElementById('arq-total-caja').innerText = `$${data.totalEnCajaEsperado.toLocaleString()}`;
+
+      document.getElementById('modal-arqueo').classList.remove('hidden');
+    }
+
+    function cerrarModalArqueo() {
+      document.getElementById('modal-arqueo').classList.add('hidden');
+    }
+
+    async function cerrarTurnoDefinitivo() {
+      if (!confirm('¿Estás seguro de cerrar el turno de caja actual?')) return;
+      const res = await fetch('/api/caja/cerrar', { method: 'POST' });
+      const data = await res.json();
+      alert(`Turno cerrado con éxito. Total en caja: $${data.resumenCierre.totalCajaEsperado.toLocaleString()}`);
+      location.reload();
+    }
+
+    function imprimirCierreTurno() {
+      const base = document.getElementById('arq-base').innerText;
+      const efec = document.getElementById('arq-efectivo').innerText;
+      const digi = document.getElementById('arq-digital').innerText;
+      const total = document.getElementById('arq-total-caja').innerText;
+
+      const ticket = document.getElementById('ticket-impresion');
+      ticket.innerHTML = `
+        <div style="text-align: center; font-weight: bold; font-size: 14px;">ARY LA AREPA</div>
+        <div style="text-align: center; font-size: 12px; font-weight: bold;">CIERRE Y ARQUEO DE CAJA</div>
+        <div>Fecha: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</div>
+        <div>Cajero: ${cajeroActivo ? cajeroActivo.nombre : 'Cajero'}</div>
+        <div>================================</div>
+        <div>Base Inicial Efectivo:    ${base}</div>
+        <div>Ventas en Efectivo (+):   ${efec}</div>
+        <div>Ventas Nequi/Transf:      ${digi}</div>
+        <div>--------------------------------</div>
+        <div style="font-size: 13px; font-weight: bold;">TOTAL ESPERADO EN CAJA: ${total}</div>
+        <div>================================</div>
+        <br><br>
+        <div>Firma Cajero: ___________________</div>
+        <div style="height: 30px;">.</div>
+      `;
+      ticket.classList.remove('hidden');
+      window.print();
+      ticket.classList.add('hidden');
+    }
+  </script>
+</body>
+</html>

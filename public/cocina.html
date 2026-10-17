@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cocina - Salchi Brutales</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-stone-950 text-white min-h-screen p-4 font-sans">
+  
+  <header class="flex justify-between items-center pb-4 border-b border-stone-800">
+    <div class="flex items-center gap-3">
+      <span class="text-xl font-black text-amber-400">COCINA KDS</span>
+      <span id="contador-pendientes" class="bg-red-600 text-xs px-2.5 py-1 rounded-full font-bold">0 Pendientes</span>
+    </div>
+    <div class="flex gap-2" id="filtros">
+      <button onclick="setFiltro('TODOS')" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-stone-800 hover:bg-stone-700">Todos</button>
+      <button onclick="setFiltro('PENDIENTE')" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-stone-800 hover:bg-stone-700">Pendientes</button>
+      <button onclick="setFiltro('PREPARANDO')" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-stone-800 hover:bg-stone-700">En preparación</button>
+    </div>
+  </header>
+
+  <!-- Grilla de Comandas -->
+  <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-6" id="grid-comandas"></main>
+
+  <script>
+    const socket = io();
+    let pedidos = [];
+    let filtroActual = 'TODOS';
+
+    async function cargarPedidos() {
+      const res = await fetch('/api/pedidos');
+      pedidos = await res.json();
+      renderComandas();
+    }
+
+    function setFiltro(f) {
+      filtroActual = f;
+      renderComandas();
+    }
+
+    function renderComandas() {
+      const grid = document.getElementById('grid-comandas');
+      grid.innerHTML = '';
+      
+      const filtrados = filtroActual === 'TODOS' ? pedidos : pedidos.filter(p => p.estado === filtroActual);
+      document.getElementById('contador-pendientes').innerText = `${pedidos.filter(p => p.estado === 'PENDIENTE').length} Pendientes`;
+
+      filtrados.forEach(p => {
+        const mins = Math.floor((Date.now() - p.timestamp) / 60000);
+        let colorEstado = p.estado === 'PENDIENTE' ? 'bg-red-600' : (p.estado === 'PREPARANDO' ? 'bg-amber-500' : 'bg-green-600');
+
+        grid.innerHTML += `
+          <div class="bg-stone-900 border border-stone-800 rounded-2xl flex flex-col justify-between overflow-hidden shadow-lg">
+            <div>
+              <div class="flex justify-between items-center p-3 border-b border-stone-800 bg-stone-900/60">
+                <span class="text-2xl font-black text-amber-400">${p.numero}</span>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${colorEstado} uppercase">${p.estado}</span>
+                <span class="text-xs text-stone-400"><i class="fa-regular fa-clock"></i> ${mins} min</span>
+              </div>
+
+              <div class="p-3 text-xs border-b border-stone-800 bg-stone-950/40">
+                <div class="font-bold text-stone-200">${p.modalidad.toUpperCase()} - ${p.cliente.nombre}</div>
+                <div class="text-[11px] text-stone-400">${p.cliente.direccion} (${p.cliente.barrio})</div>
+              </div>
+
+              <div class="p-3 space-y-3">
+                ${p.items.map(it => `
+                  <div class="border-b border-stone-800/50 pb-2">
+                    <div class="font-bold text-sm text-stone-100">${it.nombre}</div>
+                    ${it.salsas.length ? `<div class="text-xs text-stone-400">Salsas: ${it.salsas.join(', ')}</div>` : ''}
+                    ${it.notas ? `<div class="text-xs text-red-400 font-semibold bg-red-950/30 p-1 rounded mt-1"> Nota: ${it.notas}</div>` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <div class="p-3 border-t border-stone-800 bg-stone-900/50 flex gap-2">
+              ${p.estado === 'PENDIENTE' ? `
+                <button onclick="cambiarEstado('${p.id}', 'PREPARANDO')" class="w-full bg-blue-600 hover:bg-blue-700 py-2.5 rounded-xl text-xs font-bold">
+                  Comenzar a Preparar
+                </button>
+              ` : p.estado === 'PREPARANDO' ? `
+                <button onclick="cambiarEstado('${p.id}', 'LISTO')" class="w-full bg-green-600 hover:bg-green-700 py-2.5 rounded-xl text-xs font-bold">
+                  Marcar Listo
+                </button>
+              ` : `
+                <button onclick="cambiarEstado('${p.id}', 'ENTREGADO')" class="w-full bg-stone-700 hover:bg-stone-600 py-2.5 rounded-xl text-xs font-bold">
+                  Entregar y Cerrar
+                </button>
+              `}
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function cambiarEstado(id, nuevoEstado) {
+      socket.emit('cambiar-estado', { id, nuevoEstado });
+    }
+
+    socket.on('pedido-creado', (p) => {
+      pedidos.unshift(p);
+      renderComandas();
+    });
+
+    socket.on('estado-actualizado', ({ id, nuevoEstado }) => {
+      const p = pedidos.find(x => x.id === id);
+      if (p) p.estado = nuevoEstado;
+      renderComandas();
+    });
+
+    cargarPedidos();
+    setInterval(renderComandas, 30000); // recalcula minutos transcurridos
+  </script>
+</body>
+</html>
