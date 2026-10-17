@@ -1,5 +1,256 @@
-function intentarCargarImagen(imgElement, rutaBase) {
-      // Si falla .png, intenta con .jpg, luego .jpeg
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ary la arepa - Popayán</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Montserrat', sans-serif; }
+    .font-script { font-family: 'Caveat', cursive; }
+  </style>
+</head>
+<body class="bg-neutral-900 text-white min-h-screen pb-28">
+
+  <!-- Modal Modalidad Inicial -->
+  <div id="modal-modalidad" class="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4">
+    <div class="bg-stone-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl relative overflow-hidden">
+      
+      <!-- Mascota Grande en Bienvenida -->
+      <div class="flex justify-center -mt-2 mb-2">
+        <img src="/img/mascota.png" onerror="this.src='https://placehold.co/140x140/facc15/000?text=Ary'" class="w-28 h-28 object-contain drop-shadow-[0_10px_10px_rgba(250,204,21,0.3)]">
+      </div>
+
+      <h1 class="text-3xl font-black uppercase text-yellow-400 tracking-wider">ARY LA AREPA</h1>
+      <p class="font-script text-xl text-stone-200 mt-0.5">De Popayán para el mundo.</p>
+      
+      <p class="text-[11px] text-stone-400 mt-2 px-2 italic">
+        "Base de Arepa agridulce, rellena con abundante queso y bañada en queso fundido"
+      </p>
+
+      <div id="horario-banner" class="my-4 py-2 px-3 rounded-xl text-xs font-bold bg-neutral-800 border border-stone-700"></div>
+
+      <p class="text-xs font-bold text-yellow-400 mb-3 text-left uppercase tracking-wider">¿Cómo quieres tu pedido?</p>
+      
+      <div class="space-y-2.5">
+        <button onclick="seleccionarModalidad('Domicilio')" class="w-full flex items-center gap-4 bg-neutral-800 hover:bg-neutral-700 p-3.5 rounded-2xl border border-stone-700 text-left transition">
+          <i class="fa-solid fa-motorcycle text-2xl text-yellow-400"></i>
+          <div>
+            <div class="font-black text-sm">Domicilio en Popayán</div>
+            <div class="text-[11px] text-stone-400">Te lo enviamos hasta la puerta</div>
+          </div>
+        </button>
+
+        <button onclick="seleccionarModalidad('Recoger')" class="w-full flex items-center gap-4 bg-neutral-800 hover:bg-neutral-700 p-3.5 rounded-2xl border border-stone-700 text-left transition">
+          <i class="fa-solid fa-bag-shopping text-2xl text-white"></i>
+          <div>
+            <div class="font-black text-sm">Recoger en el local</div>
+            <div class="text-[11px] text-stone-400">Cra 7 #10N-22 B (Prados del norte)</div>
+          </div>
+        </button>
+
+        <button onclick="seleccionarModalidad('Local')" class="w-full flex items-center gap-4 bg-neutral-800 hover:bg-neutral-700 p-3.5 rounded-2xl border border-stone-700 text-left transition">
+          <i class="fa-solid fa-utensils text-2xl text-green-400"></i>
+          <div>
+            <div class="font-black text-sm">Comer en mesa</div>
+            <div class="text-[11px] text-stone-400">En WokHouse Popayán</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header con Mascota -->
+  <header class="sticky top-0 z-20 bg-neutral-900/95 backdrop-blur border-b border-stone-800 p-3 flex justify-between items-center shadow-md">
+    <div class="flex items-center gap-3">
+      <img src="/img/mascota.png" onerror="this.src='https://placehold.co/60x60/facc15/000?text=Ary'" class="w-12 h-12 object-contain drop-shadow">
+      <div>
+        <h2 class="text-lg font-black text-yellow-400 leading-none">ARY LA AREPA</h2>
+        <span class="font-script text-sm text-stone-300">De Popayán para el mundo.</span>
+      </div>
+    </div>
+    <a href="https://wa.me/573215035691" target="_blank" class="text-xs bg-neutral-800 hover:bg-neutral-700 px-3 py-1.5 rounded-full flex items-center gap-2 border border-stone-700 text-stone-300">
+      <i class="fa-brands fa-whatsapp text-green-400 text-sm"></i> 321 5035691
+    </a>
+  </header>
+
+  <!-- Banner Eslogan -->
+  <div class="px-4 pt-3">
+    <div class="bg-gradient-to-r from-yellow-500/10 via-neutral-800 to-neutral-800 border-l-4 border-yellow-400 p-3 rounded-r-2xl">
+      <p class="text-[11px] font-bold text-stone-300">
+        🧀 <span class="text-yellow-400 font-black">Base de Arepa agridulce:</span> Rellena con abundante queso y bañada en queso fundido artesanal.
+      </p>
+    </div>
+  </div>
+
+  <!-- Selector Categorías -->
+  <div class="px-4 pt-4 flex gap-2">
+    <button class="px-5 py-2 rounded-full bg-yellow-400 text-black text-xs font-black shadow-md shadow-yellow-400/20">Arepas del Menú</button>
+    <button onclick="abrirUpsell()" class="px-5 py-2 rounded-full bg-neutral-800 hover:bg-neutral-700 text-stone-300 text-xs font-bold border border-stone-700">Bebidas Frías</button>
+  </div>
+
+  <!-- Catálogo de Arepas -->
+  <main class="max-w-md mx-auto p-4 space-y-4" id="catalogo-arepas"></main>
+
+  <!-- Barra Flotante Carrito -->
+  <div id="barra-pedido" class="fixed bottom-4 left-4 right-4 max-w-md mx-auto hidden z-30">
+    <button onclick="abrirCheckout()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black p-4 rounded-2xl font-black flex justify-between items-center shadow-xl shadow-yellow-500/30 transition">
+      <span class="flex items-center gap-2">
+        <span class="bg-black text-yellow-400 px-2.5 py-0.5 rounded-full text-xs font-black" id="cart-count">0</span>
+        Ver mi pedido
+      </span>
+      <span id="cart-total" class="text-lg font-black">$0</span>
+    </button>
+  </div>
+
+  <!-- Modal Personalización Arepa & Extras -->
+  <div id="modal-producto" class="fixed inset-0 z-50 bg-black/90 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-stone-900 border border-yellow-500/30 w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[90vh] overflow-y-auto p-5 space-y-4">
+      
+      <div class="flex items-center gap-4 border-b border-stone-800 pb-4">
+        <img id="modal-img" class="w-20 h-20 rounded-full object-cover border-2 border-yellow-400 shadow-md">
+        <div class="flex-1">
+          <div class="flex justify-between items-start">
+            <h3 id="modal-titulo" class="text-xl font-black text-yellow-400"></h3>
+            <button onclick="cerrarModalProducto()" class="text-stone-400 hover:text-white font-bold text-lg">✕</button>
+          </div>
+          <p id="modal-desc" class="text-xs text-stone-400 mt-1"></p>
+          <div id="modal-precio-base" class="text-sm font-black text-stone-200 mt-1"></div>
+        </div>
+      </div>
+
+      <!-- Lista de Extras del Menú -->
+      <div>
+        <label class="text-xs font-black text-yellow-400 uppercase tracking-wider block mb-2">
+          ¿Deseas agregar Extras? (Opcional)
+        </label>
+        <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-1" id="lista-extras-modal"></div>
+      </div>
+
+      <!-- Notas -->
+      <div>
+        <label class="text-xs font-bold text-stone-300 block mb-1">Nota especial para la cocina:</label>
+        <textarea id="modal-notas" class="w-full bg-neutral-800 border border-stone-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-yellow-400" placeholder="Ej: sin salsas, salsas aparte..."></textarea>
+      </div>
+
+      <button onclick="confirmarArepa()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-3.5 rounded-xl font-black text-sm transition">
+        Agregar Arepa • <span id="modal-precio-total">$0</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal Upsell Bebidas -->
+  <div id="modal-upsell" class="fixed inset-0 z-50 bg-black/90 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-stone-900 border border-yellow-500/20 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-4">
+      <div class="text-center">
+        <h4 class="text-lg font-black text-yellow-400 uppercase">¿Le agregas una bebida fría?</h4>
+        <p class="text-xs text-stone-400">Bebidas del menú listas para acompañar</p>
+      </div>
+      <div class="space-y-2 max-h-52 overflow-y-auto" id="lista-upsell"></div>
+      <button onclick="cerrarUpsell()" class="w-full bg-neutral-800 hover:bg-neutral-700 py-3 rounded-xl text-xs font-bold text-stone-300">
+        No, continuar sin bebida
+      </button>
+    </div>
+  </div>
+
+  <!-- Checkout Final -->
+  <div id="vista-checkout" class="fixed inset-0 z-40 bg-neutral-950 hidden overflow-y-auto p-4 max-w-md mx-auto">
+    <div class="flex items-center gap-3 mb-4">
+      <button onclick="cerrarCheckout()" class="w-9 h-9 bg-neutral-800 rounded-full flex items-center justify-center text-stone-300 font-bold">←</button>
+      <h2 class="text-lg font-black text-yellow-400 uppercase">Confirmar Pedido</h2>
+    </div>
+
+    <!-- Items seleccionados -->
+    <div class="bg-stone-900 border border-stone-800 rounded-2xl p-4 mb-4 space-y-3" id="checkout-items"></div>
+
+    <!-- Formulario de entrega -->
+    <div class="bg-stone-900 border border-stone-800 rounded-2xl p-4 space-y-3 text-xs">
+      <div>
+        <label class="block font-bold mb-1">Nombre completo *</label>
+        <input type="text" id="cli-nombre" class="w-full bg-neutral-800 border border-stone-700 rounded-xl p-3 text-white" placeholder="Ej: Carlos Pérez">
+      </div>
+      <div>
+        <label class="block font-bold mb-1">Número de celular (WhatsApp) *</label>
+        <input type="tel" id="cli-celular" class="w-full bg-neutral-800 border border-stone-700 rounded-xl p-3 text-white" placeholder="Ej: 321 000 0000">
+      </div>
+      <div>
+        <label class="block font-bold mb-1">Dirección exacta / Mesa *</label>
+        <input type="text" id="cli-direccion" class="w-full bg-neutral-800 border border-stone-700 rounded-xl p-3 text-white" placeholder="Carrera, Calle, Apto o # de mesa">
+      </div>
+      <div id="campo-barrio">
+        <label class="block font-bold mb-1">Barrio en Popayán *</label>
+        <select id="cli-barrio" onchange="calcularTotales()" class="w-full bg-neutral-800 border border-stone-700 rounded-xl p-3 text-white"></select>
+      </div>
+      <div>
+        <label class="block font-bold mb-1">Método de pago *</label>
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" onclick="setPago('Nequi / Bancolombia')" id="btn-transf" class="p-3 bg-yellow-400 font-black text-black rounded-xl">Nequi / Transferencia</button>
+          <button type="button" onclick="setPago('Efectivo')" id="btn-efectivo" class="p-3 bg-neutral-800 font-bold rounded-xl border border-stone-700">Efectivo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resumen -->
+    <div class="bg-stone-900 border border-stone-800 rounded-2xl p-4 my-4 space-y-1.5 text-xs">
+      <div class="flex justify-between text-stone-400"><span>Subtotal arepas:</span><span id="res-subtotal">$0</span></div>
+      <div class="flex justify-between text-stone-400"><span>Costo Domicilio:</span><span id="res-envio">$0</span></div>
+      <div class="flex justify-between text-base font-black text-white pt-2 border-t border-stone-800">
+        <span>Total a pagar:</span><span id="res-total" class="text-yellow-400 text-lg">$0</span>
+      </div>
+    </div>
+
+    <button onclick="enviarPedidoFinal()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-4 rounded-2xl font-black text-sm shadow-xl shadow-yellow-500/20 uppercase tracking-wider">
+      Enviar Pedido a Cocina
+    </button>
+  </div>
+
+  <!-- AQUI COMIENZA EL CODIGO JAVASCRIPT PROTEGIDO DENTRO DE SCRIPT -->
+  <script>
+    const socket = io();
+    let DATA = { info: {}, productos: [], extras: [], barrios: [], bebidas: [] };
+    let carrito = [];
+    let modalidadActual = 'Domicilio';
+    let metodoPago = 'Nequi / Bancolombia';
+    let arepaSeleccionada = null;
+
+    window.onload = async () => {
+      try {
+        const res = await fetch('/api/data-inicial');
+        DATA = await res.json();
+        verificarHorario();
+        renderBarrios();
+        renderArepas();
+      } catch (err) {
+        console.error("Error al cargar datos:", err);
+      }
+    };
+
+    function verificarHorario() {
+      const hora = new Date().getHours();
+      const abierto = hora >= 16 && hora < 22;
+      const b = document.getElementById('horario-banner');
+      if (abierto) {
+        b.innerHTML = '<span class="text-green-400 font-black">● ABIERTO AHORA</span> • Servicio hasta las 10:00 PM';
+      } else {
+        b.innerHTML = '<span class="text-yellow-400 font-black">⏰ ABRIMOS A LAS 4:00 PM</span> • Horario: 4:00 PM a 10:00 PM';
+      }
+    }
+
+    function seleccionarModalidad(m) {
+      modalidadActual = m;
+      document.getElementById('modal-modalidad').classList.add('hidden');
+      if (m !== 'Domicilio') {
+        document.getElementById('campo-barrio').classList.add('hidden');
+      } else {
+        document.getElementById('campo-barrio').classList.remove('hidden');
+      }
+      calcularTotales();
+    }
+
+    function intentarCargarImagen(imgElement, rutaBase) {
       if (imgElement.src.endsWith('.png')) {
         imgElement.src = rutaBase.replace('.png', '.jpg');
       } else if (imgElement.src.endsWith('.jpg')) {
@@ -33,3 +284,185 @@ function intentarCargarImagen(imgElement, rutaBase) {
         </div>
       `).join('');
     }
+
+    function renderBarrios() {
+      const sel = document.getElementById('cli-barrio');
+      if (DATA.barrios) {
+        sel.innerHTML = DATA.barrios.map(b => `<option value="${b.costo}">${b.nombre} (+$${b.costo.toLocaleString()})</option>`).join('');
+      }
+    }
+
+    function abrirModalArepa(id) {
+      arepaSeleccionada = DATA.productos.find(p => p.id === id);
+      document.getElementById('modal-img').src = arepaSeleccionada.img;
+      document.getElementById('modal-titulo').innerText = arepaSeleccionada.nombre;
+      document.getElementById('modal-desc').innerText = arepaSeleccionada.desc;
+      document.getElementById('modal-precio-base').innerText = `Precio base: $${arepaSeleccionada.precio.toLocaleString()}`;
+      document.getElementById('modal-notas').value = '';
+
+      const cont = document.getElementById('lista-extras-modal');
+      cont.innerHTML = DATA.extras.map(ex => `
+        <label class="flex items-center justify-between bg-neutral-800 p-2 rounded-xl text-xs cursor-pointer hover:bg-neutral-700">
+          <span class="flex items-center gap-2">
+            <input type="checkbox" data-precio="${ex.precio}" data-nombre="${ex.nombre}" onchange="recalcularModalPrecio()" class="extra-check accent-yellow-400">
+            <span class="font-semibold">${ex.nombre}</span>
+          </span>
+          <span class="font-black text-yellow-400">+$${ex.precio.toLocaleString()}</span>
+        </label>
+      `).join('');
+
+      recalcularModalPrecio();
+      document.getElementById('modal-producto').classList.remove('hidden');
+    }
+
+    function recalcularModalPrecio() {
+      let total = arepaSeleccionada.precio;
+      document.querySelectorAll('.extra-check:checked').forEach(c => {
+        total += parseInt(c.dataset.precio);
+      });
+      document.getElementById('modal-precio-total').innerText = `$${total.toLocaleString()}`;
+    }
+
+    function cerrarModalProducto() {
+      document.getElementById('modal-producto').classList.add('hidden');
+    }
+
+    function confirmarArepa() {
+      const extras = Array.from(document.querySelectorAll('.extra-check:checked')).map(c => ({
+        nombre: c.dataset.nombre,
+        precio: parseInt(c.dataset.precio)
+      }));
+      const sumaExtras = extras.reduce((acc, e) => acc + e.precio, 0);
+
+      carrito.push({
+        id: arepaSeleccionada.id,
+        nombre: arepaSeleccionada.nombre,
+        precio: arepaSeleccionada.precio + sumaExtras,
+        extras,
+        notas: document.getElementById('modal-notas').value.trim()
+      });
+
+      cerrarModalProducto();
+      actualizarBarraCarrito();
+      abrirUpsell();
+    }
+
+    function abrirUpsell() {
+      const cont = document.getElementById('lista-upsell');
+      cont.innerHTML = DATA.bebidas.map(b => `
+        <div class="flex items-center justify-between bg-neutral-800 p-3 rounded-xl text-xs">
+          <div>
+            <div class="font-black text-white">${b.nombre}</div>
+            <div class="text-yellow-400 font-bold">$${b.precio.toLocaleString()}</div>
+          </div>
+          <button onclick="agregarBebida(${b.id})" class="bg-yellow-400 hover:bg-yellow-300 text-black px-3 py-1.5 rounded-lg font-black text-xs">Agregar</button>
+        </div>
+      `).join('');
+      document.getElementById('modal-upsell').classList.remove('hidden');
+    }
+
+    function agregarBebida(id) {
+      const b = DATA.bebidas.find(x => x.id === id);
+      carrito.push({ ...b, extras: [], notas: '' });
+      cerrarUpsell();
+      actualizarBarraCarrito();
+    }
+
+    function cerrarUpsell() {
+      document.getElementById('modal-upsell').classList.add('hidden');
+    }
+
+    function actualizarBarraCarrito() {
+      const b = document.getElementById('barra-pedido');
+      if (carrito.length === 0) {
+        b.classList.add('hidden');
+        return;
+      }
+      b.classList.remove('hidden');
+      document.getElementById('cart-count').innerText = carrito.length;
+      const subtotal = carrito.reduce((acc, i) => acc + i.precio, 0);
+      document.getElementById('cart-total').innerText = `$${subtotal.toLocaleString()}`;
+    }
+
+    function abrirCheckout() {
+      document.getElementById('vista-checkout').classList.remove('hidden');
+      const box = document.getElementById('checkout-items');
+      box.innerHTML = carrito.map((item, idx) => `
+        <div class="flex justify-between items-start border-b border-stone-800 pb-2 text-xs">
+          <div>
+            <div class="font-black text-yellow-400">${item.nombre}</div>
+            ${item.extras && item.extras.length ? `<div class="text-[10px] text-stone-300">+ Extras: ${item.extras.map(e => e.nombre).join(', ')}</div>` : ''}
+            ${item.notas ? `<div class="text-[10px] text-yellow-200/80">Nota: ${item.notas}</div>` : ''}
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="font-black">$${item.precio.toLocaleString()}</span>
+            <button onclick="eliminarItem(${idx})" class="text-red-400 font-bold">✕</button>
+          </div>
+        </div>
+      `).join('');
+      calcularTotales();
+    }
+
+    function eliminarItem(idx) {
+      carrito.splice(idx, 1);
+      actualizarBarraCarrito();
+      if (carrito.length === 0) cerrarCheckout();
+      else abrirCheckout();
+    }
+
+    function cerrarCheckout() {
+      document.getElementById('vista-checkout').classList.add('hidden');
+    }
+
+    function setPago(tipo) {
+      metodoPago = tipo;
+      document.getElementById('btn-transf').className = tipo.includes('Nequi') ? 'p-3 bg-yellow-400 font-black text-black rounded-xl' : 'p-3 bg-neutral-800 font-bold rounded-xl border border-stone-700';
+      document.getElementById('btn-efectivo').className = tipo === 'Efectivo' ? 'p-3 bg-yellow-400 font-black text-black rounded-xl' : 'p-3 bg-neutral-800 font-bold rounded-xl border border-stone-700';
+    }
+
+    function calcularTotales() {
+      const subtotal = carrito.reduce((acc, i) => acc + i.precio, 0);
+      const envio = modalidadActual === 'Domicilio' ? parseInt(document.getElementById('cli-barrio').value || 0) : 0;
+      document.getElementById('res-subtotal').innerText = `$${subtotal.toLocaleString()}`;
+      document.getElementById('res-envio').innerText = `$${envio.toLocaleString()}`;
+      document.getElementById('res-total').innerText = `$${(subtotal + envio).toLocaleString()}`;
+    }
+
+    function enviarPedidoFinal() {
+      const nombre = document.getElementById('cli-nombre').value.trim();
+      const celular = document.getElementById('cli-celular').value.trim();
+      const direccion = document.getElementById('cli-direccion').value.trim();
+
+      if (!nombre || !celular || !direccion) {
+        alert('Por favor llena tu nombre, celular y dirección.');
+        return;
+      }
+
+      const selBarrio = document.getElementById('cli-barrio');
+      const subtotal = carrito.reduce((acc, i) => acc + i.precio, 0);
+      const envio = modalidadActual === 'Domicilio' ? parseInt(selBarrio.value || 0) : 0;
+
+      const payload = {
+        cliente: {
+          nombre,
+          celular,
+          direccion,
+          barrio: modalidadActual === 'Domicilio' ? selBarrio.options[selBarrio.selectedIndex].text : 'En local'
+        },
+        modalidad: modalidadActual,
+        items: carrito,
+        metodoPago,
+        subtotal,
+        costoEnvio: envio,
+        total: subtotal + envio
+      };
+
+      socket.emit('nuevo-pedido', payload);
+    }
+
+    socket.on('confirmacion-pedido', ({ id }) => {
+      window.location.href = `/seguimiento.html?id=${id}`;
+    });
+  </script>
+</body>
+</html>
