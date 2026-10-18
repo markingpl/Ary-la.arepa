@@ -1,15 +1,15 @@
+```javascript
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const fs = require('fs');
 
-// Carga segura de Supabase (si no está instalado, no tumba el servidor)
 let createClient = null;
 try {
   createClient = require('@supabase/supabase-js').createClient;
 } catch (e) {
-  console.log("ℹ️ Nota: Librería @supabase/supabase-js no detectada. Operando en modo local.");
+  console.log("ℹ️ Operando en modo local (sin librería Supabase instalada).");
 }
 
 const app = express();
@@ -41,6 +41,13 @@ const DB_DEFAULT = {
     horarioDomicilio: "4:00 PM a 9:30 PM",
     horarioMesa: "4:00 PM a 9:45 PM",
     pinAdmin: "1234"
+  },
+  // REGLAS CONFIGURABLES DEL PROGRAMA VIP (NUEVO)
+  configPuntos: {
+    puntosPorArepa: 1,             // Cuántos puntos da cada arepa
+    puntosMinimosParaCanje: 5,     // Desde cuántos puntos es VIP y puede canjear
+    valorDescuentoCanje: 5000,     // Descuento en pesos al canjear ($ COP)
+    activo: true
   },
   usuarios: [
     { id: 1, usuario: 'admin', clave: '1234', nombre: 'Administrador', rol: 'ADMIN' },
@@ -124,7 +131,7 @@ const DB_DEFAULT = {
   historialTurnos: []
 };
 
-// Carga con fusión segura (auto-repara archivos data.json viejos)
+// Carga con fusión segura (auto-repara data.json viejo)
 let DB = DB_DEFAULT;
 if (fs.existsSync(DATA_FILE)) {
   try {
@@ -133,6 +140,7 @@ if (fs.existsSync(DATA_FILE)) {
       ...DB_DEFAULT,
       ...dataGuardada,
       info: { ...DB_DEFAULT.info, ...(dataGuardada.info || {}) },
+      configPuntos: { ...DB_DEFAULT.configPuntos, ...(dataGuardada.configPuntos || {}) },
       recetas: { ...DB_DEFAULT.recetas, ...(dataGuardada.recetas || {}) },
       cupones: dataGuardada.cupones || DB_DEFAULT.cupones,
       inventario: dataGuardada.inventario || DB_DEFAULT.inventario
@@ -171,7 +179,7 @@ async function sincronizarConSupabase() {
       });
       console.log("✓ Sincronizado con Supabase PostgreSQL.");
     } else {
-      const claves = ['info', 'usuarios', 'clientesFrecuentes', 'cupones', 'inventario', 'recetas', 'barrios', 'productos', 'extras', 'bebidas'];
+      const claves = ['info', 'configPuntos', 'usuarios', 'clientesFrecuentes', 'cupones', 'inventario', 'recetas', 'barrios', 'productos', 'extras', 'bebidas'];
       for (const k of claves) {
         if (DB[k]) await supabase.from('configuracion').upsert({ clave: k, datos: DB[k] });
       }
@@ -201,7 +209,7 @@ async function sincronizarConSupabase() {
       DB.contadorPedido = DB.pedidos.length;
     }
   } catch (err) {
-    console.log("⚠️ No se pudo conectar a Supabase, operando con data.json local.");
+    console.log("⚠️ Operando con data.json local.");
   }
 }
 
@@ -213,10 +221,8 @@ function obtenerMinutosDiaColombia() {
 
 function verificarEstadoServicios() {
   const mins = obtenerMinutosDiaColombia();
-  // 4:00 PM (960m) a 9:30 PM (1290m)
-  const abiertoDomicilio = (mins >= 960 && mins <= 1290);
-  // 4:00 PM (960m) a 9:45 PM (1305m)
-  const abiertoMesaYRecoger = (mins >= 960 && mins <= 1305);
+  const abiertoDomicilio = (mins >= 960 && mins <= 1290); // 4:00 PM a 9:30 PM
+  const abiertoMesaYRecoger = (mins >= 960 && mins <= 1305); // 4:00 PM a 9:45 PM
   return { abiertoDomicilio, abiertoMesa: abiertoMesaYRecoger, abiertoRecoger: abiertoMesaYRecoger };
 }
 
@@ -234,7 +240,7 @@ app.get('/api/estado-horarios', (req, res) => {
   });
 });
 
-// DESCARGO Y RESTAURACIÓN DE INVENTARIO
+// INVENTARIO
 function descontarInventarioPorPedido(items, modalidad) {
   if (!DB.recetas || !DB.inventario) return;
 
@@ -291,6 +297,7 @@ function devolverInventarioCancelado(items, modalidad) {
   guardarDB('inventario');
 }
 
+// REGISTRO DE PEDIDOS CON ACUMULACIÓN Y CANJE DE PUNTOS VIP
 function registrarPedidoEnSistema(pedidoData) {
   DB.contadorPedido++;
   const now = new Date();
@@ -307,12 +314,24 @@ function registrarPedidoEnSistema(pedidoData) {
 
   descontarInventarioPorPedido(nuevoPedido.items || [], nuevoPedido.modalidad);
 
+  // Lógica de Fidelización VIP
   if (pedidoData.cliente && pedidoData.cliente.celular && !String(pedidoData.metodoPago).includes('Pauta')) {
     const idx = DB.clientesFrecuentes.findIndex(c => c.celular === pedidoData.cliente.celular);
     const cantArepas = (nuevoPedido.items || []).filter(i => !i.desc || !i.desc.includes('Bebida')).length || 1;
+    const factorPuntos = (DB.configPuntos && DB.configPuntos.activo) ? (DB.configPuntos.puntosPorArepa || 1) : 0;
+    const puntosGanados = cantArepas * factorPuntos;
+
     if (idx >= 0) {
-      DB.clientesFrecuentes[idx].pedidos += 1;
-      DB.clientesFrecuentes[idx].puntos = (DB.clientesFrecuentes[idx].puntos || 0) + cantArepas;
+      const cli = DB.clientesFrecuentes[idx];
+      cli.pedidos += 1;
+      // Si canjeó puntos, se le descuentan los puntos mínimos del canje
+      if (pedidoData.canjeoPuntos && DB.configPuntos) {
+        cli.puntos = Math.max(0, (cli.puntos || 0) - (DB.configPuntos.puntosMinimosParaCanje || 5));
+      }
+      // Sumar los nuevos puntos ganados en este pedido
+      cli.puntos = (cli.puntos || 0) + puntosGanados;
+      cli.direccion = pedidoData.cliente.direccion;
+      cli.barrio = pedidoData.cliente.barrio;
     } else {
       DB.clientesFrecuentes.push({
         id: DB.clientesFrecuentes.length + 1,
@@ -321,7 +340,7 @@ function registrarPedidoEnSistema(pedidoData) {
         direccion: pedidoData.cliente.direccion,
         barrio: pedidoData.cliente.barrio,
         pedidos: 1,
-        puntos: cantArepas
+        puntos: puntosGanados
       });
     }
     guardarDB('clientesFrecuentes');
@@ -361,7 +380,34 @@ function registrarPedidoEnSistema(pedidoData) {
 app.get('/api/data-inicial', (req, res) => res.json(DB));
 app.get('/api/pedidos', (req, res) => res.json(DB.pedidos));
 
-// Verificación y Cambio de PIN
+// CONFIGURACIÓN DINÁMICA DE PUNTOS VIP (NUEVO)
+app.post('/api/admin/config-puntos', (req, res) => {
+  const { puntosPorArepa, puntosMinimosParaCanje, valorDescuentoCanje, activo } = req.body;
+  DB.configPuntos = {
+    puntosPorArepa: parseInt(puntosPorArepa) || 1,
+    puntosMinimosParaCanje: parseInt(puntosMinimosParaCanje) || 5,
+    valorDescuentoCanje: parseInt(valorDescuentoCanje) || 5000,
+    activo: activo !== false
+  };
+  guardarDB('configPuntos');
+  res.json({ ok: true, configPuntos: DB.configPuntos });
+});
+
+// MODIFICAR PUNTOS MANUALMENTE A UN CLIENTE (NUEVO)
+app.post('/api/admin/clientes/:id/puntos', (req, res) => {
+  const id = parseInt(req.params.id);
+  const { puntos } = req.body;
+  const cliente = DB.clientesFrecuentes.find(c => c.id === id);
+  if (cliente) {
+    cliente.puntos = Math.max(0, parseInt(puntos) || 0);
+    guardarDB('clientesFrecuentes');
+    res.json({ ok: true, cliente });
+  } else {
+    res.status(404).json({ error: 'Cliente no encontrado' });
+  }
+});
+
+// Verificación y Cambio de PIN Maestro
 app.post('/api/admin/verificar-pin', (req, res) => {
   const { pin } = req.body;
   if (pin === (DB.info.pinAdmin || "1234")) res.json({ ok: true });
@@ -526,7 +572,7 @@ app.post('/api/caja/cerrar', (req, res) => {
   res.json({ ok: true, resumenCierre: turnoCerrado });
 });
 
-// Bot de WhatsApp
+// BOT WHATSAPP
 const sesionesBot = {};
 
 function procesarMensajeAgente(celular, mensajeTexto) {
@@ -562,6 +608,12 @@ function procesarMensajeAgente(celular, mensajeTexto) {
     return `📸 Puedes ver todas las fotos reales de nuestras arepas aquí:\n👉 *https://ary-la-arepa.onrender.com*`;
   }
 
+  if (texto.includes('puntos') || texto.includes('fidelidad') || texto.includes('vip')) {
+    const minPts = (DB.configPuntos && DB.configPuntos.puntosMinimosParaCanje) || 5;
+    const valorDesc = (DB.configPuntos && DB.configPuntos.valorDescuentoCanje) || 5000;
+    return `⭐ *PROGRAMA VIP ARY LA AREPA:*\n• Ganas puntos por cada arepa que pides con tu número.\n• Al acumular *${minPts} puntos*, ¡recibes *$${valorDesc.toLocaleString()} de descuento* inmediato en tu siguiente pedido!`;
+  }
+
   if (texto.includes('menu') || texto.includes('menú') || texto.includes('carta') || texto.includes('precios')) {
     let respuestaMenu = `🧀 *MENÚ ARY LA AREPA*\n\n`;
     DB.productos.forEach((p, idx) => {
@@ -569,10 +621,6 @@ function procesarMensajeAgente(celular, mensajeTexto) {
     });
     respuestaMenu += `🕒 *Horarios:*\n🛵 Domicilios: 4:00 PM a 9:30 PM\n🍽️ En mesa y recoger: 4:00 PM a 9:45 PM.`;
     return respuestaMenu;
-  }
-
-  if (texto.includes('vegetariano') || texto.includes('vegetariana') || texto.includes('sin carne')) {
-    return `🌱 *¡Sí, tenemos opciones vegetarianas!*\nNuestra base es de *arepa agridulce con abundante queso fundido* 🧀.\nPuedes armarla con: Guacamole fresco ($2.000), Pico de gallo ($2.000), Totopos ($2.000), Piña calada ($2.000), Jalapeños ($2.000) o Huevos de codorniz ($1.000). También la dulce de *Quipitos* ($16.500) es sin carne.`;
   }
 
   if (texto.includes('cancelar') || texto.includes('cancelo') || texto.includes('anular')) {
@@ -666,17 +714,13 @@ io.on('connection', (socket) => {
     if (pedido && pedido.estado === 'PENDIENTE') {
       pedido.estado = 'CANCELADO';
       pedido.motivoCancelacion = motivo || 'Rechazado por cocina';
-
       devolverInventarioCancelado(pedido.items || [], pedido.modalidad);
-
       guardarDB();
-
       if (supabase) {
         try {
           supabase.from('pedidos').update({ estado: 'CANCELADO' }).eq('id', id).then();
         } catch (e) {}
       }
-
       io.emit('estado-actualizado', { id, nuevoEstado: 'CANCELADO', pedido });
     }
   });
@@ -687,3 +731,4 @@ server.listen(PORT, async () => {
   console.log(` Servidor activo: http://localhost:${PORT}`);
   await sincronizarConSupabase();
 });
+```
