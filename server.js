@@ -18,9 +18,11 @@ const DB_DEFAULT = {
   info: {
     nombre: "Ary la arepa",
     eslogan: "De Popayán para el mundo",
+    base: "Base de Arepa agridulce, rellena con abundante queso y bañada en queso fundido",
     direccion: "Cra 7 #10N-22 B, Prados del Norte en WokHouse",
     telefono: "3215035691",
-    nit: "1061789456-1"
+    nit: "1061789456-1",
+    horario: "4:00 PM a 10:00 PM"
   },
   usuarios: [
     { id: 1, usuario: 'admin', clave: '1234', nombre: 'Administrador', rol: 'ADMIN' },
@@ -102,7 +104,7 @@ function guardarDB() {
 app.get('/api/data-inicial', (req, res) => res.json(DB));
 app.get('/api/pedidos', (req, res) => res.json(DB.pedidos));
 
-// Barrios
+// Modificaciones de Menú y Domicilios
 app.post('/api/admin/barrios', (req, res) => {
   if (Array.isArray(req.body.barrios)) {
     DB.barrios = req.body.barrios;
@@ -111,7 +113,6 @@ app.post('/api/admin/barrios', (req, res) => {
   } else res.status(400).json({ error: 'Inválido' });
 });
 
-// Menú
 app.post('/api/admin/productos', (req, res) => {
   if (Array.isArray(req.body.productos)) {
     DB.productos = req.body.productos;
@@ -136,7 +137,7 @@ app.post('/api/admin/bebidas', (req, res) => {
   } else res.status(400).json({ error: 'Inválido' });
 });
 
-// Usuarios
+// Usuarios POS
 app.get('/api/usuarios', (req, res) => res.json(DB.usuarios));
 app.post('/api/usuarios', (req, res) => {
   const { usuario, clave, nombre } = req.body;
@@ -220,43 +221,266 @@ app.post('/api/caja/cerrar', (req, res) => {
   res.json({ ok: true, resumenCierre: turnoCerrado });
 });
 
-// Sockets
-io.on('connection', (socket) => {
-  socket.on('nuevo-pedido', (pedidoData) => {
-    DB.contadorPedido++;
-    const now = new Date();
-    const nuevoPedido = {
-      id: `ORD-${Date.now()}`,
-      numero: `#${String(DB.contadorPedido).padStart(3, '0')}`,
-      fecha: now.toLocaleDateString('es-CO'),
-      hora: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      timestamp: Date.now(),
-      estado: 'PENDIENTE',
-      turnoId: DB.turnoActual ? DB.turnoActual.id : null,
-      ...pedidoData
-    };
+// Función creadora de pedidos
+function registrarPedidoEnSistema(pedidoData) {
+  DB.contadorPedido++;
+  const now = new Date();
+  const nuevoPedido = {
+    id: `ORD-${Date.now()}`,
+    numero: `#${String(DB.contadorPedido).padStart(3, '0')}`,
+    fecha: now.toLocaleDateString('es-CO'),
+    hora: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    timestamp: Date.now(),
+    estado: 'PENDIENTE',
+    turnoId: DB.turnoActual ? DB.turnoActual.id : null,
+    ...pedidoData
+  };
 
-    if (pedidoData.cliente && pedidoData.cliente.celular) {
-      const idx = DB.clientesFrecuentes.findIndex(c => c.celular === pedidoData.cliente.celular);
-      if (idx >= 0) {
-        DB.clientesFrecuentes[idx].pedidos += 1;
-        DB.clientesFrecuentes[idx].direccion = pedidoData.cliente.direccion;
-        DB.clientesFrecuentes[idx].barrio = pedidoData.cliente.barrio;
-      } else {
-        DB.clientesFrecuentes.push({
-          id: DB.clientesFrecuentes.length + 1,
-          nombre: pedidoData.cliente.nombre,
-          celular: pedidoData.cliente.celular,
-          direccion: pedidoData.cliente.direccion,
-          barrio: pedidoData.cliente.barrio,
-          pedidos: 1
-        });
-      }
+  if (pedidoData.cliente && pedidoData.cliente.celular) {
+    const idx = DB.clientesFrecuentes.findIndex(c => c.celular === pedidoData.cliente.celular);
+    if (idx >= 0) {
+      DB.clientesFrecuentes[idx].pedidos += 1;
+      DB.clientesFrecuentes[idx].direccion = pedidoData.cliente.direccion;
+      DB.clientesFrecuentes[idx].barrio = pedidoData.cliente.barrio;
+    } else {
+      DB.clientesFrecuentes.push({
+        id: DB.clientesFrecuentes.length + 1,
+        nombre: pedidoData.cliente.nombre,
+        celular: pedidoData.cliente.celular,
+        direccion: pedidoData.cliente.direccion,
+        barrio: pedidoData.cliente.barrio,
+        pedidos: 1
+      });
+    }
+  }
+
+  DB.pedidos.unshift(nuevoPedido);
+  guardarDB();
+  io.emit('pedido-creado', nuevoPedido);
+  return nuevoPedido;
+}
+
+// ========================================================
+// CEREBRO DEL AGENTE DE INTELIGENCIA ARTIFICIAL (WHATSAPP)
+// ========================================================
+const sesionesBot = {};
+
+function procesarMensajeAgente(celular, mensajeTexto) {
+  const texto = mensajeTexto.trim().toLowerCase();
+
+  if (!sesionesBot[celular]) {
+    sesionesBot[celular] = {
+      fase: 'INICIO', // INICIO -> ARMANDO_PEDIDO -> PIDIENDO_DATOS -> CONFIRMANDO
+      items: [],
+      cliente: { nombre: '', direccion: '', barrio: '', celular: celular },
+      metodoPago: 'Nequi / Bre-B'
+    };
+  }
+
+  const sesion = sesionesBot[celular];
+
+  // 1. Consulta de Estado de Pedido
+  if (texto.includes('estado') || texto.includes('mi pedido') || texto.includes('como va') || texto.includes('cómo va')) {
+    const ultimoPedido = DB.pedidos.find(p => p.cliente && p.cliente.celular === celular);
+    if (ultimoPedido) {
+      let detalleEstado = '';
+      if (ultimoPedido.estado === 'PENDIENTE') detalleEstado = '🕒 Tu pedido fue recibido y está en cola de cocina.';
+      else if (ultimoPedido.estado === 'PREPARANDO') detalleEstado = '🔥 ¡Tus arepas ya se están asando y bañando en queso!';
+      else if (ultimoPedido.estado === 'LISTO') detalleEstado = '🛵 ¡Tu comanda está lista y empacada para entrega!';
+      else detalleEstado = '✅ Tu pedido ya fue entregado. ¡Esperamos que lo disfrutes!';
+
+      return `👋 Hola, tu pedido *${ultimoPedido.numero}* está en estado:\n\n*${ultimoPedido.estado}*\n${detalleEstado}\n\nTotal: $${ultimoPedido.total.toLocaleString()}`;
+    } else {
+      return `No encontré ningún pedido reciente con el número ${celular}. Si deseas pedir, dime: *"Quiero ver el menú"* 😊.`;
+    }
+  }
+
+  // 2. Preguntas Frecuentes (Ubicación, Horario, Especialidad)
+  if (texto.includes('horario') || texto.includes('abierto') || texto.includes('hora')) {
+    return `🕒 Nuestro horario de atención en Popayán es de *4:00 PM a 10:00 PM*, todos los días. ¡Estamos listos para tomar tu orden!`;
+  }
+
+  if (texto.includes('donde estan') || texto.includes('dónde están') || texto.includes('ubicacion') || texto.includes('direccion')) {
+    return `📍 Estamos ubicados en Popayán en la *Cra 7 #10N-22 B, Prados del Norte (en WokHouse)*. ¡También tenemos servicio a domicilio en toda la ciudad!`;
+  }
+
+  if (texto.includes('menu') || texto.includes('menú') || texto.includes('carta') || texto.includes('precios')) {
+    let respuestaMenu = `🧀 *MENÚ OFICIAL ARY LA AREPA*\n_Base de arepa agridulce con abundante queso fundido:_\n\n`;
+    DB.productos.forEach((p, idx) => {
+      respuestaMenu += `*${idx + 1}. ${p.nombre}* - $${p.precio.toLocaleString()}\n_${p.desc}_\n\n`;
+    });
+    respuestaMenu += `🥤 *Bebidas:* Coca-Cola Cero ($3.000), Manzana ($3.000), Colombiana ($3.000), Pepsi ($3.000), Pony Mini ($3.000), Agua ($2.000).\n\n`;
+    respuestaMenu += `👉 *Para pedir, escríbeme el nombre de la arepa* (ejemplo: _"Quiero una Campesina y una Coca-Cola"_).`;
+    return respuestaMenu;
+  }
+
+  // 3. Flujo Conversacional de Toma de Pedido
+  // Buscar si el cliente menciona alguna arepa
+  let productoEncontrado = null;
+  DB.productos.forEach(p => {
+    if (texto.includes(p.nombre.toLowerCase())) {
+      productoEncontrado = p;
+    }
+  });
+
+  // Buscar si menciona bebidas
+  let bebidaEncontrada = null;
+  DB.bebidas.forEach(b => {
+    if (texto.includes(b.nombre.toLowerCase().split(' ')[0])) {
+      bebidaEncontrada = b;
+    }
+  });
+
+  if (productoEncontrado) {
+    sesion.items.push({
+      id: productoEncontrado.id,
+      nombre: productoEncontrado.nombre,
+      precio: productoEncontrado.precio,
+      extras: [],
+      notas: ''
+    });
+
+    sesion.fase = 'ARMANDO_PEDIDO';
+    return `✅ ¡Excelente elección! He agregado *1x Arepa ${productoEncontrado.nombre}* ($${productoEncontrado.precio.toLocaleString()}).\n\n¿Deseas agregar alguna bebida o extra (tocineta, queso, pollo)?\n\nSi ya terminaste, escríbeme: *"Listo, eso es todo"* o envíame tu nombre para continuar.`;
+  }
+
+  if (bebidaEncontrada && sesion.items.length > 0) {
+    sesion.items.push({
+      id: bebidaEncontrada.id,
+      nombre: bebidaEncontrada.nombre,
+      precio: bebidaEncontrada.precio,
+      extras: [],
+      notas: ''
+    });
+    return `🥤 Agregué *${bebidaEncontrada.nombre}* ($${bebidaEncontrada.precio.toLocaleString()}).\n\n¿Deseas algo más o escribes *"Listo"* para tomar tus datos de entrega?`;
+  }
+
+  // Si dice listo o envía dirección
+  if (texto.includes('listo') || texto.includes('eso es todo') || texto.includes('ya') || sesion.fase === 'ARMANDO_PEDIDO') {
+    if (sesion.items.length === 0) {
+      return `¡Hola! Aún no has seleccionado ninguna arepa. Escríbeme qué se te antoja (Campesina, Doriloca, Ranchera, Tocineta...) o escribe *"Menú"*.`;
     }
 
-    DB.pedidos.unshift(nuevoPedido);
-    guardarDB();
-    io.emit('pedido-creado', nuevoPedido);
+    sesion.fase = 'PIDIENDO_DATOS';
+    const subtotal = sesion.items.reduce((a, b) => a + b.precio, 0);
+    return `📋 *Resumen de tu compra:*
+${sesion.items.map(i => `• 1x ${i.nombre} ($${i.precio.toLocaleString()})`).join('\n')}
+*Subtotal:* $${subtotal.toLocaleString()}
+
+Para enviártelo a domicilio en Popayán, por favor indícame en un solo mensaje:
+1. *Tu Nombre*
+2. *Dirección exacta*
+3. *Barrio en Popayán* (ej: Ciudad Jardín, Centro, Prados del Norte, etc.)`;
+  }
+
+  if (sesion.fase === 'PIDIENDO_DATOS') {
+    // Detectar barrio de la lista de Popayán
+    let barrioDetectado = DB.barrios.find(b => texto.includes(b.nombre.toLowerCase().split(' ')[0]));
+    if (!barrioDetectado) barrioDetectado = DB.barrios[0]; // Prados del norte por defecto
+
+    sesion.cliente.nombre = mensajeTexto.split('\n')[0] || 'Cliente WhatsApp';
+    sesion.cliente.direccion = mensajeTexto;
+    sesion.cliente.barrio = barrioDetectado.nombre;
+    sesion.costoEnvio = barrioDetectado.costo;
+
+    sesion.fase = 'CONFIRMANDO';
+    const subtotal = sesion.items.reduce((a, b) => a + b.precio, 0);
+    const total = subtotal + sesion.costoEnvio;
+
+    return `📍 *Dirección registrada:* ${sesion.cliente.barrio} (Domicilio: $${sesion.costoEnvio.toLocaleString()})
+💰 *TOTAL A PAGAR:* $${total.toLocaleString()}
+
+¿Cómo deseas pagar?
+1️⃣ *QR Bre-B / Nequi*
+2️⃣ *Efectivo*
+
+(Responde *"1"* o *"2"* para confirmar tu pedido directamente a la cocina).`;
+  }
+
+  if (sesion.fase === 'CONFIRMANDO') {
+    const metodo = (texto === '2' || texto.includes('efectivo')) ? 'Efectivo' : 'Nequi / Bre-B';
+    const subtotal = sesion.items.reduce((a, b) => a + b.precio, 0);
+    const total = subtotal + sesion.costoEnvio;
+
+    // Crear comanda en tiempo real
+    const nuevoPedido = registrarPedidoEnSistema({
+      cliente: sesion.cliente,
+      modalidad: 'Domicilio',
+      items: sesion.items,
+      metodoPago: metodo,
+      subtotal: subtotal,
+      costoEnvio: sesion.costoEnvio,
+      total: total,
+      origen: 'WhatsApp IA'
+    });
+
+    // Reiniciar sesión
+    delete sesionesBot[celular];
+
+    let respuestaFinal = `🎉 *¡PEDIDO CONFIRMADO EXITOSAMENTE!*\n`;
+    respuestaFinal += `Orden: *${nuevoPedido.numero}*\n`;
+    respuestaFinal += `Total: *$${total.toLocaleString()}*\n`;
+    respuestaFinal += `Método de pago: *${metodo}*\n\n`;
+
+    if (metodo.includes('Nequi') || metodo.includes('Bre-B')) {
+      respuestaFinal += `📲 *Datos para transferir por Bre-B / Nequi:*\n`;
+      respuestaFinal += `• Número / Llave: *321 5035691*\n`;
+      respuestaFinal += `• Titular: *Ary la arepa*\n\n`;
+      respuestaFinal += `Por favor envíame la captura de pantalla del pago por este chat para verificar tu transferencia.`;
+    } else {
+      respuestaFinal += `💵 El domiciliario cobrará en efectivo al llegar a tu puerta.`;
+    }
+
+    respuestaFinal += `\n\n👨‍🍳 Tu comanda ya empezó a sonar en la cocina de Prados del Norte. ¡Muchas gracias!`;
+    return respuestaFinal;
+  }
+
+  // Saludo General por defecto
+  return `👋 ¡Hola! Bienvenido a *Ary la arepa* Popayán 🧀 (De Popayán para el mundo).\n\nSoy el asistente virtual. ¿En qué te puedo colaborar hoy?\n\n1️⃣ Escribe *"Menú"* para ver nuestras arepas y precios.\n2️⃣ Escribe *"Estado"* para saber cómo va tu comanda.\n3️⃣ O simplemente dime qué deseas ordenar (ej: _"Quiero una arepa Campesina"_).`;
+}
+
+// Endpoint para el simulador web y para Webhooks
+app.post('/api/bot/chat', (req, res) => {
+  const { celular, mensaje } = req.body;
+  if (!celular || !mensaje) return res.status(400).json({ error: 'Faltan datos' });
+  const respuesta = procesarMensajeAgente(celular, mensaje);
+  res.json({ ok: true, respuesta });
+});
+
+// Endpoint Oficial Webhook Meta WhatsApp Business
+app.get('/api/webhook', (req, res) => {
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+  if (mode && token === 'ARY_TOKEN_SECRETO_2026') {
+    res.status(200).send(challenge);
+  } else {
+    res.sendStatus(403);
+  }
+});
+
+app.post('/api/webhook', (req, res) => {
+  try {
+    const entry = req.body.entry?.[0];
+    const changes = entry?.changes?.[0];
+    const value = changes?.value;
+    const message = value?.messages?.[0];
+
+    if (message && message.type === 'text') {
+      const from = message.from; // Celular del cliente
+      const text = message.text.body;
+      const respuestaBot = procesarMensajeAgente(from, text);
+      console.log(`[WhatsApp ${from}]: ${text} -> [Bot]: ${respuestaBot}`);
+      // Aquí se llamaría a la API de Meta Graph para enviar la respuesta
+    }
+  } catch (e) {}
+  res.sendStatus(200);
+});
+
+// WebSockets para la cocina y admin
+io.on('connection', (socket) => {
+  socket.on('nuevo-pedido', (pedidoData) => {
+    const nuevoPedido = registrarPedidoEnSistema(pedidoData);
     socket.emit('confirmacion-pedido', { id: nuevoPedido.id, numero: nuevoPedido.numero });
   });
 
@@ -273,4 +497,5 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(` Servidor activo: http://localhost:${PORT}`);
+  console.log(` Simulador WhatsApp: http://localhost:${PORT}/whatsapp-sim.html`);
 });
