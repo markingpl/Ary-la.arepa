@@ -278,8 +278,8 @@
     </div>
   </div>
 
-  <!-- Modal Pago QR Bre-B -->
-  <div id="modal-pago-nequi" class="fixed inset-0 z-50 bg-black/95 hidden flex items-center justify-center p-4">
+  <!-- Modal Pago QR Bre-B (Con z-index superior para estar siempre al frente) -->
+  <div id="modal-pago-nequi" class="fixed inset-0 z-[60] bg-black/95 hidden flex items-center justify-center p-4">
     <div class="bg-stone-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl">
       <div class="flex items-center justify-center gap-2">
         <span class="bg-yellow-400 text-black text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">Bre-B Interoperable</span>
@@ -375,6 +375,7 @@
         const r = await fetch('/api/estado-horarios');
         estadoHorarios = await r.json();
 
+        // 1. Domicilio (4:00 PM a 9:30 PM)
         const tagDomi = document.getElementById('tag-domi-estado');
         const btnDomi = document.getElementById('btn-modalidad-domi');
         if (estadoHorarios.domicilio) {
@@ -387,6 +388,7 @@
           btnDomi.classList.add('opacity-40');
         }
 
+        // 2. Mesa (4:00 PM a 9:45 PM)
         const tagMesa = document.getElementById('tag-mesa-estado');
         const btnMesa = document.getElementById('btn-modalidad-mesa');
         if (estadoHorarios.mesa) {
@@ -399,6 +401,7 @@
           btnMesa.classList.add('opacity-40');
         }
 
+        // 3. Recoger en Local (4:00 PM a 9:45 PM)
         const tagRecoger = document.getElementById('tag-recoger-estado');
         const btnRecoger = document.getElementById('btn-modalidad-recoger');
         if (estadoHorarios.recoger) {
@@ -561,7 +564,8 @@
 
     function actualizarBarraCarrito() {
       const b = document.getElementById('barra-pedido');
-      document.getElementById('pc-cart-count').innerText = carrito.length;
+      const pcCounter = document.getElementById('pc-cart-count');
+      pcCounter.innerText = carrito.length;
 
       if (carrito.length === 0) {
         b.classList.add('hidden');
@@ -602,7 +606,6 @@
 
     function cerrarCheckout() { document.getElementById('vista-checkout').classList.add('hidden'); }
 
-    // SELECCIÓN CLARA DEL MÉTODO DE PAGO
     function setPago(tipo) {
       metodoPago = tipo;
       const btnTransf = document.getElementById('btn-transf');
@@ -703,7 +706,7 @@
     }
 
     // ==========================================
-    // ENVÍO DE PEDIDO GARANTIZADO POR HTTP Y SOCKETS
+    // FUNCIÓN DE ENVIAR PEDIDO 100% CORREGIDA
     // ==========================================
     async function enviarPedidoFinal(forzarModoPrueba = false) {
       const btnEnviar = document.getElementById('btn-confirmar-pedido-final');
@@ -731,6 +734,7 @@
       const envio = esDomicilio ? parseInt(selBarrio.value || 0) : 0;
       const total = Math.max(0, subtotal + envio - descuentoTotal);
 
+      // Feedback visual
       btnEnviar.disabled = true;
       btnEnviar.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> <span>Procesando orden...</span>`;
 
@@ -753,7 +757,6 @@
       };
 
       try {
-        // Enviar por HTTP para respuesta 100% garantizada
         const res = await fetch('/api/pedidos', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -765,6 +768,9 @@
         if (data.ok) {
           pedidoCreadoId = data.id;
 
+          // CERRAMOS OBLIGATORIAMENTE EL CHECKOUT PARA QUE NO TAPE EL MODAL
+          document.getElementById('vista-checkout').classList.add('hidden');
+
           // Si es Nequi / Bre-B, abre el modal del QR
           if (metodoPago.includes('Bre-B') || metodoPago.includes('Nequi')) {
             document.getElementById('nequi-monto-total').innerText = `$${total.toLocaleString()}`;
@@ -772,14 +778,14 @@
             document.getElementById('btn-whatsapp-comprobante').href = `https://wa.me/573215035691?text=${mensajeWA}`;
             document.getElementById('modal-pago-nequi').classList.remove('hidden');
           } else {
-            // Si es Efectivo, va directo al seguimiento
+            // Si es Efectivo, redirige de inmediato al seguimiento
             window.location.href = `/seguimiento.html?id=${data.id}`;
           }
         } else {
+          // Desbloquear botón si el servidor reporta un error
           btnEnviar.disabled = false;
           setPago(metodoPago);
 
-          // Si está fuera de horario, ofrece enviar en Modo Prueba
           if (data.fueraDeHorario) {
             const probar = confirm(`${data.error}\n\n¿Deseas enviar el pedido en MODO PRUEBA para ensayar el sistema?`);
             if (probar) enviarPedidoFinal(true);
@@ -788,13 +794,21 @@
           }
         }
       } catch (err) {
-        // Respaldo por Socket.io si no hay red REST
+        // En caso de corte de red, respaldo socket y desbloqueo
         socket.emit('nuevo-pedido', payload);
+        setTimeout(() => {
+          if (!pedidoCreadoId) {
+            btnEnviar.disabled = false;
+            setPago(metodoPago);
+          }
+        }, 3000);
       }
     }
 
     socket.on('confirmacion-pedido', ({ id, numero }) => {
       pedidoCreadoId = id;
+      document.getElementById('vista-checkout').classList.add('hidden');
+
       const subtotal = carrito.reduce((acc, i) => acc + i.precio, 0);
       const envio = (modalidadActual === 'Domicilio' && !mesaDetectada) ? parseInt(document.getElementById('cli-barrio').value || 0) : 0;
       const total = Math.max(0, subtotal + envio - descuentoTotal);
@@ -807,7 +821,7 @@
       }
     });
 
-    function copiarNequi() { navigator.clipboard.writeText("3215035691").then(() => alert("¡Número Nequi copiado!")); }
+    function copiarNequi() { navigator.clipboard.writeText("3215035691").then(() => alert("¡Número Nequi copiado: 3215035691!")); }
     function irASeguimiento() { if (pedidoCreadoId) window.location.href = `/seguimiento.html?id=${pedidoCreadoId}`; }
   </script>
 </body>
