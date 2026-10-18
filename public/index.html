@@ -3,12 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Etiquetas exclusivas para iPhone / iOS -->
-  <link rel="manifest" href="/manifest.json">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Ary la Arepa">
-  <link rel="apple-touch-icon" href="/img/mascota.png">
   <title>Ary la arepa - Popayán</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/socket.io/socket.io.js"></script>
@@ -32,10 +26,6 @@
       <h1 class="text-3xl font-black uppercase text-yellow-400 tracking-wider">ARY LA AREPA</h1>
       <p class="font-script text-xl text-stone-200 mt-0.5">De Popayán para el mundo.</p>
       
-      <p class="text-[11px] text-stone-400 mt-2 px-2 italic">
-        "Base de Arepa agridulce, rellena con abundante queso y bañada en queso fundido"
-      </p>
-
       <div id="horario-banner" class="my-4 py-2 px-3 rounded-xl text-xs font-bold bg-neutral-800 border border-stone-700"></div>
 
       <p class="text-xs font-bold text-yellow-400 mb-3 text-left uppercase tracking-wider">¿Cómo quieres tu pedido?</p>
@@ -45,7 +35,7 @@
           <i class="fa-solid fa-motorcycle text-2xl text-yellow-400"></i>
           <div>
             <div class="font-black text-sm">Domicilio en Popayán</div>
-            <div class="text-[11px] text-stone-400">Te lo enviamos hasta la puerta</div>
+            <div class="text-[11px] text-stone-400">Te lo enviamos hasta tu casa</div>
           </div>
         </button>
 
@@ -77,7 +67,13 @@
         <span class="font-script text-sm text-stone-300">De Popayán para el mundo.</span>
       </div>
     </div>
-    <a href="https://wa.me/573215035691" target="_blank" class="text-xs bg-neutral-800 hover:bg-neutral-700 px-3 py-1.5 rounded-full flex items-center gap-2 border border-stone-700 text-stone-300">
+    
+    <!-- Badge si está en mesa -->
+    <div id="badge-mesa-activa" class="hidden bg-green-500/20 border border-green-500/50 text-green-400 px-3 py-1 rounded-full text-xs font-black animate-pulse flex items-center gap-1.5">
+      <i class="fa-solid fa-utensils"></i> <span id="lbl-mesa-num">Mesa</span>
+    </div>
+
+    <a id="btn-header-wa" href="https://wa.me/573215035691" target="_blank" class="text-xs bg-neutral-800 hover:bg-neutral-700 px-3 py-1.5 rounded-full flex items-center gap-2 border border-stone-700 text-stone-300">
       <i class="fa-brands fa-whatsapp text-green-400 text-sm"></i> 321 5035691
     </a>
   </header>
@@ -97,7 +93,7 @@
     <button onclick="abrirUpsell()" class="px-5 py-2 rounded-full bg-neutral-800 hover:bg-neutral-700 text-stone-300 text-xs font-bold border border-stone-700">Bebidas Frías</button>
   </div>
 
-  <!-- Catálogo de Arepas -->
+  <!-- Catálogo Arepas -->
   <main class="max-w-md mx-auto p-4 space-y-4" id="catalogo-arepas"></main>
 
   <!-- Barra Flotante Carrito -->
@@ -127,7 +123,6 @@
         </div>
       </div>
 
-      <!-- Lista de Extras -->
       <div>
         <label class="text-xs font-black text-yellow-400 uppercase tracking-wider block mb-2">
           ¿Deseas agregar Extras? (Opcional)
@@ -135,7 +130,6 @@
         <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-1" id="lista-extras-modal"></div>
       </div>
 
-      <!-- Notas -->
       <div>
         <label class="text-xs font-bold text-stone-300 block mb-1">Nota especial para la cocina:</label>
         <textarea id="modal-notas" class="w-full bg-neutral-800 border border-stone-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-yellow-400" placeholder="Ej: sin salsas, salsas aparte..."></textarea>
@@ -161,7 +155,7 @@
     </div>
   </div>
 
-  <!-- Checkout Final -->
+  <!-- Checkout Final con Cupones y Puntos VIP -->
   <div id="vista-checkout" class="fixed inset-0 z-40 bg-neutral-950 hidden overflow-y-auto p-4 max-w-md mx-auto">
     <div class="flex items-center gap-3 mb-4">
       <button onclick="cerrarCheckout()" class="w-9 h-9 bg-neutral-800 rounded-full flex items-center justify-center text-stone-300 font-bold">←</button>
@@ -170,23 +164,48 @@
 
     <div class="bg-stone-900 border border-stone-800 rounded-2xl p-4 mb-4 space-y-3" id="checkout-items"></div>
 
+    <!-- DATOS DEL CLIENTE -->
     <div class="bg-stone-900 border border-stone-800 rounded-2xl p-4 space-y-3 text-xs">
       <div>
-        <label class="block font-bold mb-1">Nombre completo *</label>
+        <label class="block font-bold mb-1">Tu Nombre *</label>
         <input type="text" id="cli-nombre" class="w-full bg-neutral-800 border border-stone-700 rounded-xl p-3 text-white" placeholder="Ej: Carlos Pérez">
       </div>
+
       <div>
         <label class="block font-bold mb-1">Número de celular (WhatsApp) *</label>
-        <input type="tel" id="cli-celular" class="w-full bg-neutral-800 border border-stone-700 rounded-xl p-3 text-white" placeholder="Ej: 321 000 0000">
+        <input type="tel" id="cli-celular" oninput="consultarPuntosCliente()" class="w-full bg-neutral-800 border border-stone-700 rounded-xl p-3 text-white" placeholder="Ej: 321 000 0000">
       </div>
-      <div>
+
+      <!-- ALERTA DE CLIENTE VIP / PUNTOS (FEATURE D) -->
+      <div id="alerta-puntos-vip" class="hidden bg-yellow-400/10 border border-yellow-400/40 p-2.5 rounded-xl text-yellow-300 text-[11px] flex justify-between items-center">
+        <span>⭐ Eres cliente VIP: tienes <strong id="lbl-pts-count">0</strong> puntos</span>
+        <button type="button" onclick="canjearPuntosVIP()" id="btn-canjear-puntos" class="bg-yellow-400 text-black px-2.5 py-1 rounded-lg font-black text-[10px]">
+          Canjear $5.000
+        </button>
+      </div>
+
+      <div id="campo-direccion">
         <label class="block font-bold mb-1">Dirección exacta / Mesa *</label>
         <input type="text" id="cli-direccion" class="w-full bg-neutral-800 border border-stone-700 rounded-xl p-3 text-white" placeholder="Carrera, Calle, Apto o # de mesa">
       </div>
+
       <div id="campo-barrio">
         <label class="block font-bold mb-1">Barrio en Popayán *</label>
         <select id="cli-barrio" onchange="calcularTotales()" class="w-full bg-neutral-800 border border-stone-700 rounded-xl p-3 text-white"></select>
       </div>
+
+      <!-- CAMPO CUPÓN DE DESCUENTO (FEATURE D) -->
+      <div class="border-t border-stone-800 pt-2">
+        <label class="block font-bold mb-1 text-stone-300">¿Tienes un cupón de descuento?</label>
+        <div class="flex gap-2">
+          <input type="text" id="input-cupon" placeholder="Ej: POPAYAN10" class="flex-1 bg-neutral-800 border border-stone-700 rounded-xl p-2.5 text-white uppercase font-bold text-xs">
+          <button type="button" onclick="aplicarCuponDescuento()" class="bg-yellow-400 hover:bg-yellow-300 text-black font-black px-4 rounded-xl text-xs">
+            Aplicar
+          </button>
+        </div>
+        <p id="msg-cupon" class="text-[11px] mt-1 font-bold hidden"></p>
+      </div>
+
       <div>
         <label class="block font-bold mb-1">Método de pago *</label>
         <div class="grid grid-cols-2 gap-2">
@@ -196,10 +215,13 @@
       </div>
     </div>
 
-    <!-- Resumen -->
+    <!-- RESUMEN DE PAGO -->
     <div class="bg-stone-900 border border-stone-800 rounded-2xl p-4 my-4 space-y-1.5 text-xs">
       <div class="flex justify-between text-stone-400"><span>Subtotal arepas:</span><span id="res-subtotal">$0</span></div>
-      <div class="flex justify-between text-stone-400"><span>Costo Domicilio:</span><span id="res-envio">$0</span></div>
+      <div class="flex justify-between text-stone-400" id="row-envio"><span>Costo Domicilio:</span><span id="res-envio">$0</span></div>
+      <div class="flex justify-between text-emerald-400 font-bold hidden" id="row-descuento">
+        <span>Descuento aplicado:</span><span id="res-descuento">-$0</span>
+      </div>
       <div class="flex justify-between text-base font-black text-white pt-2 border-t border-stone-800">
         <span>Total a pagar:</span><span id="res-total" class="text-yellow-400 text-lg">$0</span>
       </div>
@@ -210,7 +232,7 @@
     </button>
   </div>
 
-  <!-- Modal Pago QR Bre-B / Nequi / Transferencia -->
+  <!-- Modal Pago QR Bre-B / Nequi -->
   <div id="modal-pago-nequi" class="fixed inset-0 z-50 bg-black/95 hidden flex items-center justify-center p-3 overflow-y-auto">
     <div class="bg-stone-900 border-2 border-yellow-500 rounded-3xl p-5 max-w-sm w-full text-center space-y-3.5 shadow-2xl my-auto">
       
@@ -229,7 +251,6 @@
         <span id="nequi-monto-total" class="text-2xl font-black text-yellow-400">$0</span>
       </div>
 
-      <!-- Imagen QR Bre-B -->
       <div class="bg-white p-3 rounded-2xl mx-auto w-52 h-52 flex items-center justify-center shadow-lg border-2 border-stone-700">
         <img id="img-qr-pago" src="/img/qr-pago.png" onerror="intentarCargarQR(this)" alt="QR Bre-B Nequi" class="w-full h-full object-contain">
       </div>
@@ -244,7 +265,6 @@
           <button onclick="copiarNequi()" class="bg-neutral-800 hover:bg-neutral-700 border border-stone-700 text-stone-200 py-2.5 rounded-xl font-bold flex items-center justify-center gap-1.5 transition">
             <i class="fa-regular fa-copy text-fuchsia-400"></i> Copiar Llave/Cel
           </button>
-          
           <a href="nequi://" class="bg-fuchsia-700 hover:bg-fuchsia-600 text-white py-2.5 rounded-xl font-black flex items-center justify-center gap-1.5 transition">
             <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir Nequi
           </a>
@@ -263,12 +283,14 @@
 
   <script>
     const socket = io();
-    let DATA = { info: {}, productos: [], extras: [], barrios: [], bebidas: [] };
+    let DATA = { info: {}, productos: [], extras: [], barrios: [], bebidas: [], clientesFrecuentes: [] };
     let carrito = [];
     let modalidadActual = 'Domicilio';
     let metodoPago = 'Nequi / Bre-B';
     let arepaSeleccionada = null;
     let pedidoCreadoId = null;
+    let descuentoTotal = 0;
+    let mesaDetectada = null;
 
     const variantesMascota = ['/img/mascota.png', '/img/mascota.jpg', '/img/Mascota.png', '/img/Mascota.jpg', '/img/mascota.PNG', '/mascota.png'];
     let intentoMascota = 0;
@@ -285,7 +307,6 @@
 
     function intentarCargarQR(img) {
       if (img.src.endsWith('.png')) img.src = '/img/qr-pago.jpg';
-      else if (img.src.endsWith('.jpg')) img.src = '/img/qr-pago.jpeg';
       else img.src = 'https://placehold.co/200x200/ffffff/000000?text=Sube+qr-pago.png';
     }
 
@@ -293,23 +314,38 @@
       try {
         const res = await fetch('/api/data-inicial');
         DATA = await res.json();
+        verificarMesaPorQR();
         verificarHorario();
         renderBarrios();
         renderArepas();
       } catch (err) {
-        console.error("Error al cargar datos:", err);
+        console.error(err);
       }
     };
+
+    // FEATURE B: DETECCIÓN DE MESA POR URL (?mesa=4)
+    function verificarMesaPorQR() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const m = urlParams.get('mesa');
+      if (m) {
+        mesaDetectada = m.includes('Mesa') ? m : `Mesa ${m}`;
+        modalidadActual = 'Local';
+        document.getElementById('modal-modalidad').classList.add('hidden');
+        document.getElementById('badge-mesa-activa').classList.remove('hidden');
+        document.getElementById('lbl-mesa-num').innerText = mesaDetectada;
+        document.getElementById('btn-header-wa').classList.add('hidden');
+        document.getElementById('campo-barrio').classList.add('hidden');
+        document.getElementById('cli-direccion').value = mesaDetectada;
+        document.getElementById('cli-direccion').readOnly = true;
+      }
+    }
 
     function verificarHorario() {
       const hora = new Date().getHours();
       const abierto = hora >= 16 && hora < 22;
       const b = document.getElementById('horario-banner');
-      if (abierto) {
-        b.innerHTML = '<span class="text-green-400 font-black">● ABIERTO AHORA</span> • Servicio hasta las 10:00 PM';
-      } else {
-        b.innerHTML = '<span class="text-yellow-400 font-black">⏰ ABRIMOS A LAS 4:00 PM</span> • Horario: 4:00 PM a 10:00 PM';
-      }
+      if (abierto) b.innerHTML = '<span class="text-green-400 font-black">● ABIERTO AHORA</span> • Servicio hasta las 10:00 PM';
+      else b.innerHTML = '<span class="text-yellow-400 font-black">⏰ ABRIMOS A LAS 4:00 PM</span> • Horario: 4:00 PM a 10:00 PM';
     }
 
     function seleccionarModalidad(m) {
@@ -321,8 +357,7 @@
     }
 
     function renderArepas() {
-      const container = document.getElementById('catalogo-arepas');
-      container.innerHTML = DATA.productos.map(p => `
+      document.getElementById('catalogo-arepas').innerHTML = DATA.productos.map(p => `
         <div class="bg-neutral-800/80 border-2 border-yellow-500/40 rounded-3xl p-3 flex items-center gap-3.5 shadow-lg relative overflow-hidden">
           <div class="relative w-24 h-24 flex-shrink-0">
             <img src="${p.img}" onerror="intentarCargarImagen(this, '${p.img}')" class="w-full h-full rounded-full object-cover border-2 border-yellow-400 shadow-md">
@@ -344,9 +379,7 @@
 
     function renderBarrios() {
       const sel = document.getElementById('cli-barrio');
-      if (DATA.barrios) {
-        sel.innerHTML = DATA.barrios.map(b => `<option value="${b.costo}">${b.nombre} (+$${b.costo.toLocaleString()})</option>`).join('');
-      }
+      if (DATA.barrios) sel.innerHTML = DATA.barrios.map(b => `<option value="${b.costo}">${b.nombre} (+$${b.costo.toLocaleString()})</option>`).join('');
     }
 
     function abrirModalArepa(id) {
@@ -357,8 +390,7 @@
       document.getElementById('modal-precio-base').innerText = `Precio base: $${arepaSeleccionada.precio.toLocaleString()}`;
       document.getElementById('modal-notas').value = '';
 
-      const cont = document.getElementById('lista-extras-modal');
-      cont.innerHTML = DATA.extras.map(ex => `
+      document.getElementById('lista-extras-modal').innerHTML = DATA.extras.map(ex => `
         <label class="flex items-center justify-between bg-neutral-800 p-2 rounded-xl text-xs cursor-pointer hover:bg-neutral-700">
           <span class="flex items-center gap-2">
             <input type="checkbox" data-precio="${ex.precio}" data-nombre="${ex.nombre}" onchange="recalcularModalPrecio()" class="extra-check accent-yellow-400">
@@ -374,15 +406,11 @@
 
     function recalcularModalPrecio() {
       let total = arepaSeleccionada.precio;
-      document.querySelectorAll('.extra-check:checked').forEach(c => {
-        total += parseInt(c.dataset.precio);
-      });
+      document.querySelectorAll('.extra-check:checked').forEach(c => total += parseInt(c.dataset.precio));
       document.getElementById('modal-precio-total').innerText = `$${total.toLocaleString()}`;
     }
 
-    function cerrarModalProducto() {
-      document.getElementById('modal-producto').classList.add('hidden');
-    }
+    function cerrarModalProducto() { document.getElementById('modal-producto').classList.add('hidden'); }
 
     function confirmarArepa() {
       const extras = Array.from(document.querySelectorAll('.extra-check:checked')).map(c => ({
@@ -405,8 +433,7 @@
     }
 
     function abrirUpsell() {
-      const cont = document.getElementById('lista-upsell');
-      cont.innerHTML = DATA.bebidas.map(b => `
+      document.getElementById('lista-upsell').innerHTML = DATA.bebidas.map(b => `
         <div class="flex items-center justify-between bg-neutral-800 p-3 rounded-xl text-xs">
           <div>
             <div class="font-black text-white">${b.nombre}</div>
@@ -425,16 +452,11 @@
       actualizarBarraCarrito();
     }
 
-    function cerrarUpsell() {
-      document.getElementById('modal-upsell').classList.add('hidden');
-    }
+    function cerrarUpsell() { document.getElementById('modal-upsell').classList.add('hidden'); }
 
     function actualizarBarraCarrito() {
       const b = document.getElementById('barra-pedido');
-      if (carrito.length === 0) {
-        b.classList.add('hidden');
-        return;
-      }
+      if (carrito.length === 0) { b.classList.add('hidden'); return; }
       b.classList.remove('hidden');
       document.getElementById('cart-count').innerText = carrito.length;
       const subtotal = carrito.reduce((acc, i) => acc + i.precio, 0);
@@ -443,8 +465,7 @@
 
     function abrirCheckout() {
       document.getElementById('vista-checkout').classList.remove('hidden');
-      const box = document.getElementById('checkout-items');
-      box.innerHTML = carrito.map((item, idx) => `
+      document.getElementById('checkout-items').innerHTML = carrito.map((item, idx) => `
         <div class="flex justify-between items-start border-b border-stone-800 pb-2 text-xs">
           <div>
             <div class="font-black text-yellow-400">${item.nombre}</div>
@@ -467,9 +488,7 @@
       else abrirCheckout();
     }
 
-    function cerrarCheckout() {
-      document.getElementById('vista-checkout').classList.add('hidden');
-    }
+    function cerrarCheckout() { document.getElementById('vista-checkout').classList.add('hidden'); }
 
     function setPago(tipo) {
       metodoPago = tipo;
@@ -477,12 +496,75 @@
       document.getElementById('btn-efectivo').className = tipo === 'Efectivo' ? 'p-3 bg-yellow-400 font-black text-black rounded-xl' : 'p-3 bg-neutral-800 font-bold rounded-xl border border-stone-700';
     }
 
+    // FEATURE D: APLICAR CUPÓN
+    async function aplicarCuponDescuento() {
+      const codigo = document.getElementById('input-cupon').value.trim();
+      const subtotal = carrito.reduce((acc, i) => acc + i.precio, 0);
+      const msg = document.getElementById('msg-cupon');
+
+      if (!codigo) return;
+
+      const res = await fetch('/api/cupones/validar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codigo, subtotal })
+      });
+      const data = await res.json();
+
+      if (data.ok) {
+        descuentoTotal = data.descuento;
+        msg.className = 'text-[11px] mt-1 font-bold text-green-400 block';
+        msg.innerText = `✓ Cupón aplicado: -$${descuentoTotal.toLocaleString()}`;
+        calcularTotales();
+      } else {
+        msg.className = 'text-[11px] mt-1 font-bold text-red-400 block';
+        msg.innerText = `✕ ${data.error}`;
+      }
+    }
+
+    // FEATURE D: DETECCIÓN DE PUNTOS VIP
+    function consultarPuntosCliente() {
+      const cel = document.getElementById('cli-celular').value.trim();
+      if (cel.length >= 7 && DATA.clientesFrecuentes) {
+        const cliente = DATA.clientesFrecuentes.find(c => c.celular === cel);
+        if (cliente && cliente.puntos > 0) {
+          document.getElementById('lbl-pts-count').innerText = cliente.puntos;
+          document.getElementById('alerta-puntos-vip').classList.remove('hidden');
+          if (cliente.nombre && !document.getElementById('cli-nombre').value) {
+            document.getElementById('cli-nombre').value = cliente.nombre;
+          }
+          if (cliente.direccion && !document.getElementById('cli-direccion').value && !mesaDetectada) {
+            document.getElementById('cli-direccion').value = cliente.direccion;
+          }
+        }
+      }
+    }
+
+    function canjearPuntosVIP() {
+      descuentoTotal = 5000;
+      document.getElementById('btn-canjear-puntos').innerText = '✓ Canjeado';
+      document.getElementById('btn-canjear-puntos').disabled = true;
+      document.getElementById('btn-canjear-puntos').className = 'bg-stone-700 text-stone-400 px-2.5 py-1 rounded-lg font-bold text-[10px]';
+      calcularTotales();
+    }
+
     function calcularTotales() {
       const subtotal = carrito.reduce((acc, i) => acc + i.precio, 0);
-      const envio = modalidadActual === 'Domicilio' ? parseInt(document.getElementById('cli-barrio').value || 0) : 0;
+      const envio = (modalidadActual === 'Domicilio' && !mesaDetectada) ? parseInt(document.getElementById('cli-barrio').value || 0) : 0;
+      const total = Math.max(0, subtotal + envio - descuentoTotal);
+
       document.getElementById('res-subtotal').innerText = `$${subtotal.toLocaleString()}`;
       document.getElementById('res-envio').innerText = `$${envio.toLocaleString()}`;
-      document.getElementById('res-total').innerText = `$${(subtotal + envio).toLocaleString()}`;
+      
+      const rowDesc = document.getElementById('row-descuento');
+      if (descuentoTotal > 0) {
+        rowDesc.classList.remove('hidden');
+        document.getElementById('res-descuento').innerText = `-$${descuentoTotal.toLocaleString()}`;
+      } else {
+        rowDesc.classList.add('hidden');
+      }
+
+      document.getElementById('res-total').innerText = `$${total.toLocaleString()}`;
     }
 
     function enviarPedidoFinal() {
@@ -490,28 +572,26 @@
       const celular = document.getElementById('cli-celular').value.trim();
       const direccion = document.getElementById('cli-direccion').value.trim();
 
-      if (!nombre || !celular || !direccion) {
-        alert('Por favor llena tu nombre, celular y dirección.');
-        return;
-      }
+      if (!nombre || !celular || !direccion) return alert('Por favor llena todos tus datos.');
 
       const selBarrio = document.getElementById('cli-barrio');
       const subtotal = carrito.reduce((acc, i) => acc + i.precio, 0);
-      const envio = modalidadActual === 'Domicilio' ? parseInt(selBarrio.value || 0) : 0;
+      const envio = (modalidadActual === 'Domicilio' && !mesaDetectada) ? parseInt(selBarrio.value || 0) : 0;
 
       const payload = {
         cliente: {
           nombre,
           celular,
-          direccion,
-          barrio: modalidadActual === 'Domicilio' ? selBarrio.options[selBarrio.selectedIndex].text : 'En local'
+          direccion: mesaDetectada ? `En Mesa (${mesaDetectada})` : direccion,
+          barrio: mesaDetectada ? 'En Local' : (modalidadActual === 'Domicilio' ? selBarrio.options[selBarrio.selectedIndex].text : 'En local')
         },
-        modalidad: modalidadActual,
+        modalidad: mesaDetectada ? `Local - ${mesaDetectada}` : modalidadActual,
         items: carrito,
         metodoPago,
         subtotal,
         costoEnvio: envio,
-        total: subtotal + envio
+        descuento: descuentoTotal,
+        total: Math.max(0, subtotal + envio - descuentoTotal)
       };
 
       socket.emit('nuevo-pedido', payload);
@@ -520,12 +600,12 @@
     socket.on('confirmacion-pedido', ({ id, numero }) => {
       pedidoCreadoId = id;
       const subtotal = carrito.reduce((acc, i) => acc + i.precio, 0);
-      const envio = modalidadActual === 'Domicilio' ? parseInt(document.getElementById('cli-barrio').value || 0) : 0;
-      const total = subtotal + envio;
+      const envio = (modalidadActual === 'Domicilio' && !mesaDetectada) ? parseInt(document.getElementById('cli-barrio').value || 0) : 0;
+      const total = Math.max(0, subtotal + envio - descuentoTotal);
 
       if (metodoPago.includes('Bre-B') || metodoPago.includes('Nequi')) {
         document.getElementById('nequi-monto-total').innerText = `$${total.toLocaleString()}`;
-        const mensajeWA = encodeURIComponent(`¡Hola Ary la arepa! Acabo de hacer el pedido ${numero} por $${total.toLocaleString()} vía web. Aquí adjunto el comprobante de transferencia.`);
+        const mensajeWA = encodeURIComponent(`¡Hola Ary la arepa! Acabo de hacer el pedido ${numero} ${mesaDetectada ? `en la ${mesaDetectada}` : ''} por $${total.toLocaleString()}. Aquí adjunto el comprobante.`);
         document.getElementById('btn-whatsapp-comprobante').href = `https://wa.me/573215035691?text=${mensajeWA}`;
         document.getElementById('modal-pago-nequi').classList.remove('hidden');
       } else {
@@ -534,15 +614,12 @@
     });
 
     function copiarNequi() {
-      navigator.clipboard.writeText("3215035691").then(() => alert("¡Llave/Celular 3215035691 copiado!"));
+      navigator.clipboard.writeText("3215035691").then(() => alert("¡Número Nequi copiado: 3215035691!"));
     }
 
     function irASeguimiento() {
       if (pedidoCreadoId) window.location.href = `/seguimiento.html?id=${pedidoCreadoId}`;
     }
-  </script>
-  <script>
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
   </script>
 </body>
 </html>
