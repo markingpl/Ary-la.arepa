@@ -24,7 +24,7 @@ const DB_DEFAULT = {
     telefono: "3215035691",
     nit: "1061789456-1",
     horario: "4:00 PM a 10:00 PM",
-    pinAdmin: "1234" // PIN MAESTRO CONFIGURABLE
+    pinAdmin: "1234"
   },
   usuarios: [
     { id: 1, usuario: 'admin', clave: '1234', nombre: 'Administrador', rol: 'ADMIN' },
@@ -113,54 +113,15 @@ if (fs.existsSync(DATA_FILE)) {
   try {
     DB = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
     if (!DB.info.pinAdmin) DB.info.pinAdmin = "1234";
-  } catch (e) {
-    DB = DB_DEFAULT;
-  }
+  } catch (e) { DB = DB_DEFAULT; }
 } else {
   fs.writeFileSync(DATA_FILE, JSON.stringify(DB, null, 2));
 }
 
 function guardarDB() {
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(DB, null, 2));
-  } catch (err) {
-    console.error("Error guardando data.json:", err);
-  }
+  try { fs.writeFileSync(DATA_FILE, JSON.stringify(DB, null, 2)); }
+  catch (err) { console.error("Error guardando data.json:", err); }
 }
-
-// ==========================================
-// SEGURIDAD: VERIFICAR Y CAMBIAR PIN ADMIN
-// ==========================================
-app.post('/api/admin/verificar-pin', (req, res) => {
-  const { pin } = req.body;
-  const pinActual = DB.info.pinAdmin || "1234";
-  if (pin === pinActual) {
-    res.json({ ok: true });
-  } else {
-    res.status(401).json({ ok: false, error: 'PIN incorrecto' });
-  }
-});
-
-app.post('/api/admin/cambiar-pin', (req, res) => {
-  const { pinActual, nuevoPin } = req.body;
-  const pinGuardado = DB.info.pinAdmin || "1234";
-
-  if (pinActual !== pinGuardado) {
-    return res.status(401).json({ ok: false, error: 'El PIN actual no coincide' });
-  }
-
-  if (!nuevoPin || nuevoPin.length < 4) {
-    return res.status(400).json({ ok: false, error: 'El nuevo PIN debe tener al menos 4 dígitos' });
-  }
-
-  DB.info.pinAdmin = nuevoPin.trim();
-  // Sincronizar también con la clave del usuario admin
-  const userAdmin = DB.usuarios.find(u => u.rol === 'ADMIN');
-  if (userAdmin) userAdmin.clave = nuevoPin.trim();
-
-  guardarDB();
-  res.json({ ok: true, mensaje: '¡Clave de ingreso cambiada con éxito!' });
-});
 
 // Descontar inventario automático
 function descontarInventarioPorPedido(items, modalidad) {
@@ -181,7 +142,7 @@ function descontarInventarioPorPedido(items, modalidad) {
     }
   });
 
-  if (modalidad === 'Domicilio' || modalidad === 'Para Llevar') {
+  if (modalidad === 'Domicilio' || modalidad === 'Para Llevar' || modalidad === 'Rappi') {
     const bowl = DB.inventario.find(i => i.id === 'inv-8');
     if (bowl) bowl.stockActual = Math.max(0, bowl.stockActual - items.length);
   }
@@ -205,14 +166,12 @@ function registrarPedidoEnSistema(pedidoData) {
 
   descontarInventarioPorPedido(nuevoPedido.items || [], nuevoPedido.modalidad);
 
-  if (pedidoData.cliente && pedidoData.cliente.celular) {
+  if (pedidoData.cliente && pedidoData.cliente.celular && !pedidoData.metodoPago.includes('Pauta')) {
     const idx = DB.clientesFrecuentes.findIndex(c => c.celular === pedidoData.cliente.celular);
     const cantArepas = (nuevoPedido.items || []).filter(i => !i.desc || !i.desc.includes('Bebida')).length || 1;
     if (idx >= 0) {
       DB.clientesFrecuentes[idx].pedidos += 1;
       DB.clientesFrecuentes[idx].puntos = (DB.clientesFrecuentes[idx].puntos || 0) + cantArepas;
-      DB.clientesFrecuentes[idx].direccion = pedidoData.cliente.direccion;
-      DB.clientesFrecuentes[idx].barrio = pedidoData.cliente.barrio;
     } else {
       DB.clientesFrecuentes.push({
         id: DB.clientesFrecuentes.length + 1,
@@ -232,9 +191,27 @@ function registrarPedidoEnSistema(pedidoData) {
   return nuevoPedido;
 }
 
-// Endpoints estándar
+// Endpoints
 app.get('/api/data-inicial', (req, res) => res.json(DB));
 app.get('/api/pedidos', (req, res) => res.json(DB.pedidos));
+
+app.post('/api/admin/verificar-pin', (req, res) => {
+  const { pin } = req.body;
+  if (pin === (DB.info.pinAdmin || "1234")) res.json({ ok: true });
+  else res.status(401).json({ ok: false, error: 'PIN incorrecto' });
+});
+
+app.post('/api/admin/cambiar-pin', (req, res) => {
+  const { pinActual, nuevoPin } = req.body;
+  if (pinActual !== (DB.info.pinAdmin || "1234")) return res.status(401).json({ error: 'PIN actual no coincide' });
+  if (!nuevoPin || nuevoPin.length < 4) return res.status(400).json({ error: 'Mínimo 4 dígitos' });
+
+  DB.info.pinAdmin = nuevoPin.trim();
+  const u = DB.usuarios.find(x => x.rol === 'ADMIN');
+  if (u) u.clave = nuevoPin.trim();
+  guardarDB();
+  res.json({ ok: true });
+});
 
 app.post('/api/admin/inventario', (req, res) => {
   if (Array.isArray(req.body.inventario)) { DB.inventario = req.body.inventario; guardarDB(); res.json({ ok: true }); }
@@ -243,10 +220,8 @@ app.post('/api/admin/inventario', (req, res) => {
 
 app.post('/api/cupones/validar', (req, res) => {
   const { codigo, subtotal } = req.body;
-  if (!codigo) return res.status(400).json({ error: 'Ingresa un código' });
-  const cup = DB.cupones.find(c => c.codigo.toUpperCase() === codigo.trim().toUpperCase() && c.activo);
-  if (!cup) return res.status(404).json({ error: 'Cupón no válido o vencido' });
-
+  const cup = DB.cupones.find(c => c.codigo.toUpperCase() === (codigo || '').trim().toUpperCase() && c.activo);
+  if (!cup) return res.status(404).json({ error: 'Cupón no válido' });
   let descuento = (cup.tipo === 'PORCENTAJE') ? Math.round((subtotal * cup.valor) / 100) : cup.valor;
   res.json({ ok: true, cupon: cup, descuento });
 });
@@ -297,7 +272,7 @@ app.delete('/api/usuarios/:id', (req, res) => {
 
 app.post('/api/cajero/login', (req, res) => {
   const { usuario, clave } = req.body;
-  const user = DB.usuarios.find(u => u.usuario.toLowerCase() === usuario.trim().toLowerCase() && u.clave === clave.trim());
+  const user = DB.usuarios.find(u => u.usuario.toLowerCase() === (usuario || '').trim().toLowerCase() && u.clave === (clave || '').trim());
   if (user) res.json({ ok: true, usuario: { id: user.id, nombre: user.nombre, rol: user.rol } });
   else res.status(401).json({ ok: false, error: 'Credenciales inválidas' });
 });
@@ -315,19 +290,25 @@ app.post('/api/caja/abrir', (req, res) => {
   res.json({ ok: true, turno: DB.turnoActual });
 });
 
+// RESUMEN DE ARQUEO (INCLUYE RAPPI Y PAUTAS)
 app.get('/api/caja/resumen', (req, res) => {
   if (!DB.turnoActual) return res.json({ turnoActivo: false });
   const pedidosTurno = DB.pedidos.filter(p => p.turnoId === DB.turnoActual.id && p.estado !== 'CANCELADO');
+
   const ventasEfectivo = pedidosTurno.filter(p => p.metodoPago === 'Efectivo').reduce((a, b) => a + b.total, 0);
   const ventasDigital = pedidosTurno.filter(p => p.metodoPago.includes('Nequi') || p.metodoPago.includes('Bre-B') || p.metodoPago.includes('Transferencia')).reduce((a, b) => a + b.total, 0);
+  const ventasRappi = pedidosTurno.filter(p => p.metodoPago === 'Rappi').reduce((a, b) => a + b.total, 0);
+  const ventasPauta = pedidosTurno.filter(p => p.metodoPago && p.metodoPago.includes('Pauta')).length;
 
   res.json({
     turnoActivo: true,
     turno: DB.turnoActual,
     ventasEfectivo,
     ventasDigital,
-    totalVentas: ventasEfectivo + ventasDigital,
-    totalEnCajaEsperado: DB.turnoActual.baseInicial + ventasEfectivo,
+    ventasRappi,
+    ventasPauta,
+    totalVentas: ventasEfectivo + ventasDigital + ventasRappi,
+    totalEnCajaEsperado: DB.turnoActual.baseInicial + ventasEfectivo, // SOLO EFECTIVO FÍSICO
     totalPedidos: pedidosTurno.length
   });
 });
@@ -337,6 +318,8 @@ app.post('/api/caja/cerrar', (req, res) => {
   const pedidosTurno = DB.pedidos.filter(p => p.turnoId === DB.turnoActual.id && p.estado !== 'CANCELADO');
   const ventasEfectivo = pedidosTurno.filter(p => p.metodoPago === 'Efectivo').reduce((a, b) => a + b.total, 0);
   const ventasDigital = pedidosTurno.filter(p => p.metodoPago.includes('Nequi') || p.metodoPago.includes('Bre-B') || p.metodoPago.includes('Transferencia')).reduce((a, b) => a + b.total, 0);
+  const ventasRappi = pedidosTurno.filter(p => p.metodoPago === 'Rappi').reduce((a, b) => a + b.total, 0);
+  const ventasPauta = pedidosTurno.filter(p => p.metodoPago && p.metodoPago.includes('Pauta')).length;
 
   const turnoCerrado = {
     ...DB.turnoActual,
@@ -344,7 +327,9 @@ app.post('/api/caja/cerrar', (req, res) => {
     estado: 'CERRADA',
     ventasEfectivo,
     ventasDigital,
-    totalVentas: ventasEfectivo + ventasDigital,
+    ventasRappi,
+    ventasPauta,
+    totalVentas: ventasEfectivo + ventasDigital + ventasRappi,
     totalCajaEsperado: DB.turnoActual.baseInicial + ventasEfectivo
   };
 
