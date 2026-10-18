@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
@@ -11,7 +12,10 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/img', express.static(path.join(__dirname, 'public', 'img')));
 
-const DB = {
+const DATA_FILE = path.join(__dirname, 'data.json');
+
+// Datos iniciales por defecto
+const DB_DEFAULT = {
   info: {
     nombre: "Ary la arepa",
     eslogan: "De Popayán para el mundo",
@@ -26,19 +30,17 @@ const DB = {
   clientesFrecuentes: [
     { id: 1, nombre: 'Juan Camilo', celular: '3110000000', direccion: 'Cra 9 # 12N-45', barrio: 'Ciudad Jardín', pedidos: 4 }
   ],
-  turnoActual: null,
-  historialTurnos: [],
   barrios: [
     { nombre: 'Prados del Norte (Local)', costo: 2000 },
-    { nombre: 'Bello Horizonte', costo: 3500 },
-    { nombre: 'Ciudad Jardín', costo: 3500 },
-    { nombre: 'Centro / Parque Caldas', costo: 4000 },
-    { nombre: 'La Pamba / Pomona', costo: 4500 },
-    { nombre: 'La Esmeralda', costo: 4000 },
-    { nombre: 'Pandiguando', costo: 4000 },
-    { nombre: 'Valencia', costo: 4000 },
-    { nombre: 'Palacé / Villa del Viento', costo: 5000 },
-    { nombre: 'Santa Clara / Los Hoyos', costo: 3500 }
+    { nombre: 'Bello Horizonte', costo: 4000 },
+    { nombre: 'Ciudad Jardín', costo: 4000 },
+    { nombre: 'Centro / Parque Caldas', costo: 4500 },
+    { nombre: 'La Pamba / Pomona', costo: 5000 },
+    { nombre: 'La Esmeralda', costo: 4500 },
+    { nombre: 'Pandiguando', costo: 4500 },
+    { nombre: 'Valencia', costo: 4500 },
+    { nombre: 'Palacé / Villa del Viento', costo: 6000 },
+    { nombre: 'Santa Clara / Los Hoyos', costo: 4000 }
   ],
   productos: [
     { id: 1, cat: 'arepas', nombre: 'Campesina', desc: 'Chorizo ahumado • carne desmechada • guacamole • salsas de la casa', precio: 26000, img: '/img/campesina.png' },
@@ -74,63 +76,113 @@ const DB = {
     { id: 106, nombre: 'Agua', precio: 2000 }
   ],
   pedidos: [],
-  contadorPedido: 0
+  contadorPedido: 0,
+  turnoActual: null,
+  historialTurnos: []
 };
 
-// Rutas generales
+// Cargar o crear data.json
+let DB = DB_DEFAULT;
+if (fs.existsSync(DATA_FILE)) {
+  try {
+    DB = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+  } catch (e) {
+    DB = DB_DEFAULT;
+  }
+} else {
+  fs.writeFileSync(DATA_FILE, JSON.stringify(DB, null, 2));
+}
+
+function guardarDB() {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(DB, null, 2));
+  } catch (err) {
+    console.error("Error al guardar data.json:", err);
+  }
+}
+
+// Rutas de datos
 app.get('/api/data-inicial', (req, res) => res.json(DB));
 app.get('/api/pedidos', (req, res) => res.json(DB.pedidos));
-app.get('/api/pedido/:id', (req, res) => {
-  const p = DB.pedidos.find(x => x.id === req.params.id);
-  p ? res.json(p) : res.status(404).json({ error: 'No encontrado' });
+
+// ACTUALIZACIÓN DE BARRIOS Y DOMICILIOS
+app.post('/api/admin/barrios', (req, res) => {
+  const { barrios } = req.body;
+  if (Array.isArray(barrios)) {
+    DB.barrios = barrios;
+    guardarDB();
+    res.json({ ok: true, barrios: DB.barrios });
+  } else {
+    res.status(400).json({ error: 'Formato inválido' });
+  }
 });
 
-// GESTIÓN DE USUARIOS / CAJEROS
-app.get('/api/usuarios', (req, res) => res.json(DB.usuarios));
+// ACTUALIZACIÓN DEL MENÚ (AREPAS, EXTRAS Y BEBIDAS)
+app.post('/api/admin/productos', (req, res) => {
+  const { productos } = req.body;
+  if (Array.isArray(productos)) {
+    DB.productos = productos;
+    guardarDB();
+    res.json({ ok: true, productos: DB.productos });
+  } else {
+    res.status(400).json({ error: 'Formato inválido' });
+  }
+});
 
+app.post('/api/admin/extras', (req, res) => {
+  const { extras } = req.body;
+  if (Array.isArray(extras)) {
+    DB.extras = extras;
+    guardarDB();
+    res.json({ ok: true, extras: DB.extras });
+  } else {
+    res.status(400).json({ error: 'Formato inválido' });
+  }
+});
+
+app.post('/api/admin/bebidas', (req, res) => {
+  const { bebidas } = req.body;
+  if (Array.isArray(bebidas)) {
+    DB.bebidas = bebidas;
+    guardarDB();
+    res.json({ ok: true, bebidas: DB.bebidas });
+  } else {
+    res.status(400).json({ error: 'Formato inválido' });
+  }
+});
+
+// Gestión de Usuarios POS
+app.get('/api/usuarios', (req, res) => res.json(DB.usuarios));
 app.post('/api/usuarios', (req, res) => {
   const { usuario, clave, nombre } = req.body;
-  if (!usuario || !clave || !nombre) {
-    return res.status(400).json({ error: 'Todos los campos son obligatorios' });
-  }
+  if (!usuario || !clave || !nombre) return res.status(400).json({ error: 'Todos los campos requeridos' });
   const existe = DB.usuarios.find(u => u.usuario.toLowerCase() === usuario.trim().toLowerCase());
-  if (existe) {
-    return res.status(400).json({ error: 'Ese nombre de usuario ya existe' });
-  }
-  const nuevo = {
-    id: Date.now(),
-    usuario: usuario.trim().toLowerCase(),
-    clave: clave.trim(),
-    nombre: nombre.trim(),
-    rol: 'CAJERO'
-  };
+  if (existe) return res.status(400).json({ error: 'Ese usuario ya existe' });
+
+  const nuevo = { id: Date.now(), usuario: usuario.trim().toLowerCase(), clave: clave.trim(), nombre: nombre.trim(), rol: 'CAJERO' };
   DB.usuarios.push(nuevo);
+  guardarDB();
   res.json({ ok: true, usuario: nuevo });
 });
 
 app.delete('/api/usuarios/:id', (req, res) => {
   const id = parseInt(req.params.id);
   const idx = DB.usuarios.findIndex(u => u.id === id);
-  if (idx === -1) return res.status(404).json({ error: 'Usuario no encontrado' });
-  if (DB.usuarios[idx].rol === 'ADMIN') {
-    return res.status(403).json({ error: 'No se puede eliminar el Administrador principal' });
-  }
+  if (idx === -1) return res.status(404).json({ error: 'No encontrado' });
+  if (DB.usuarios[idx].rol === 'ADMIN') return res.status(403).json({ error: 'No se puede borrar al administrador' });
   DB.usuarios.splice(idx, 1);
+  guardarDB();
   res.json({ ok: true });
 });
 
-// Login Cajero POS
+// Login Cajero POS & Turnos
 app.post('/api/cajero/login', (req, res) => {
   const { usuario, clave } = req.body;
   const user = DB.usuarios.find(u => u.usuario.toLowerCase() === usuario.trim().toLowerCase() && u.clave === clave.trim());
-  if (user) {
-    res.json({ ok: true, usuario: { id: user.id, nombre: user.nombre, rol: user.rol } });
-  } else {
-    res.status(401).json({ ok: false, error: 'Usuario o contraseña incorrectos' });
-  }
+  if (user) res.json({ ok: true, usuario: { id: user.id, nombre: user.nombre, rol: user.rol } });
+  else res.status(401).json({ ok: false, error: 'Credenciales inválidas' });
 });
 
-// Turnos de Caja
 app.post('/api/caja/abrir', (req, res) => {
   const { cajeroNombre, baseInicial } = req.body;
   DB.turnoActual = {
@@ -141,6 +193,7 @@ app.post('/api/caja/abrir', (req, res) => {
     fecha: new Date().toLocaleDateString('es-CO'),
     estado: 'ABIERTA'
   };
+  guardarDB();
   res.json({ ok: true, turno: DB.turnoActual });
 });
 
@@ -179,10 +232,11 @@ app.post('/api/caja/cerrar', (req, res) => {
 
   DB.historialTurnos.unshift(turnoCerrado);
   DB.turnoActual = null;
+  guardarDB();
   res.json({ ok: true, resumenCierre: turnoCerrado });
 });
 
-// WebSockets
+// Sockets
 io.on('connection', (socket) => {
   socket.on('nuevo-pedido', (pedidoData) => {
     DB.contadorPedido++;
@@ -215,6 +269,7 @@ io.on('connection', (socket) => {
     }
 
     DB.pedidos.unshift(nuevoPedido);
+    guardarDB();
     io.emit('pedido-creado', nuevoPedido);
     socket.emit('confirmacion-pedido', { id: nuevoPedido.id, numero: nuevoPedido.numero });
   });
@@ -223,6 +278,7 @@ io.on('connection', (socket) => {
     const pedido = DB.pedidos.find(p => p.id === id);
     if (pedido) {
       pedido.estado = nuevoEstado;
+      guardarDB();
       io.emit('estado-actualizado', { id, nuevoEstado, pedido });
     }
   });
@@ -231,6 +287,4 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(` Servidor activo: http://localhost:${PORT}`);
-  console.log(` Administrador:  http://localhost:${PORT}/admin.html`);
-  console.log(` Caja POS:       http://localhost:${PORT}/pos.html`);
 });
