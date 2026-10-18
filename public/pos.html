@@ -53,7 +53,7 @@
     </div>
   </div>
 
-  <!-- Modal Abrir Turno / Base Inicial -->
+  <!-- Modal Apertura Turno -->
   <div id="modal-apertura" class="fixed inset-0 z-50 bg-black/95 hidden flex items-center justify-center p-4">
     <div class="bg-neutral-900 border-2 border-green-500 rounded-3xl p-6 max-w-xs w-full text-center space-y-4">
       <i class="fa-solid fa-cash-register text-3xl text-green-400"></i>
@@ -95,10 +95,10 @@
     </div>
   </header>
 
-  <!-- Cuerpo Principal (2 Columnas) -->
+  <!-- Cuerpo Principal -->
   <div class="flex-1 flex overflow-hidden">
     
-    <!-- Lado Izquierdo: Catálogo Táctil -->
+    <!-- Lado Izquierdo: Catálogo -->
     <div class="w-7/12 flex flex-col border-r border-stone-800 bg-neutral-950 p-3 space-y-3 overflow-y-auto">
       <div class="flex gap-2">
         <button onclick="mostrarSeccion('arepas')" id="tab-arepas" class="px-4 py-2 bg-yellow-400 text-black font-black text-xs rounded-xl shadow">Arepas Principales</button>
@@ -111,10 +111,9 @@
       <div id="grid-pos-bebidas" class="grid grid-cols-3 gap-2 hidden"></div>
     </div>
 
-    <!-- Lado Derecho: Facturación y Comanda -->
+    <!-- Lado Derecho: Comanda & Facturación -->
     <div class="w-5/12 flex flex-col justify-between bg-neutral-900 p-3 space-y-2">
       
-      <!-- Datos de la Orden -->
       <div class="bg-neutral-950 border border-stone-800 p-2.5 rounded-2xl text-xs space-y-1.5">
         <div class="flex justify-between items-center">
           <span class="font-black text-yellow-400 uppercase text-[10px]"><i class="fa-solid fa-address-book"></i> Destino / Cliente</span>
@@ -135,12 +134,10 @@
         </div>
       </div>
 
-      <!-- Ítems seleccionados -->
       <div class="flex-1 bg-neutral-950 border border-stone-800 rounded-2xl p-2.5 overflow-y-auto space-y-1.5" id="pos-items-lista">
         <p class="text-stone-500 text-xs text-center py-10 italic">Toca una arepa para comenzar la orden...</p>
       </div>
 
-      <!-- MÉTODOS DE PAGO Y CANALES (RAPPI, PAUTA, EFECTIVO, NEQUI) -->
       <div class="bg-neutral-950 border border-stone-800 p-2.5 rounded-2xl text-xs space-y-2">
         <div>
           <label class="text-[10px] text-stone-400 font-bold uppercase block mb-1">Canal de Pago / Venta:</label>
@@ -160,12 +157,10 @@
           </div>
         </div>
 
-        <!-- Totales -->
         <div class="border-t border-stone-800 pt-1.5 space-y-0.5 text-[11px]">
           <div class="flex justify-between text-stone-400"><span>Subtotal:</span><span id="pos-subtotal">$0</span></div>
           <div class="flex justify-between text-stone-400" id="pos-row-envio"><span>Envío:</span><span id="pos-envio">$0</span></div>
           
-          <!-- Fila de Ajuste Rappi o Pauta -->
           <div class="flex justify-between text-emerald-400 font-bold hidden" id="pos-row-descuento">
             <span id="pos-lbl-desc-tipo">Descuento:</span><span id="pos-descuento">-$0</span>
           </div>
@@ -175,12 +170,11 @@
           </div>
         </div>
 
-        <!-- Botones de Acción -->
         <div class="grid grid-cols-2 gap-2 pt-1">
           <button onclick="limpiarComandaPOS()" class="bg-neutral-800 hover:bg-neutral-700 py-3 rounded-xl font-bold text-xs text-stone-400">
             Limpiar
           </button>
-          <button onclick="cobrarEImprimirPOS()" class="bg-yellow-400 hover:bg-yellow-300 text-black py-3 rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/20">
+          <button onclick="cobrarEImprimirPOS()" id="btn-pos-cobrar" class="bg-yellow-400 hover:bg-yellow-300 text-black py-3 rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/20">
             <i class="fa-solid fa-print"></i> Cobrar e Imprimir
           </button>
         </div>
@@ -188,7 +182,7 @@
     </div>
   </div>
 
-  <!-- Modal Arqueo de Caja / Cierre de Turno -->
+  <!-- Modal Arqueo de Caja -->
   <div id="modal-arqueo" class="fixed inset-0 z-50 bg-black/95 hidden flex items-center justify-center p-4">
     <div class="bg-neutral-900 border border-stone-800 rounded-3xl p-6 max-w-sm w-full space-y-4">
       <div class="flex justify-between items-center border-b border-stone-800 pb-2">
@@ -206,7 +200,7 @@
         <div class="border-t border-stone-800 pt-2 flex justify-between font-black text-sm text-yellow-400">
           <span>EFECTIVO ESPERADO EN CAJÓN:</span><strong id="arq-total-caja">$0</strong>
         </div>
-        <p class="text-[10px] text-stone-500 italic">* Rappi y Nequi entran a cuenta bancaria, no se exigen en efectivo al cajero.</p>
+        <p class="text-[10px] text-stone-500 italic">* Rappi y Nequi van a cuenta bancaria, no se exigen en físico.</p>
       </div>
 
       <div class="grid grid-cols-2 gap-2 pt-3">
@@ -220,7 +214,6 @@
     </div>
   </div>
 
-  <!-- PLANTILLA OCULTA DE IMPRESIÓN TÉRMICA 80MM -->
   <div id="ticket-impresion" class="hidden"></div>
 
   <script>
@@ -228,7 +221,7 @@
     let DATA = { info: {}, productos: [], extras: [], bebidas: [], barrios: [], clientesFrecuentes: [] };
     let cajeroActivo = null;
     let comandaPOS = [];
-    let metodoPagoActual = 'Efectivo'; // 'Efectivo', 'Nequi / Bre-B', 'Rappi', 'Pauta'
+    let metodoPagoActual = 'Efectivo';
     let descuentoTotal = 0;
 
     window.onload = async () => {
@@ -360,13 +353,9 @@
       renderComandaActiva();
     }
 
-    // ==========================================
-    // SELECCIÓN DE PAGO CON RAPPI (-20%) Y PAUTA ($0)
-    // ==========================================
     function setMetodoPagoPOS(tipo) {
       metodoPagoActual = tipo;
 
-      // Resaltar botón activo
       const btnMap = {
         'Efectivo': 'pos-btn-efec',
         'Nequi / Bre-B': 'pos-btn-nequi',
@@ -411,15 +400,12 @@
       const rowDesc = document.getElementById('pos-row-descuento');
       const lblDesc = document.getElementById('pos-lbl-desc-tipo');
 
-      // 1. REGLA RAPPI: RESTAR EL 20% DE COMISIÓN AUTOMÁTICO
       if (metodoPagoActual === 'Rappi') {
         descuento = Math.round(subtotal * 0.20);
         rowDesc.classList.remove('hidden');
         lblDesc.innerText = 'Comisión Rappi (-20%):';
         document.getElementById('pos-descuento').innerText = `-$${descuento.toLocaleString()}`;
-      } 
-      // 2. REGLA PAUTA: ENVIAR VENTA EN $0
-      else if (metodoPagoActual === 'Pauta') {
+      } else if (metodoPagoActual === 'Pauta') {
         descuento = subtotal + envio;
         rowDesc.classList.remove('hidden');
         lblDesc.innerText = 'Cortesía Pauta (100%):';
@@ -438,18 +424,11 @@
 
     function buscarClienteFrecuente() {
       const cel = document.getElementById('pos-cli-tel').value.trim();
-      if (cel.length >= 7) {
-        const cli = DATA.clientesFrecuentes.find(c => c.celular.includes(cel));
+      if (cel.length >= 7 && DATA.clientesFrecuentes) {
+        const cli = DATA.clientesFrecuentes.find(c => c && c.celular && c.celular.includes(cel));
         if (cli) {
           document.getElementById('pos-cli-nombre').value = cli.nombre;
           document.getElementById('pos-cli-dir').value = cli.direccion;
-          const sel = document.getElementById('pos-cli-barrio');
-          for (let i = 0; i < sel.options.length; i++) {
-            if (sel.options[i].text.includes(cli.barrio)) {
-              sel.selectedIndex = i;
-              break;
-            }
-          }
           recalcularTotalPOS();
         }
       }
@@ -466,8 +445,12 @@
       renderComandaActiva();
     }
 
-    function cobrarEImprimirPOS() {
+    // COBRO DIRECTO POR HTTP (RESPUESTA INSTANTÁNEA EN 0.1s)
+    async function cobrarEImprimirPOS() {
       if (comandaPOS.length === 0) return alert('La comanda está vacía');
+
+      const btnCobrar = document.getElementById('btn-pos-cobrar');
+      btnCobrar.disabled = true;
 
       const nombre = document.getElementById('pos-cli-nombre').value.trim() || 'Cliente Mostrador';
       const celular = document.getElementById('pos-cli-tel').value.trim() || 'Local';
@@ -480,22 +463,36 @@
       const pedidoPayload = {
         cliente: { nombre, celular, direccion, barrio: barrioSel.options[barrioSel.selectedIndex].text },
         modalidad: (metodoPagoActual === 'Rappi') ? 'Rappi' : (metodoPagoActual === 'Pauta' ? 'Pauta / Cortesía' : document.getElementById('pos-tipo-orden').value),
-        cajero: cajeroActivo ? cajeroActivo.nombre : 'Cajero 1',
+        cajero: cajeroActivo ? cajeroActivo.nombre : 'Cajero Principal',
         items: comandaPOS,
         metodoPago: metodoPagoActual,
         subtotal,
         descuento: descuentoTotal,
         costoEnvio,
-        total
+        total,
+        origen: 'POS'
       };
 
-      socket.emit('nuevo-pedido', pedidoPayload);
-    }
+      try {
+        const res = await fetch('/api/pedidos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(pedidoPayload)
+        });
+        const data = await res.json();
 
-    socket.on('confirmacion-pedido', ({ id, numero }) => {
-      imprimirTicket80mm(numero);
-      limpiarComandaPOS();
-    });
+        if (data.ok) {
+          imprimirTicket80mm(data.numero);
+          limpiarComandaPOS();
+        } else {
+          alert(data.error || 'No se pudo procesar la orden en caja.');
+        }
+      } catch (e) {
+        socket.emit('nuevo-pedido', pedidoPayload);
+      } finally {
+        btnCobrar.disabled = false;
+      }
+    }
 
     function imprimirTicket80mm(numero) {
       const nombre = document.getElementById('pos-cli-nombre').value || 'Cliente Mostrador';
@@ -536,7 +533,7 @@
 
       ticket.classList.remove('hidden');
       window.print();
-      ticket.classList.add('hidden');
+      setTimeout(() => { ticket.classList.add('hidden'); }, 500);
     }
 
     async function abrirModalArqueo() {
@@ -594,7 +591,7 @@
       `;
       ticket.classList.remove('hidden');
       window.print();
-      ticket.classList.add('hidden');
+      setTimeout(() => { ticket.classList.add('hidden'); }, 500);
     }
   </script>
 </body>
