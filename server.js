@@ -1,10 +1,600 @@
-// ========================================================
-// CEREBRO DEL AGENTE IA DE WHATSAPP (CÁLIDO, CERCANO Y ANTOJADIZO)
-// ========================================================
+// ESCUDOS GLOBALES CONTRA CAÍDAS (Evita que el servidor se apague ante cualquier error)
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('⚠️ Advertencia (Promesa no capturada):', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('⚠️ Advertencia (Excepción no capturada):', err.message);
+});
+
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
+const fs = require('fs');
+
+// Carga segura de Supabase
+let createClient = null;
+try {
+  createClient = require('@supabase/supabase-js').createClient;
+} catch (e) {
+  console.log("ℹ️ Operando en modo local (sin librería Supabase instalada).");
+}
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: { origin: "*" }
+});
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/img', express.static(path.join(__dirname, 'public', 'img')));
+
+// Conexión segura a Supabase
+const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://rwoioajzmkjtaveosgyh.supabase.co').trim();
+const SUPABASE_KEY = (process.env.SUPABASE_KEY || '').trim();
+
+let supabase = null;
+if (createClient && SUPABASE_URL && SUPABASE_KEY && !SUPABASE_KEY.includes('PEGA_AQUI')) {
+  try {
+    supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    console.log("✓ Cliente Supabase inicializado correctamente.");
+  } catch (err) {
+    console.error("⚠️ No se pudo inicializar Supabase, usando respaldo local:", err.message);
+    supabase = null;
+  }
+}
+
+const DATA_FILE = path.join(__dirname, 'data.json');
+
+const DB_DEFAULT = {
+  info: {
+    nombre: "Ary la arepa",
+    eslogan: "De Popayán para el mundo",
+    base: "Base de Arepa agridulce, rellena con abundante queso y bañada en queso fundido",
+    direccion: "Cra 7 #10N-22 B, Prados del Norte en WokHouse",
+    telefono: "3215035691",
+    nit: "1061789456-1",
+    horarioDomicilio: "4:00 PM a 9:30 PM",
+    horarioMesa: "4:00 PM a 9:45 PM",
+    pinAdmin: "1234"
+  },
+  configPuntos: {
+    puntosPorArepa: 1,
+    puntosMinimosParaCanje: 5,
+    valorDescuentoCanje: 5000,
+    activo: true
+  },
+  usuarios: [
+    { id: 1, usuario: 'admin', clave: '1234', nombre: 'Administrador', rol: 'ADMIN' },
+    { id: 2, usuario: 'cajero1', clave: '2024', nombre: 'Cajero Principal', rol: 'CAJERO' }
+  ],
+  clientesFrecuentes: [
+    { id: 1, nombre: 'Juan Camilo', celular: '3110000000', direccion: 'Cra 9 # 12N-45', barrio: 'Ciudad Jardín', pedidos: 4, puntos: 4 }
+  ],
+  cupones: [
+    { id: 1, codigo: 'POPAYAN10', tipo: 'PORCENTAJE', valor: 10, activo: true, usos: 0 },
+    { id: 2, codigo: 'ARY5K', tipo: 'FIJO', valor: 5000, activo: true, usos: 0 }
+  ],
+  inventario: [
+    { id: 'inv-1', nombre: 'Arepa Base Agridulce', unidad: 'unidades', porcionTamano: 1, stockActual: 100, stockMinimo: 20 },
+    { id: 'inv-2', nombre: 'Queso Fundido Artesanal', unidad: 'gramos', porcionTamano: 80, stockActual: 8000, stockMinimo: 1600 },
+    { id: 'inv-3', nombre: 'Carne Desmechada', unidad: 'gramos', porcionTamano: 100, stockActual: 5000, stockMinimo: 1000 },
+    { id: 'inv-4', nombre: 'Pollo Desmechado', unidad: 'gramos', porcionTamano: 100, stockActual: 5000, stockMinimo: 1000 },
+    { id: 'inv-5', nombre: 'Chorizo Ahumado', unidad: 'unidades', porcionTamano: 1, stockActual: 50, stockMinimo: 10 },
+    { id: 'inv-6', nombre: 'Tocineta Ahumada', unidad: 'gramos', porcionTamano: 60, stockActual: 3000, stockMinimo: 600 },
+    { id: 'inv-7', nombre: 'Doritos / Totopos', unidad: 'unidades', porcionTamano: 1, stockActual: 40, stockMinimo: 10 },
+    { id: 'inv-8', nombre: 'Bowls Térmicos Domicilio', unidad: 'unidades', porcionTamano: 1, stockActual: 120, stockMinimo: 25 },
+    { id: 'inv-9', nombre: 'Coca-Cola Cero 250ml', unidad: 'unidades', porcionTamano: 1, stockActual: 36, stockMinimo: 12 }
+  ],
+  recetas: {
+    'Campesina': { 'inv-1': 1, 'inv-2': 80, 'inv-3': 100, 'inv-5': 1 },
+    'Doriloca': { 'inv-1': 1, 'inv-2': 80, 'inv-3': 100, 'inv-7': 1 },
+    'Ranchera': { 'inv-1': 1, 'inv-2': 80, 'inv-4': 100 },
+    'Tocineta': { 'inv-1': 1, 'inv-2': 80, 'inv-4': 80, 'inv-6': 60 },
+    'Mexicana': { 'inv-1': 1, 'inv-2': 80, 'inv-3': 100, 'inv-7': 1 },
+    'Hawaiana': { 'inv-1': 1, 'inv-2': 80 },
+    'Quipitos': { 'inv-1': 1, 'inv-2': 60 }
+  },
+  barrios: [
+    { nombre: 'Prados del Norte (Local)', costo: 2000 },
+    { nombre: 'Bello Horizonte', costo: 4000 },
+    { nombre: 'Ciudad Jardín', costo: 4000 },
+    { nombre: 'Centro / Parque Caldas', costo: 4500 },
+    { nombre: 'La Pamba / Pomona', costo: 5000 },
+    { nombre: 'La Esmeralda', costo: 4500 },
+    { nombre: 'Pandiguando', costo: 4500 },
+    { nombre: 'Valencia', costo: 4500 },
+    { nombre: 'Palacé / Villa del Viento', costo: 6000 },
+    { nombre: 'Santa Clara / Los Hoyos', costo: 4000 }
+  ],
+  productos: [
+    { id: 1, cat: 'arepas', nombre: 'Campesina', desc: 'Chorizo ahumado • carne desmechada • guacamole • salsas de la casa', precio: 26000, img: '/img/campesina.png' },
+    { id: 2, cat: 'arepas', nombre: 'Doriloca', desc: 'Doritos • pico de gallo • carne desmechada • guacamole • salsas de la casa', precio: 25000, img: '/img/doriloca.png' },
+    { id: 3, cat: 'arepas', nombre: 'Ranchera', desc: 'Pollo desmechado • salchicha ranchera • huevo de codorniz • salsas de la casa', precio: 24000, img: '/img/ranchera.png' },
+    { id: 4, cat: 'arepas', nombre: 'Tocineta', desc: 'Tocineta ahumada • pollo desmechado • salsas de la casa', precio: 23000, img: '/img/tocineta.png' },
+    { id: 5, cat: 'arepas', nombre: 'Mexicana', desc: 'Carne desmechada • jalapeños • totopos • guacamole • salsas de la casa', precio: 22000, img: '/img/mexicana.png' },
+    { id: 6, cat: 'arepas', nombre: 'Hawaiana', desc: 'Tiras de jamón ahumado • piña calada • lonchas de jamón • salsas de la casa', precio: 17500, img: '/img/hawaiana.png' },
+    { id: 7, cat: 'arepas', nombre: 'Quipitos', desc: 'Quipitos • leche condensada • arequipe', precio: 16500, img: '/img/quipitos.png' }
+  ],
+  extras: [
+    { id: 'ex-1', nombre: 'Ranchera', precio: 5000 },
+    { id: 'ex-2', nombre: 'Carne desmechada', precio: 4500 },
+    { id: 'ex-3', nombre: 'Chorizo', precio: 4000 },
+    { id: 'ex-4', nombre: 'Pollo desmechado', precio: 3000 },
+    { id: 'ex-5', nombre: 'Tocineta', precio: 2000 },
+    { id: 'ex-6', nombre: 'Jamón', precio: 2000 },
+    { id: 'ex-7', nombre: 'Piña Calada', precio: 2000 },
+    { id: 'ex-8', nombre: 'Pico de Gallo', precio: 2000 },
+    { id: 'ex-9', nombre: 'Doritos', precio: 2000 },
+    { id: 'ex-10', nombre: 'Guacamole', precio: 2000 },
+    { id: 'ex-11', nombre: 'Huevo x2', precio: 1000 },
+    { id: 'ex-12', nombre: 'Quipito', precio: 1000 },
+    { id: 'ex-13', nombre: 'Queso extra', precio: 5000 },
+    { id: 'ex-14', nombre: 'Arepa sola', precio: 7000 }
+  ],
+  bebidas: [
+    { id: 101, nombre: 'Coca-Cola Cero 250ml', precio: 3000 },
+    { id: 102, nombre: 'Manzana Cero 250ml', precio: 3000 },
+    { id: 103, nombre: 'Colombiana Cero 250ml', precio: 3000 },
+    { id: 104, nombre: 'Pepsi Cero 250ml', precio: 3000 },
+    { id: 105, nombre: 'Pony Mini', precio: 3000 },
+    { id: 106, nombre: 'Agua', precio: 2000 }
+  ],
+  pedidos: [],
+  contadorPedido: 0,
+  turnoActual: null,
+  historialTurnos: []
+};
+
+// Carga con fusión segura (auto-repara archivos data.json viejos)
+let DB = DB_DEFAULT;
+if (fs.existsSync(DATA_FILE)) {
+  try {
+    const dataGuardada = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+    if (dataGuardada && typeof dataGuardada === 'object') {
+      DB = {
+        ...DB_DEFAULT,
+        ...dataGuardada,
+        info: { ...DB_DEFAULT.info, ...(dataGuardada.info || {}) },
+        configPuntos: { ...DB_DEFAULT.configPuntos, ...(dataGuardada.configPuntos || {}) },
+        recetas: { ...DB_DEFAULT.recetas, ...(dataGuardada.recetas || {}) },
+        cupones: dataGuardada.cupones || DB_DEFAULT.cupones,
+        inventario: dataGuardada.inventario || DB_DEFAULT.inventario
+      };
+    }
+  } catch (e) {
+    DB = DB_DEFAULT;
+  }
+}
+
+function guardarDB(claveModificada = null) {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(DB, null, 2));
+  } catch (err) {
+    console.error("Error guardando data.json:", err.message);
+  }
+
+  // Guardado seguro en Supabase con catch
+  if (supabase && claveModificada && DB[claveModificada]) {
+    supabase.from('configuracion').upsert({
+      clave: claveModificada,
+      datos: DB[claveModificada],
+      updated_at: new Date().toISOString()
+    }).catch(err => {
+      console.error(`Error guardando ${claveModificada} en Supabase:`, err.message);
+    });
+  }
+}
+
+async function sincronizarConSupabase() {
+  if (!supabase) return;
+
+  try {
+    const { data: configData, error: errConfig } = await supabase.from('configuracion').select('*');
+    if (errConfig) throw errConfig;
+
+    if (configData && configData.length > 0) {
+      configData.forEach(row => {
+        if (row.clave && row.datos) DB[row.clave] = row.datos;
+      });
+      console.log("✓ Sincronizado con Supabase PostgreSQL.");
+    } else {
+      const claves = ['info', 'configPuntos', 'usuarios', 'clientesFrecuentes', 'cupones', 'inventario', 'recetas', 'barrios', 'productos', 'extras', 'bebidas'];
+      for (const k of claves) {
+        if (DB[k]) {
+          await supabase.from('configuracion').upsert({ clave: k, datos: DB[k] }).catch(() => {});
+        }
+      }
+      console.log("✓ Migración inicial a Supabase completada.");
+    }
+
+    const { data: pedidosDb } = await supabase.from('pedidos').select('*').order('timestamp', { ascending: false }).limit(200);
+    if (pedidosDb && pedidosDb.length > 0) {
+      DB.pedidos = pedidosDb.map(p => ({
+        id: p.id,
+        numero: p.numero,
+        fecha: p.fecha,
+        hora: p.hora,
+        timestamp: Number(p.timestamp),
+        cliente: p.cliente,
+        modalidad: p.modalidad,
+        items: p.items,
+        metodoPago: p.metodo_pago,
+        subtotal: Number(p.subtotal),
+        costoEnvio: Number(p.costo_envio),
+        descuento: Number(p.descuento),
+        total: Number(p.total),
+        estado: p.estado,
+        turnoId: p.turno_id,
+        origen: p.origen
+      }));
+      DB.contadorPedido = DB.pedidos.length;
+    }
+  } catch (err) {
+    console.log("⚠️ Supabase temporalmente no disponible, operando con data.json local:", err.message);
+  }
+}
+
+// CONTROL DE HORARIOS (COLOMBIA UTC-5)
+function obtenerMinutosDiaColombia() {
+  const ahoraCo = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Bogota" }));
+  return ahoraCo.getHours() * 60 + ahoraCo.getMinutes();
+}
+
+function verificarEstadoServicios() {
+  const mins = obtenerMinutosDiaColombia();
+  const abiertoDomicilio = (mins >= 960 && mins <= 1290); // 4:00 PM a 9:30 PM
+  const abiertoMesaYRecoger = (mins >= 960 && mins <= 1305); // 4:00 PM a 9:45 PM
+  return { abiertoDomicilio, abiertoMesa: abiertoMesaYRecoger, abiertoRecoger: abiertoMesaYRecoger };
+}
+
+app.get('/api/estado-horarios', (req, res) => {
+  const st = verificarEstadoServicios();
+  res.json({
+    domicilio: st.abiertoDomicilio,
+    mesa: st.abiertoMesa,
+    recoger: st.abiertoRecoger,
+    horarios: {
+      domicilio: "4:00 PM a 9:30 PM",
+      mesa: "4:00 PM a 9:45 PM",
+      recoger: "4:00 PM a 9:45 PM"
+    }
+  });
+});
+
+// DESCARGO Y RESTAURACIÓN DE INVENTARIO
+function descontarInventarioPorPedido(items, modalidad) {
+  if (!DB.recetas || !DB.inventario) return;
+
+  (items || []).forEach(item => {
+    const receta = DB.recetas[item.nombre];
+    if (receta) {
+      Object.keys(receta).forEach(invId => {
+        const insumo = DB.inventario.find(i => i.id === invId);
+        if (insumo) {
+          insumo.stockActual = Math.max(0, insumo.stockActual - receta[invId]);
+        }
+      });
+    }
+
+    const bebidaInsumo = DB.inventario.find(i => (i.nombre || '').toLowerCase().includes((item.nombre || '').toLowerCase()));
+    if (bebidaInsumo) {
+      bebidaInsumo.stockActual = Math.max(0, bebidaInsumo.stockActual - 1);
+    }
+  });
+
+  if (modalidad === 'Domicilio' || modalidad === 'Para Llevar' || modalidad === 'Rappi') {
+    const bowl = DB.inventario.find(i => i.id === 'inv-8');
+    if (bowl) bowl.stockActual = Math.max(0, bowl.stockActual - (items ? items.length : 1));
+  }
+
+  guardarDB('inventario');
+}
+
+function devolverInventarioCancelado(items, modalidad) {
+  if (!DB.recetas || !DB.inventario) return;
+
+  (items || []).forEach(item => {
+    const receta = DB.recetas[item.nombre];
+    if (receta) {
+      Object.keys(receta).forEach(invId => {
+        const insumo = DB.inventario.find(i => i.id === invId);
+        if (insumo) {
+          insumo.stockActual += receta[invId];
+        }
+      });
+    }
+
+    const bebidaInsumo = DB.inventario.find(i => (i.nombre || '').toLowerCase().includes((item.nombre || '').toLowerCase()));
+    if (bebidaInsumo) {
+      bebidaInsumo.stockActual += 1;
+    }
+  });
+
+  if (modalidad === 'Domicilio' || modalidad === 'Para Llevar' || modalidad === 'Rappi') {
+    const bowl = DB.inventario.find(i => i.id === 'inv-8');
+    if (bowl) bowl.stockActual += (items ? items.length : 1);
+  }
+
+  guardarDB('inventario');
+}
+
+function registrarPedidoEnSistema(pedidoData) {
+  DB.contadorPedido++;
+  const now = new Date();
+  const nuevoPedido = {
+    id: `ORD-${Date.now()}`,
+    numero: `#${String(DB.contadorPedido).padStart(3, '0')}`,
+    fecha: now.toLocaleDateString('es-CO'),
+    hora: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    timestamp: Date.now(),
+    estado: 'PENDIENTE',
+    turnoId: DB.turnoActual ? DB.turnoActual.id : null,
+    ...pedidoData
+  };
+
+  descontarInventarioPorPedido(nuevoPedido.items || [], nuevoPedido.modalidad);
+
+  if (pedidoData.cliente && pedidoData.cliente.celular && !String(pedidoData.metodoPago).includes('Pauta')) {
+    const idx = DB.clientesFrecuentes.findIndex(c => c.celular === pedidoData.cliente.celular);
+    const cantArepas = (nuevoPedido.items || []).filter(i => !i.desc || !i.desc.includes('Bebida')).length || 1;
+    const factorPuntos = (DB.configPuntos && DB.configPuntos.activo) ? (DB.configPuntos.puntosPorArepa || 1) : 0;
+    const puntosGanados = cantArepas * factorPuntos;
+
+    if (idx >= 0) {
+      const cli = DB.clientesFrecuentes[idx];
+      cli.pedidos += 1;
+      if (pedidoData.canjeoPuntos && DB.configPuntos) {
+        cli.puntos = Math.max(0, (cli.puntos || 0) - (DB.configPuntos.puntosMinimosParaCanje || 5));
+      }
+      cli.puntos = (cli.puntos || 0) + puntosGanados;
+      cli.direccion = pedidoData.cliente.direccion;
+      cli.barrio = pedidoData.cliente.barrio;
+    } else {
+      DB.clientesFrecuentes.push({
+        id: DB.clientesFrecuentes.length + 1,
+        nombre: pedidoData.cliente.nombre,
+        celular: pedidoData.cliente.celular,
+        direccion: pedidoData.cliente.direccion,
+        barrio: pedidoData.cliente.barrio,
+        pedidos: 1,
+        puntos: puntosGanados
+      });
+    }
+    guardarDB('clientesFrecuentes');
+  }
+
+  DB.pedidos.unshift(nuevoPedido);
+  guardarDB();
+
+  // Guardado seguro en Supabase con catch
+  if (supabase) {
+    supabase.from('pedidos').insert([{
+      id: nuevoPedido.id,
+      numero: nuevoPedido.numero,
+      fecha: nuevoPedido.fecha,
+      hora: nuevoPedido.hora,
+      timestamp: nuevoPedido.timestamp,
+      cliente: nuevoPedido.cliente,
+      modalidad: nuevoPedido.modalidad,
+      items: nuevoPedido.items,
+      metodo_pago: nuevoPedido.metodoPago,
+      subtotal: nuevoPedido.subtotal,
+      costo_envio: nuevoPedido.costoEnvio,
+      descuento: nuevoPedido.descuento || 0,
+      total: nuevoPedido.total,
+      estado: nuevoPedido.estado,
+      turno_id: nuevoPedido.turnoId,
+      origen: nuevoPedido.origen || 'Web/POS'
+    }]).catch(err => {
+      console.error("Error guardando pedido en Supabase:", err.message);
+    });
+  }
+
+  io.emit('pedido-creado', nuevoPedido);
+  return nuevoPedido;
+}
+
+// ENDPOINTS API
+app.get('/api/data-inicial', (req, res) => res.json(DB));
+app.get('/api/pedidos', (req, res) => res.json(DB.pedidos));
+
+app.post('/api/admin/config-puntos', (req, res) => {
+  const { puntosPorArepa, puntosMinimosParaCanje, valorDescuentoCanje, activo } = req.body;
+  DB.configPuntos = {
+    puntosPorArepa: parseInt(puntosPorArepa) || 1,
+    puntosMinimosParaCanje: parseInt(puntosMinimosParaCanje) || 5,
+    valorDescuentoCanje: parseInt(valorDescuentoCanje) || 5000,
+    activo: activo !== false
+  };
+  guardarDB('configPuntos');
+  res.json({ ok: true, configPuntos: DB.configPuntos });
+});
+
+app.post('/api/admin/clientes/:id/puntos', (req, res) => {
+  const id = parseInt(req.params.id);
+  const { puntos } = req.body;
+  const cliente = DB.clientesFrecuentes.find(c => c.id === id);
+  if (cliente) {
+    cliente.puntos = Math.max(0, parseInt(puntos) || 0);
+    guardarDB('clientesFrecuentes');
+    res.json({ ok: true, cliente });
+  } else {
+    res.status(404).json({ error: 'Cliente no encontrado' });
+  }
+});
+
+app.post('/api/admin/verificar-pin', (req, res) => {
+  const { pin } = req.body;
+  if (pin === (DB.info.pinAdmin || "1234")) res.json({ ok: true });
+  else res.status(401).json({ ok: false, error: 'PIN incorrecto' });
+});
+
+app.post('/api/admin/cambiar-pin', (req, res) => {
+  const { pinActual, nuevoPin } = req.body;
+  if (pinActual !== (DB.info.pinAdmin || "1234")) return res.status(401).json({ error: 'PIN actual no coincide' });
+  if (!nuevoPin || nuevoPin.length < 4) return res.status(400).json({ error: 'Mínimo 4 dígitos' });
+
+  DB.info.pinAdmin = nuevoPin.trim();
+  const u = DB.usuarios.find(x => x.rol === 'ADMIN');
+  if (u) u.clave = nuevoPin.trim();
+  guardarDB('info');
+  guardarDB('usuarios');
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/inventario', (req, res) => {
+  if (Array.isArray(req.body.inventario)) { DB.inventario = req.body.inventario; guardarDB('inventario'); res.json({ ok: true }); }
+  else res.status(400).json({ error: 'Inválido' });
+});
+
+app.post('/api/cupones/validar', (req, res) => {
+  const { codigo, subtotal } = req.body;
+  const cup = DB.cupones.find(c => c.codigo.toUpperCase() === (codigo || '').trim().toUpperCase() && c.activo);
+  if (!cup) return res.status(404).json({ error: 'Cupón no válido' });
+  let descuento = (cup.tipo === 'PORCENTAJE') ? Math.round((subtotal * cup.valor) / 100) : cup.valor;
+  res.json({ ok: true, cupon: cup, descuento });
+});
+
+app.post('/api/admin/cupones', (req, res) => {
+  if (Array.isArray(req.body.cupones)) { DB.cupones = req.body.cupones; guardarDB('cupones'); res.json({ ok: true }); }
+  else res.status(400).json({ error: 'Inválido' });
+});
+
+app.post('/api/admin/barrios', (req, res) => {
+  if (Array.isArray(req.body.barrios)) { DB.barrios = req.body.barrios; guardarDB('barrios'); res.json({ ok: true }); }
+  else res.status(400).json({ error: 'Inválido' });
+});
+
+app.post('/api/admin/productos', (req, res) => {
+  if (Array.isArray(req.body.productos)) { DB.productos = req.body.productos; guardarDB('productos'); res.json({ ok: true }); }
+  else res.status(400).json({ error: 'Inválido' });
+});
+
+app.post('/api/admin/extras', (req, res) => {
+  if (Array.isArray(req.body.extras)) { DB.extras = req.body.extras; guardarDB('extras'); res.json({ ok: true }); }
+  else res.status(400).json({ error: 'Inválido' });
+});
+
+app.post('/api/admin/bebidas', (req, res) => {
+  if (Array.isArray(req.body.bebidas)) { DB.bebidas = req.body.bebidas; guardarDB('bebidas'); res.json({ ok: true }); }
+  else res.status(400).json({ error: 'Inválido' });
+});
+
+app.get('/api/usuarios', (req, res) => res.json(DB.usuarios));
+app.post('/api/usuarios', (req, res) => {
+  const { usuario, clave, nombre } = req.body;
+  if (!usuario || !clave || !nombre) return res.status(400).json({ error: 'Requeridos' });
+  const nuevo = { id: Date.now(), usuario: usuario.trim().toLowerCase(), clave: clave.trim(), nombre: nombre.trim(), rol: 'CAJERO' };
+  DB.usuarios.push(nuevo);
+  guardarDB('usuarios');
+  res.json({ ok: true, usuario: nuevo });
+});
+
+app.delete('/api/usuarios/:id', (req, res) => {
+  const idx = DB.usuarios.findIndex(u => u.id === parseInt(req.params.id));
+  if (idx !== -1 && DB.usuarios[idx].rol !== 'ADMIN') {
+    DB.usuarios.splice(idx, 1);
+    guardarDB('usuarios');
+    res.json({ ok: true });
+  } else res.status(403).json({ error: 'No permitido' });
+});
+
+app.post('/api/cajero/login', (req, res) => {
+  const { usuario, clave } = req.body;
+  const user = DB.usuarios.find(u => u.usuario.toLowerCase() === (usuario || '').trim().toLowerCase() && u.clave === (clave || '').trim());
+  if (user) res.json({ ok: true, usuario: { id: user.id, nombre: user.nombre, rol: user.rol } });
+  else res.status(401).json({ ok: false, error: 'Credenciales inválidas' });
+});
+
+app.post('/api/caja/abrir', (req, res) => {
+  DB.turnoActual = {
+    id: `TURNO-${Date.now()}`,
+    cajero: req.body.cajeroNombre,
+    baseInicial: parseFloat(req.body.baseInicial) || 0,
+    horaApertura: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    fecha: new Date().toLocaleDateString('es-CO'),
+    estado: 'ABIERTA'
+  };
+  guardarDB();
+  res.json({ ok: true, turno: DB.turnoActual });
+});
+
+app.get('/api/caja/resumen', (req, res) => {
+  if (!DB.turnoActual) return res.json({ turnoActivo: false });
+  const pedidosTurno = DB.pedidos.filter(p => p.turnoId === DB.turnoActual.id && p.estado !== 'CANCELADO');
+
+  const ventasEfectivo = pedidosTurno.filter(p => p.metodoPago === 'Efectivo').reduce((a, b) => a + b.total, 0);
+  const ventasDigital = pedidosTurno.filter(p => p.metodoPago.includes('Nequi') || p.metodoPago.includes('Bre-B') || p.metodoPago.includes('Transferencia')).reduce((a, b) => a + b.total, 0);
+  const ventasRappi = pedidosTurno.filter(p => p.metodoPago === 'Rappi').reduce((a, b) => a + b.total, 0);
+  const ventasPauta = pedidosTurno.filter(p => p.metodoPago && p.metodoPago.includes('Pauta')).length;
+
+  res.json({
+    turnoActivo: true,
+    turno: DB.turnoActual,
+    ventasEfectivo,
+    ventasDigital,
+    ventasRappi,
+    ventasPauta,
+    totalVentas: ventasEfectivo + ventasDigital + ventasRappi,
+    totalEnCajaEsperado: DB.turnoActual.baseInicial + ventasEfectivo,
+    totalPedidos: pedidosTurno.length
+  });
+});
+
+app.post('/api/caja/cerrar', (req, res) => {
+  if (!DB.turnoActual) return res.status(400).json({ error: 'Sin turno' });
+  const pedidosTurno = DB.pedidos.filter(p => p.turnoId === DB.turnoActual.id && p.estado !== 'CANCELADO');
+  const ventasEfectivo = pedidosTurno.filter(p => p.metodoPago === 'Efectivo').reduce((a, b) => a + b.total, 0);
+  const ventasDigital = pedidosTurno.filter(p => p.metodoPago.includes('Nequi') || p.metodoPago.includes('Bre-B') || p.metodoPago.includes('Transferencia')).reduce((a, b) => a + b.total, 0);
+  const ventasRappi = pedidosTurno.filter(p => p.metodoPago === 'Rappi').reduce((a, b) => a + b.total, 0);
+  const ventasPauta = pedidosTurno.filter(p => p.metodoPago && p.metodoPago.includes('Pauta')).length;
+
+  const turnoCerrado = {
+    ...DB.turnoActual,
+    horaCierre: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    estado: 'CERRADA',
+    ventasEfectivo,
+    ventasDigital,
+    ventasRappi,
+    ventasPauta,
+    totalVentas: ventasEfectivo + ventasDigital + ventasRappi,
+    totalCajaEsperado: DB.turnoActual.baseInicial + ventasEfectivo
+  };
+
+  DB.historialTurnos.unshift(turnoCerrado);
+  DB.turnoActual = null;
+  guardarDB();
+
+  if (supabase) {
+    supabase.from('turnos_caja').insert([{
+      id: turnoCerrado.id,
+      cajero: turnoCerrado.cajero,
+      base_inicial: turnoCerrado.baseInicial,
+      hora_apertura: turnoCerrado.horaApertura,
+      hora_cierre: turnoCerrado.horaCierre,
+      fecha: turnoCerrado.fecha,
+      estado: turnoCerrado.estado,
+      ventas_efectivo: turnoCerrado.ventasEfectivo,
+      ventas_digital: turnoCerrado.ventasDigital,
+      ventas_rappi: turnoCerrado.ventasRappi,
+      ventas_pauta: turnoCerrado.ventasPauta,
+      total_caja_esperado: turnoCerrado.totalCajaEsperado
+    }]).catch(err => {
+      console.error("Error guardando turno en Supabase:", err.message);
+    });
+  }
+
+  res.json({ ok: true, resumenCierre: turnoCerrado });
+});
+
+// BOT WHATSAPP
 const sesionesBot = {};
 
 function procesarMensajeAgente(celular, mensajeTexto) {
-  const texto = mensajeTexto.trim().toLowerCase();
+  const texto = (mensajeTexto || '').trim().toLowerCase();
   const { abiertoDomicilio, abiertoMesa } = verificarEstadoServicios();
 
   if (!sesionesBot[celular]) {
@@ -19,35 +609,43 @@ function procesarMensajeAgente(celular, mensajeTexto) {
 
   const sesion = sesionesBot[celular];
 
-  // 1. MODO HUMANO EN PAUSA
   if (sesion.modoHumano) {
-    if (texto === '#bot' || texto === 'menu' || texto === 'menú' || texto === 'hola') {
+    if (texto === '#bot' || texto === 'menu' || texto === 'menú') {
       sesion.modoHumano = false;
-      return `🤖 ¡Hola de nuevo! Qué gusto saludarte. Ya reactivé mis funciones automáticas. Cuéntame, ¿qué se te antoja ordenar hoy? 🧀✨`;
+      return `🤖 ¡Hola de nuevo! He reactivado el asistente virtual. ¿En qué te puedo colaborar?`;
     }
     return null;
   }
 
-  // 2. ATENCIÓN HUMANA / ASESOR
-  if (texto.includes('asesor') || texto.includes('humano') || texto.includes('persona') || texto.includes('alguien') || texto.includes('que me atienda alguien')) {
+  if (texto.includes('asesor') || texto.includes('humano') || texto.includes('persona')) {
     sesion.modoHumano = true;
-    return `🙋‍♂️ ¡Claro que sí, con todo el gusto del mundo! Ya mismo te pongo en contacto con una persona de nuestro equipo aquí en el local de Popayán.\n\nEn un momento toman este chat para atenderte personalmente. Si necesitas algo urgente, también puedes timbrarnos directamente al 📞 *321 5035691*.\n\n_(Pausé mis respuestas para que puedan hablar tranquilos. Si me necesitas de nuevo más tarde, solo escribe "#bot")_.`;
+    return `🙋‍♂️ ¡Con gusto! Te he transferido con nuestro equipo humano en Popayán al 📞 *321 5035691*.\n\nHe pausado mis respuestas automáticas. Escribe *"#bot"* para reactivarme cuando gustes.`;
   }
 
-  // 3. FOTOS DE LAS AREPAS Y REDES
-  if (texto.includes('foto') || texto.includes('fotos') || texto.includes('imagen') || texto.includes('imagenes') || texto.includes('imágenes') || texto.includes('como se ven') || texto.includes('cómo se ven') || texto.includes('verlas') || texto.includes('instagram')) {
-    return `📸 ¡Uff, claro que sí! Te aseguro que te vas a enamorar 🤤.\n\nPuedes ver todas las fotos reales en alta definición de nuestras arepas bañadas en queso fundido directamente aquí en nuestro menú interactivo:\n👉 *https://ary-la-arepa.onrender.com*\n\nÉchale un ojito a la *Campesina*, la *Doriloca* o la dulce de *Quipitos*... ¿cuál de todas te hace ojitos para preparártela hoy? ✨🧀`;
+  if (texto.includes('foto') || texto.includes('fotos') || texto.includes('imagen')) {
+    return `📸 Puedes ver todas las fotos reales de nuestras arepas aquí:\n👉 *https://ary-la-arepa.onrender.com*`;
   }
 
-  // 4. PREGUNTA DE PUNTOS VIP / FIDELIZACIÓN
-  if (texto.includes('puntos') || texto.includes('fidelidad') || texto.includes('vip') || texto.includes('premio')) {
+  if (texto.includes('puntos') || texto.includes('fidelidad') || texto.includes('vip')) {
     const minPts = (DB.configPuntos && DB.configPuntos.puntosMinimosParaCanje) || 5;
     const valorDesc = (DB.configPuntos && DB.configPuntos.valorDescuentoCanje) || 5000;
-    return `⭐ *¡Nos encanta premiar a nuestros clientes fieles!* 🎉\n\nPor cada arepa que pides con tu número de celular, acumulas puntos automáticamente:\n• Al llegar a *${minPts} puntos*, ¡recibes *$${valorDesc.toLocaleString()} de descuento* directo en tu siguiente pedido!\n\nPregúntame cuando quieras cuántos puntos llevas acumulados con nosotros 😊.`;
+    return `⭐ *PROGRAMA VIP ARY LA AREPA:*\n• Ganas puntos por cada arepa que pides con tu número.\n• Al acumular *${minPts} puntos*, ¡recibes *$${valorDesc.toLocaleString()} de descuento* inmediato en tu siguiente pedido!`;
   }
 
-  // 5. CANCELACIÓN DE PEDIDOS (AMABLE Y EMPÁTICA)
-  if (texto.includes('cancelar') || texto.includes('cancelo') || texto.includes('anular') || texto.includes('ya no quiero')) {
+  if (texto.includes('menu') || texto.includes('menú') || texto.includes('carta') || texto.includes('precios')) {
+    let respuestaMenu = `🧀 *MENÚ ARY LA AREPA*\n\n`;
+    DB.productos.forEach((p, idx) => {
+      respuestaMenu += `*${idx + 1}. ${p.nombre}* - $${p.precio.toLocaleString()}\n_${p.desc}_\n\n`;
+    });
+    respuestaMenu += `🕒 *Horarios:*\n🛵 Domicilios: 4:00 PM a 9:30 PM\n🍽️ En mesa y recoger: 4:00 PM a 9:45 PM.`;
+    return respuestaMenu;
+  }
+
+  if (texto.includes('vegetariano') || texto.includes('vegetariana') || texto.includes('sin carne')) {
+    return `🌱 *¡Sí, tenemos opciones vegetarianas!*\nNuestra base es de *arepa agridulce con abundante queso fundido* 🧀.\nPuedes armarla con: Guacamole fresco ($2.000), Pico de gallo ($2.000), Totopos ($2.000), Piña calada ($2.000), Jalapeños ($2.000) o Huevos de codorniz ($1.000). También la dulce de *Quipitos* ($16.500) es sin carne.`;
+  }
+
+  if (texto.includes('cancelar') || texto.includes('cancelo') || texto.includes('anular')) {
     const ultimoPedido = DB.pedidos.find(p => p.cliente && p.cliente.celular === celular && p.estado !== 'CANCELADO' && p.estado !== 'ENTREGADO');
     if (ultimoPedido) {
       if (ultimoPedido.estado === 'PENDIENTE') {
@@ -56,170 +654,101 @@ function procesarMensajeAgente(celular, mensajeTexto) {
         guardarDB();
         io.emit('estado-actualizado', { id: ultimoPedido.id, nuevoEstado: 'CANCELADO', pedido: ultimoPedido });
         delete sesionesBot[celular];
-        return `🙌 ¡Entendido de una! No te preocupes para nada, ya cancelé tu pedido *${ultimoPedido.numero}* y le avisé a los chicos de la cocina para que no lo preparen.\n\nSi ya habías hecho la transferencia por Nequi/Bre-B, escríbenos porfa para devolverte el dinero sin problema. ¡Esperamos consentirte en una próxima ocasión! ❤️`;
+        return `❌ *¡Tu pedido ${ultimoPedido.numero} ha sido cancelado con éxito!*\nYa notificamos a la cocina para que no lo preparen.`;
       } else {
-        return `⚠️ ¡Ay! Tu pedido *${ultimoPedido.numero}* ya está en la plancha con el quesito derretido 🔥 o empacándose.\n\nPorfa llámanos de una al 📞 *321 5035691* para revisar si alcanzamos a frenarlo con el domiciliario.`;
+        return `⚠️ Tu pedido *${ultimoPedido.numero}* ya está en preparación. Comunícate urgente al *321 5035691*.`;
       }
     } else {
-      return `Tranquilo(a), revisé en el sistema y no tienes ningún pedido activo en este momento. Si necesitas algo más, aquí estoy con todo el gusto.`;
+      return `ℹ️ No tienes ningún pedido activo en este momento.`;
     }
   }
 
-  // 6. OPCIONES VEGETARIANAS
-  if (texto.includes('vegetariano') || texto.includes('vegetariana') || texto.includes('sin carne') || texto.includes('vegano')) {
-    return `🌱 *¡Por supuesto que sí! Pensamos en todos los gustos y te va a encantar.*\n\nNuestra base es de *arepa agridulce artesanal rellena de abundante queso y bañada en queso fundido caliente* 🧀🤤.\n\nPuedes pedir la *Arepa Sola con Queso ($7.000)* y consentirla con nuestros extras 100% vegetarianos:\n• 🥑 Guacamole fresco y cremoso ($2.000)\n• 🍅 Pico de gallo recién picado ($2.000)\n• 🌽 Totopos crocantes de Doritos ($2.000)\n• 🍍 Piña calada dulce de la casa ($2.000)\n• 🌶️ Jalapeños para los que les gusta el picante ($2.000)\n• 🥚 Huevitos de codorniz ($1.000)\n• 🧀 O doble capa de queso extra ($5.000)\n\n¡Y si te gusta el dulce, nuestra arepa de *Quipitos con arequipe y leche condensada ($16.500)* no tiene carne y es una locura! ¿Te animas a probarla? ✨`;
-  }
-
-  // 7. HORARIOS Y UBICACIÓN
-  if (texto.includes('horario') || texto.includes('hora') || texto.includes('abierto') || texto.includes('cierran')) {
-    return `🕒 ¡Con gusto te cuento! En Popayán atendemos todos los días:\n🛵 *Domicilios:* De 4:00 PM a 9:30 PM\n🍽️ *En Mesa y para Llevar:* De 4:00 PM a 9:45 PM\n\n${abiertoDomicilio ? '🟢 ¡En este momento tenemos la plancha prendida y estamos listos para atenderte!' : '🔴 Ahorita la cocina está en descanso, pero a las 4:00 PM arrancamos con toda.'}`;
-  }
-
-  if (texto.includes('donde estan') || texto.includes('dónde están') || texto.includes('ubicacion') || texto.includes('ubicación') || texto.includes('direccion')) {
-    return `📍 ¡Nos encantaría que nos visites! Estamos en Popayán en la *Cra 7 #10N-22 B, Prados del Norte (dentro de WokHouse)* 🍽️.\n\nY si no quieres salir de casa, ¡te lo llevamos calientito hasta tu puerta! 🛵💨`;
-  }
-
-  if (texto.includes('tiempo') || texto.includes('cuanto demora') || texto.includes('cuánto tarda')) {
-    return `🛵 Normalmente nos tardamos entre *30 y 45 minuticos*, porque cada arepa se asa y se baña en queso al momento para que te llegue humeando a la mesa. ¡Te prometemos que la espera vale totalmente la pena! 🤤`;
-  }
-
-  // 8. CONSULTA DE ESTADO
-  if (texto.includes('estado') || texto.includes('mi pedido') || texto.includes('como va') || texto.includes('cómo va')) {
-    const ultimoPedido = DB.pedidos.find(p => p.cliente && p.cliente.celular === celular && p.estado !== 'CANCELADO');
-    if (ultimoPedido) {
-      let estadoTexto = '';
-      if (ultimoPedido.estado === 'PENDIENTE') estadoTexto = '🕒 Ya entró a la comanda y está en cola de cocina.';
-      else if (ultimoPedido.estado === 'PREPARANDO') estadoTexto = '🔥 ¡Tus arepas ya están en la plancha bañándose en queso!';
-      else if (ultimoPedido.estado === 'LISTO') estadoTexto = '🛵 ¡Tu pedido ya quedó empacado y va saliendo con el motorizado!';
-      else estadoTexto = '✅ Ya aparece como entregado. ¡Esperamos que te haya gustado muchísimo!';
-
-      return `👋 ¡Hola de nuevo! Tu pedido *${ultimoPedido.numero}* va así:\n\n*Estado:* ${ultimoPedido.estado}\n${estadoTexto}\n\n*Total:* $${ultimoPedido.total.toLocaleString()}`;
-    } else {
-      return `Revisé y no encontré ningún pedido activo con tu número. Si quieres que te preparemos algo delicioso, solo dime: *"Quiero ver el menú"* 😊.`;
-    }
-  }
-
-  // 9. MENÚ COMPLETO
-  if (texto.includes('menu') || texto.includes('menú') || texto.includes('carta') || texto.includes('precios') || texto.includes('que hay')) {
-    let respuestaMenu = `🧀 *¡AQUÍ TIENES NUESTRO MENÚ COMPLETO!* 🤤\n_Todas van con base de arepa agridulce y abundante queso fundido:_\n\n`;
-    DB.productos.forEach((p, idx) => {
-      respuestaMenu += `*${idx + 1}. ${p.nombre}* • $${p.precio.toLocaleString()}\n_${p.desc}_\n\n`;
-    });
-    respuestaMenu += `🥤 *Bebidas frías:* Coca-Cola Cero, Manzana, Colombiana, Pepsi, Pony Mini ($3.000) y Agua ($2.000).\n\n`;
-    
-    if (!abiertoDomicilio) {
-      respuestaMenu += `🕒 _Nota con cariño:_ Recuerda que abrimos cocina a las *4:00 PM*. ¡Puedes ir escogiendo tus favoritas desde ya! ✨`;
-    } else {
-      respuestaMenu += `👉 *¿Cuál te antojó más?* Solo escríbeme el nombre (ejemplo: _"Quiero una Campesina y una Coca-Cola"_).`;
-    }
-    return respuestaMenu;
-  }
-
-  // ==========================================
-  // RESPUESTA CÁLIDA CUANDO ESTÁ CERRADO
-  // ==========================================
   if (!abiertoDomicilio) {
     if (abiertoMesa) {
-      return `¡Hola! 👋 Qué gusto que nos escribas. Te cuento que por hoy el servicio de *domicilios ya cerró* (va hasta las 9:30 PM).\n\n🍽️ *¡Pero aún alcanzamos a atenderte en nuestro local de Prados del Norte hasta las 9:45 PM!* O si prefieres, puedes revisar el *"Menú"* y dejarnos tu antojo listo para mañana a las 4:00 PM 🧀✨.`;
+      return `⚠️ *Atención:* El servicio de *domicilios ya cerró por hoy* (opera hasta las 9:30 PM).\n\n🍽️ *¡Pero aún puedes visitarnos en el local o pedir para recoger hasta las 9:45 PM!*`;
     } else {
-      return `🌙 *¡Hola! Qué gusto saludarte.* En este momento nuestra cocina se encuentra descansando para tener todo fresquito mañana.\n\n🕒 *Nuestros horarios en Popayán son:*\n🛵 Domicilios: 4:00 PM a 9:30 PM\n🍽️ En local: 4:00 PM a 9:45 PM\n\n📖 *¡Pero no te quedes con las ganas de ver las delicias que tenemos!*\n• Escribe *"Menú"* para antojarte con la carta y precios.\n• O mira las fotos reales aquí: *https://ary-la-arepa.onrender.com*\n\n¡Mañana desde las 4:00 PM te esperamos con los brazos abiertos y el queso bien caliente! 🧀❤️`;
+      return `🌙 *¡Hola! En este momento la cocina de Ary la arepa está cerrada.*\n\n🕒 *Horarios:*\n🛵 Domicilios: 4:00 PM a 9:30 PM\n🍽️ Mesa y Recoger: 4:00 PM a 9:45 PM\n\nEscribe *"Menú"* para revisar nuestra carta. ¡Te esperamos hoy a las 4:00 PM! 🧀`;
     }
   }
 
-  // ==========================================
-  // FLUJO DE TOMA DE PEDIDO CON ANTOJO
-  // ==========================================
   let productoEncontrado = DB.productos.find(p => texto.includes(p.nombre.toLowerCase()));
-  let bebidaEncontrada = DB.bebidas.find(b => texto.includes(b.nombre.toLowerCase().split(' ')[0]));
-
   if (productoEncontrado) {
     sesion.items.push({ id: productoEncontrado.id, nombre: productoEncontrado.nombre, precio: productoEncontrado.precio, extras: [], notas: '' });
     sesion.fase = 'ARMANDO_PEDIDO';
-    return `🤤 *¡Uff, excelente elección!* La *${productoEncontrado.nombre}* es de las más pedidas de la casa.\n\nTe anoté:\n• *1x Arepa ${productoEncontrado.nombre}* ($${productoEncontrado.precio.toLocaleString()}) 🧀\n\n¿Te gustaría consentirte con algo más? (Tenemos adición de tocineta crocante, queso extra fundido o una bebida bien fría para acompañar).\n\nSi ya estás listo(a), avísame escribiendo: *"Listo"* o *"Ya"* para tomar tus datos de entrega calientita 🛵💨.`;
+    return `✅ Agregué *1x Arepa ${productoEncontrado.nombre}* ($${productoEncontrado.precio.toLocaleString()}).\n¿Deseas algo más o escribes *"Listo"* para tomar tus datos de entrega? (Recibimos domicilios hasta las 9:30 PM).`;
   }
 
-  if (bebidaEncontrada && sesion.items.length > 0) {
-    sesion.items.push({ id: bebidaEncontrada.id, nombre: bebidaEncontrada.nombre, precio: bebidaEncontrada.precio, extras: [], notas: '' });
-    return `🥤 ¡De una! Agregué *${bebidaEncontrada.nombre}* ($${bebidaEncontrada.precio.toLocaleString()}) bien fría a tu orden.\n\n¿Deseas agregar alguna otra arepa o escribes *"Listo"* para tomarte la dirección?`;
-  }
+  return `👋 ¡Hola! Bienvenido a *Ary la arepa* Popayán 🧀.\n\n🛵 Domicilios activos de *4:00 PM a 9:30 PM*.\n🍽️ Servicio en mesa y recoger hasta las *9:45 PM*.\n\nEscribe *"Menú"* para ver la carta o dime qué arepa deseas pedir.`;
+}
 
-  if ((texto.includes('listo') || texto.includes('eso es todo') || texto.includes('ya')) && sesion.items.length > 0) {
-    sesion.fase = 'PIDIENDO_DATOS';
-    const subtotal = sesion.items.reduce((a, b) => a + b.precio, 0);
-    return `📋 *¡Perfecto! Ya casi tenemos todo listo para prender la plancha:*
-${sesion.items.map(i => `• 1x ${i.nombre} ($${i.precio.toLocaleString()})`).join('\n')}
-*Subtotal arepas:* $${subtotal.toLocaleString()}
+app.post('/api/bot/chat', (req, res) => {
+  const { celular, mensaje } = req.body;
+  if (!celular || !mensaje) return res.status(400).json({ error: 'Faltan datos' });
+  const respuesta = procesarMensajeAgente(celular, mensaje);
+  res.json({ ok: true, respuesta });
+});
 
-Para que el domiciliario llegue derechito y sin demoras a tu puerta en Popayán, porfa regálame en un solo mensajito:
-1. *Tu Nombre completo*
-2. *Dirección exacta* (casa, torre o apto)
-3. *Tu Barrio* (ej: Ciudad Jardín, Prados del Norte, Centro...)`;
-  }
+// Sockets
+io.on('connection', (socket) => {
+  socket.on('nuevo-pedido', (pedidoData) => {
+    const { abiertoDomicilio, abiertoMesa } = verificarEstadoServicios();
+    const esDomicilio = (pedidoData.modalidad === 'Domicilio');
+    const esLocalOMesaORecoger = (pedidoData.modalidad && (
+      pedidoData.modalidad.includes('Local') || 
+      pedidoData.modalidad.includes('Mesa') || 
+      pedidoData.modalidad.includes('Recoger')
+    ));
 
-  if (sesion.fase === 'PIDIENDO_DATOS') {
-    let barrioDetectado = DB.barrios.find(b => texto.includes(b.nombre.toLowerCase().split(' ')[0]));
-    if (!barrioDetectado) barrioDetectado = DB.barrios[0];
-
-    sesion.cliente.nombre = mensajeTexto.split('\n')[0] || 'Cliente WhatsApp';
-    sesion.cliente.direccion = mensajeTexto;
-    sesion.cliente.barrio = barrioDetectado.nombre;
-    sesion.costoEnvio = barrioDetectado.costo;
-
-    sesion.fase = 'CONFIRMANDO';
-    const subtotal = sesion.items.reduce((a, b) => a + b.precio, 0);
-    const total = subtotal + sesion.costoEnvio;
-
-    return `📍 *¡Súper! Anoté tu entrega en:* ${sesion.cliente.barrio} (Costo de envío: $${sesion.costoEnvio.toLocaleString()})
-💰 *VALOR TOTAL A PAGAR:* $${total.toLocaleString()}
-
-¿Cómo te queda más cómodo pagar hoy?
-1️⃣ *QR Bre-B / Nequi / Bancolombia*
-2️⃣ *Efectivo contra entrega*
-
-_(Respóndeme con el número *"1"* o *"2"* para mandar la comanda a la cocina ya mismo)_.`;
-  }
-
-  if (sesion.fase === 'CONFIRMANDO') {
-    const metodo = (texto === '2' || texto.includes('efectivo')) ? 'Efectivo' : 'Nequi / Bre-B';
-    const subtotal = sesion.items.reduce((a, b) => a + b.precio, 0);
-    const total = subtotal + sesion.costoEnvio;
-
-    const nuevoPedido = registrarPedidoEnSistema({
-      cliente: sesion.cliente,
-      modalidad: 'Domicilio',
-      items: sesion.items,
-      metodoPago: metodo,
-      subtotal: subtotal,
-      costoEnvio: sesion.costoEnvio,
-      total: total,
-      origen: 'WhatsApp IA'
-    });
-
-    delete sesionesBot[celular];
-
-    let respuestaFinal = `🎉 *¡LISTO! TU PEDIDO ESTÁ CONFIRMADO*\n\n`;
-    respuestaFinal += `Orden: *${nuevoPedido.numero}*\n`;
-    respuestaFinal += `Total a pagar: *$${total.toLocaleString()}*\n`;
-    respuestaFinal += `Método elegido: *${metodo}*\n\n`;
-
-    if (metodo.includes('Nequi') || metodo.includes('Bre-B')) {
-      respuestaFinal += `📲 *Aquí tienes los daticos para tu transferencia:*\n`;
-      respuestaFinal += `• Número Nequi / Llave Bre-B: *321 5035691*\n`;
-      respuestaFinal += `• Titular: *Ary la arepa*\n\n`;
-      respuestaFinal += `Porfa cuando hagas el pago, envíame la fotico del comprobante por aquí para despacharte sin demora.`;
-    } else {
-      respuestaFinal += `💵 El motorizado llevará el cambio necesario para recibirte en efectivo en tu puerta.`;
+    if (esDomicilio && !abiertoDomicilio) {
+      socket.emit('error-horario', { 
+        mensaje: '⛔ El servicio de domicilios está cerrado. Nuestro horario de envíos es de 4:00 PM a 9:30 PM.' 
+      });
+      return;
     }
 
-    respuestaFinal += `\n\n👨‍🍳 La campana ya sonó en la cocina y tus arepas empezaron a asarse. ¡Mil gracias por preferirnos y que disfrutes muchísimo tu comida! 🧀✨`;
-    return respuestaFinal;
-  }
+    if (esLocalOMesaORecoger && !abiertoMesa) {
+      socket.emit('error-horario', { 
+        mensaje: '⛔ La cocina ya cerró la recepción de pedidos en local y para recoger por hoy (recibimos hasta las 9:45 PM).' 
+      });
+      return;
+    }
 
-  // 10. SALUDO DE BIENVENIDA NATURAL
-  if (['hola', 'buenas', 'buenos dias', 'buenas tardes', 'buenas noches', 'hey'].includes(texto)) {
-    return `👋 ¡Hola! Qué alegría saludarte. Bienvenido(a) a *Ary la arepa* Popayán 🧀✨ (De Popayán para el mundo).\n\nSoy tu asistente virtual y hoy tenemos la plancha lista con las arepas más brutales y cargadas de queso derretido. ¿Qué se te antoja probar hoy? 🤤\n\n1️⃣ Escribe *"Menú"* para ver la carta completa y precios.\n2️⃣ Escribe *"Fotos"* para ver cómo lucen de provocativas.\n3️⃣ Escribe *"Asesor"* si prefieres que te atienda una persona de nuestro equipo.\n4️⃣ O simplemente dime qué deseas pedir (ejemplo: _"Quiero una arepa Campesina"_).`;
-  }
+    const nuevoPedido = registrarPedidoEnSistema(pedidoData);
+    socket.emit('confirmacion-pedido', { id: nuevoPedido.id, numero: nuevoPedido.numero });
+  });
 
-  // 11. FALLBACK HUMILDE Y SERVICIAL (SI NO COMPRENDIÓ)
-  return `Ay, discúlpame de corazón 🙈, como soy el asistente virtual no alcancé a entender bien ese mensajito.\n\n👉 Si deseas que te atienda una *persona de nuestro equipo* aquí en el local, escribe *"Asesor"* o llámanos con toda confianza al 📞 *321 5035691*.\n\n👉 Y si quieres ver nuestras arepas y precios, escríbeme *"Menú"* y con gusto te lo comparto 🧀✨.`;
-}
+  socket.on('cambiar-estado', ({ id, nuevoEstado }) => {
+    const pedido = DB.pedidos.find(p => p.id === id);
+    if (pedido) {
+      pedido.estado = nuevoEstado;
+      guardarDB();
+      if (supabase) {
+        supabase.from('pedidos').update({ estado: nuevoEstado }).eq('id', id).catch(() => {});
+      }
+      io.emit('estado-actualizado', { id, nuevoEstado, pedido });
+    }
+  });
+
+  socket.on('cancelar-comanda-cocina', ({ id, motivo }) => {
+    const pedido = DB.pedidos.find(p => p.id === id);
+    if (pedido && pedido.estado === 'PENDIENTE') {
+      pedido.estado = 'CANCELADO';
+      pedido.motivoCancelacion = motivo || 'Rechazado por cocina';
+      devolverInventarioCancelado(pedido.items || [], pedido.modalidad);
+      guardarDB();
+      if (supabase) {
+        supabase.from('pedidos').update({ estado: 'CANCELADO' }).eq('id', id).catch(() => {});
+      }
+      io.emit('estado-actualizado', { id, nuevoEstado: 'CANCELADO', pedido });
+    }
+  });
+});
+
+// ARRANQUE SEGURO EN 0.0.0.0 PARA RENDER
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`✓ Servidor activo en puerto ${PORT}`);
+  sincronizarConSupabase().catch(err => {
+    console.error("Error en sincronización inicial:", err.message);
+  });
+});
