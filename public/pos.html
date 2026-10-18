@@ -8,7 +8,6 @@
   <script src="/socket.io/socket.io.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <!-- Estilos de Impresión Térmica 80mm -->
   <style>
     @media print {
       body * { visibility: hidden; }
@@ -40,15 +39,15 @@
       <div class="space-y-2 text-left text-xs">
         <div>
           <label class="block font-bold mb-1 text-stone-300">Usuario</label>
-          <input type="text" id="login-user" value="cajero1" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white">
+          <input type="text" id="login-user" value="cajero1" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold">
         </div>
         <div>
-          <label class="block font-bold mb-1 text-stone-300">Contraseña</label>
-          <input type="password" id="login-pass" value="2024" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white">
+          <label class="block font-bold mb-1 text-stone-300">Contraseña / PIN</label>
+          <input type="password" id="login-pass" value="2024" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold">
         </div>
       </div>
       <p id="login-error" class="text-xs text-red-500 font-bold hidden">Credenciales inválidas</p>
-      <button onclick="iniciarSesionCajero()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-3 rounded-xl font-black text-xs uppercase">
+      <button onclick="iniciarSesionCajero()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-3 rounded-xl font-black text-xs uppercase shadow-lg">
         Entrar al Turno
       </button>
     </div>
@@ -59,14 +58,14 @@
     <div class="bg-neutral-900 border-2 border-green-500 rounded-3xl p-6 max-w-xs w-full text-center space-y-4">
       <i class="fa-solid fa-cash-register text-3xl text-green-400"></i>
       <h3 class="text-lg font-black text-green-400 uppercase">Apertura de Turno</h3>
-      <p class="text-xs text-stone-300">Ingresa el dinero base en efectivo con el que inicias en caja:</p>
+      <p class="text-xs text-stone-300">Ingresa la base en efectivo con la que inicias en caja:</p>
       
       <div class="text-left text-xs">
-        <label class="block font-bold mb-1 text-stone-400">Base en Efectivo ($)</label>
+        <label class="block font-bold mb-1 text-stone-400">Base en Efectivo ($ COP)</label>
         <input type="number" id="caja-base" value="50000" class="w-full bg-neutral-800 border border-stone-700 p-3 rounded-xl text-lg font-black text-white text-center">
       </div>
 
-      <button onclick="confirmarAperturaCaja()" class="w-full bg-green-500 hover:bg-green-400 text-black py-3 rounded-xl font-black text-xs uppercase">
+      <button onclick="confirmarAperturaCaja()" class="w-full bg-green-500 hover:bg-green-400 text-black py-3 rounded-xl font-black text-xs uppercase shadow-lg">
         Abrir Turno de Venta
       </button>
     </div>
@@ -96,37 +95,30 @@
     </div>
   </header>
 
-  <!-- Cuerpo Principal (Pantalla dividida) -->
+  <!-- Cuerpo Principal (2 Columnas) -->
   <div class="flex-1 flex overflow-hidden">
     
-    <!-- Lado Izquierdo: Catálogo de Productos y Adiciones -->
+    <!-- Lado Izquierdo: Catálogo Táctil -->
     <div class="w-7/12 flex flex-col border-r border-stone-800 bg-neutral-950 p-3 space-y-3 overflow-y-auto">
-      
-      <!-- Pestañas Rápidas -->
       <div class="flex gap-2">
         <button onclick="mostrarSeccion('arepas')" id="tab-arepas" class="px-4 py-2 bg-yellow-400 text-black font-black text-xs rounded-xl shadow">Arepas Principales</button>
         <button onclick="mostrarSeccion('extras')" id="tab-extras" class="px-4 py-2 bg-neutral-800 text-stone-300 font-bold text-xs rounded-xl border border-stone-700">Extras & Adiciones</button>
         <button onclick="mostrarSeccion('bebidas')" id="tab-bebidas" class="px-4 py-2 bg-neutral-800 text-stone-300 font-bold text-xs rounded-xl border border-stone-700">Bebidas Frías</button>
       </div>
 
-      <!-- Grid Arepas -->
       <div id="grid-pos-arepas" class="grid grid-cols-3 gap-2.5"></div>
-
-      <!-- Grid Extras -->
       <div id="grid-pos-extras" class="grid grid-cols-3 gap-2 hidden"></div>
-
-      <!-- Grid Bebidas -->
       <div id="grid-pos-bebidas" class="grid grid-cols-3 gap-2 hidden"></div>
     </div>
 
-    <!-- Lado Derecho: Comanda Activa y Facturación -->
+    <!-- Lado Derecho: Facturación y Comanda -->
     <div class="w-5/12 flex flex-col justify-between bg-neutral-900 p-3 space-y-2">
       
-      <!-- Datos Cliente Frecuente -->
+      <!-- Datos de la Orden -->
       <div class="bg-neutral-950 border border-stone-800 p-2.5 rounded-2xl text-xs space-y-1.5">
         <div class="flex justify-between items-center">
-          <span class="font-black text-yellow-400 uppercase text-[10px]"><i class="fa-solid fa-address-book"></i> Cliente Frecuente</span>
-          <select id="pos-tipo-orden" class="bg-neutral-800 text-white rounded-lg p-1 text-[10px] font-bold border border-stone-700">
+          <span class="font-black text-yellow-400 uppercase text-[10px]"><i class="fa-solid fa-address-book"></i> Destino / Cliente</span>
+          <select id="pos-tipo-orden" onchange="cambiarTipoOrden()" class="bg-neutral-800 text-white rounded-lg p-1 text-[10px] font-bold border border-stone-700">
             <option value="Mesa">En Local / Mesa</option>
             <option value="Domicilio">Domicilio Popayán</option>
             <option value="Para Llevar">Para Llevar</option>
@@ -135,7 +127,7 @@
 
         <div class="grid grid-cols-2 gap-2">
           <input type="tel" id="pos-cli-tel" oninput="buscarClienteFrecuente()" placeholder="Celular (ej: 311...)" class="bg-neutral-800 border border-stone-700 p-1.5 rounded-lg text-white text-xs">
-          <input type="text" id="pos-cli-nombre" placeholder="Nombre completo" class="bg-neutral-800 border border-stone-700 p-1.5 rounded-lg text-white text-xs">
+          <input type="text" id="pos-cli-nombre" placeholder="Nombre cliente" class="bg-neutral-800 border border-stone-700 p-1.5 rounded-lg text-white text-xs">
         </div>
         <div class="grid grid-cols-2 gap-2">
           <input type="text" id="pos-cli-dir" placeholder="Dirección / Mesa #" class="bg-neutral-800 border border-stone-700 p-1.5 rounded-lg text-white text-xs">
@@ -143,29 +135,41 @@
         </div>
       </div>
 
-      <!-- Lista de Ítems en la Comanda -->
+      <!-- Ítems seleccionados -->
       <div class="flex-1 bg-neutral-950 border border-stone-800 rounded-2xl p-2.5 overflow-y-auto space-y-1.5" id="pos-items-lista">
         <p class="text-stone-500 text-xs text-center py-10 italic">Toca una arepa para comenzar la orden...</p>
       </div>
 
-      <!-- Descuentos y Modos de Pago -->
+      <!-- MÉTODOS DE PAGO Y CANALES (RAPPI, PAUTA, EFECTIVO, NEQUI) -->
       <div class="bg-neutral-950 border border-stone-800 p-2.5 rounded-2xl text-xs space-y-2">
-        <div class="flex justify-between items-center">
-          <div class="flex items-center gap-1.5">
-            <button onclick="aplicarDescuentoPrompt()" class="bg-stone-800 hover:bg-stone-700 border border-stone-700 text-yellow-400 px-2.5 py-1 rounded-lg text-[10px] font-black">
-              <i class="fa-solid fa-tag"></i> Descuento: <span id="lbl-descuento">$0</span>
+        <div>
+          <label class="text-[10px] text-stone-400 font-bold uppercase block mb-1">Canal de Pago / Venta:</label>
+          <div class="grid grid-cols-4 gap-1.5">
+            <button type="button" onclick="setMetodoPagoPOS('Efectivo')" id="pos-btn-efec" class="py-2 px-1 rounded-xl font-bold text-xs bg-yellow-400 text-black text-center shadow">
+              💵 Efectivo
             </button>
-          </div>
-          <div class="flex gap-1.5">
-            <button onclick="setMetodoPagoPOS('Efectivo')" id="pos-btn-efec" class="px-3 py-1 rounded-lg font-bold text-xs bg-yellow-400 text-black">Efectivo</button>
-            <button onclick="setMetodoPagoPOS('Nequi / Transferencia')" id="pos-btn-nequi" class="px-3 py-1 rounded-lg font-bold text-xs bg-neutral-800 text-stone-300 border border-stone-700">Nequi</button>
+            <button type="button" onclick="setMetodoPagoPOS('Nequi / Bre-B')" id="pos-btn-nequi" class="py-2 px-1 rounded-xl font-bold text-xs bg-neutral-800 text-stone-300 border border-stone-700 text-center">
+              📲 Nequi
+            </button>
+            <button type="button" onclick="setMetodoPagoPOS('Rappi')" id="pos-btn-rappi" class="py-2 px-1 rounded-xl font-black text-xs bg-neutral-800 text-orange-400 border border-stone-700 text-center">
+              🟠 Rappi (-20%)
+            </button>
+            <button type="button" onclick="setMetodoPagoPOS('Pauta')" id="pos-btn-pauta" class="py-2 px-1 rounded-xl font-black text-xs bg-neutral-800 text-purple-400 border border-stone-700 text-center">
+              ⭐ Pauta ($0)
+            </button>
           </div>
         </div>
 
         <!-- Totales -->
         <div class="border-t border-stone-800 pt-1.5 space-y-0.5 text-[11px]">
           <div class="flex justify-between text-stone-400"><span>Subtotal:</span><span id="pos-subtotal">$0</span></div>
-          <div class="flex justify-between text-stone-400"><span>Envío:</span><span id="pos-envio">$0</span></div>
+          <div class="flex justify-between text-stone-400" id="pos-row-envio"><span>Envío:</span><span id="pos-envio">$0</span></div>
+          
+          <!-- Fila de Ajuste Rappi o Pauta -->
+          <div class="flex justify-between text-emerald-400 font-bold hidden" id="pos-row-descuento">
+            <span id="pos-lbl-desc-tipo">Descuento:</span><span id="pos-descuento">-$0</span>
+          </div>
+
           <div class="flex justify-between text-base font-black text-white pt-1 border-t border-stone-800">
             <span>TOTAL:</span><span id="pos-total" class="text-yellow-400 text-lg">$0</span>
           </div>
@@ -195,10 +199,14 @@
       <div class="space-y-2 text-xs" id="arqueo-datos">
         <div class="flex justify-between"><span>Base inicial:</span><strong id="arq-base">$0</strong></div>
         <div class="flex justify-between text-green-400"><span>Ventas Efectivo (+):</span><strong id="arq-efectivo">$0</strong></div>
-        <div class="flex justify-between text-blue-400"><span>Ventas Nequi (+):</span><strong id="arq-digital">$0</strong></div>
+        <div class="flex justify-between text-blue-400"><span>Ventas Nequi / Bre-B (+):</span><strong id="arq-digital">$0</strong></div>
+        <div class="flex justify-between text-orange-400"><span>Ventas Rappi (Neto):</span><strong id="arq-rappi">$0</strong></div>
+        <div class="flex justify-between text-purple-400"><span>Cortesías / Pautas:</span><strong id="arq-pauta">0 órdenes ($0)</strong></div>
+        
         <div class="border-t border-stone-800 pt-2 flex justify-between font-black text-sm text-yellow-400">
-          <span>Total Esperado en Caja:</span><strong id="arq-total-caja">$0</strong>
+          <span>EFECTIVO ESPERADO EN CAJÓN:</span><strong id="arq-total-caja">$0</strong>
         </div>
+        <p class="text-[10px] text-stone-500 italic">* Rappi y Nequi entran a cuenta bancaria, no se exigen en efectivo al cajero.</p>
       </div>
 
       <div class="grid grid-cols-2 gap-2 pt-3">
@@ -220,8 +228,8 @@
     let DATA = { info: {}, productos: [], extras: [], bebidas: [], barrios: [], clientesFrecuentes: [] };
     let cajeroActivo = null;
     let comandaPOS = [];
+    let metodoPagoActual = 'Efectivo'; // 'Efectivo', 'Nequi / Bre-B', 'Rappi', 'Pauta'
     let descuentoTotal = 0;
-    let metodoPagoActual = 'Efectivo';
 
     window.onload = async () => {
       const res = await fetch('/api/data-inicial');
@@ -230,7 +238,6 @@
       renderBarriosPOS();
     };
 
-    // Login
     async function iniciarSesionCajero() {
       const usuario = document.getElementById('login-user').value.trim();
       const clave = document.getElementById('login-pass').value.trim();
@@ -247,18 +254,14 @@
         document.getElementById('lbl-cajero').innerText = cajeroActivo.nombre;
         document.getElementById('modal-login').classList.add('hidden');
         
-        // Verificar si hay turno activo o pedir apertura
         const rCaja = await fetch('/api/caja/resumen');
         const stCaja = await rCaja.json();
-        if (!stCaja.turnoActivo) {
-          document.getElementById('modal-apertura').classList.remove('hidden');
-        }
+        if (!stCaja.turnoActivo) document.getElementById('modal-apertura').classList.remove('hidden');
       } else {
         document.getElementById('login-error').classList.remove('hidden');
       }
     }
 
-    // Apertura Caja
     async function confirmarAperturaCaja() {
       const base = document.getElementById('caja-base').value;
       await fetch('/api/caja/abrir', {
@@ -269,10 +272,8 @@
       document.getElementById('modal-apertura').classList.add('hidden');
     }
 
-    // Render Catalogo
     function renderCatalogoPOS() {
-      const gArepas = document.getElementById('grid-pos-arepas');
-      gArepas.innerHTML = DATA.productos.map(p => `
+      document.getElementById('grid-pos-arepas').innerHTML = DATA.productos.map(p => `
         <button onclick="agregarArepaComanda(${p.id})" class="bg-neutral-900 border-2 border-yellow-500/40 hover:border-yellow-400 p-2.5 rounded-2xl text-left flex flex-col justify-between h-28 shadow transition">
           <div class="font-black text-xs text-yellow-400 leading-tight">${p.nombre}</div>
           <div class="text-[9px] text-stone-400 line-clamp-2">${p.desc}</div>
@@ -280,16 +281,14 @@
         </button>
       `).join('');
 
-      const gExtras = document.getElementById('grid-pos-extras');
-      gExtras.innerHTML = DATA.extras.map(e => `
+      document.getElementById('grid-pos-extras').innerHTML = DATA.extras.map(e => `
         <button onclick="agregarExtraUltimaArepa('${e.nombre}', ${e.precio})" class="bg-neutral-900 border border-stone-800 hover:border-yellow-400 p-2 rounded-xl text-left h-20 flex flex-col justify-between">
           <div class="font-bold text-xs text-stone-200">+ ${e.nombre}</div>
           <div class="font-black text-xs text-yellow-400">$${e.precio.toLocaleString()}</div>
         </button>
       `).join('');
 
-      const gBebidas = document.getElementById('grid-pos-bebidas');
-      gBebidas.innerHTML = DATA.bebidas.map(b => `
+      document.getElementById('grid-pos-bebidas').innerHTML = DATA.bebidas.map(b => `
         <button onclick="agregarBebidaComanda(${b.id})" class="bg-neutral-900 border border-stone-800 hover:border-yellow-400 p-2 rounded-xl text-left h-20 flex flex-col justify-between">
           <div class="font-bold text-xs text-stone-200">${b.nombre}</div>
           <div class="font-black text-xs text-yellow-400">$${b.precio.toLocaleString()}</div>
@@ -308,29 +307,21 @@
     }
 
     function renderBarriosPOS() {
-      const s = document.getElementById('pos-cli-barrio');
-      s.innerHTML = `<option value="0">En Local / Sin Domicilio ($0)</option>` + 
+      document.getElementById('pos-cli-barrio').innerHTML = `<option value="0">En Local / Sin Domicilio ($0)</option>` + 
         DATA.barrios.map(b => `<option value="${b.costo}">${b.nombre} (+$${b.costo})</option>`).join('');
     }
 
-    // Manejo de la comanda
     function agregarArepaComanda(id) {
       const p = DATA.productos.find(x => x.id === id);
-      comandaPOS.push({
-        id: p.id,
-        nombre: p.nombre,
-        precio: p.precio,
-        extras: [],
-        notas: ''
-      });
+      comandaPOS.push({ id: p.id, nombre: p.nombre, precio: p.precio, extras: [], notas: '' });
       renderComandaActiva();
     }
 
     function agregarExtraUltimaArepa(nombre, precio) {
       if (comandaPOS.length === 0) return alert('Primero selecciona una arepa para añadirle este extra.');
-      const ultimaArepa = comandaPOS[comandaPOS.length - 1];
-      ultimaArepa.extras.push({ nombre, precio });
-      ultimaArepa.precio += precio;
+      const ultima = comandaPOS[comandaPOS.length - 1];
+      ultima.extras.push({ nombre, precio });
+      ultima.precio += precio;
       renderComandaActiva();
     }
 
@@ -369,9 +360,75 @@
       renderComandaActiva();
     }
 
+    // ==========================================
+    // SELECCIÓN DE PAGO CON RAPPI (-20%) Y PAUTA ($0)
+    // ==========================================
+    function setMetodoPagoPOS(tipo) {
+      metodoPagoActual = tipo;
+
+      // Resaltar botón activo
+      const btnMap = {
+        'Efectivo': 'pos-btn-efec',
+        'Nequi / Bre-B': 'pos-btn-nequi',
+        'Rappi': 'pos-btn-rappi',
+        'Pauta': 'pos-btn-pauta'
+      };
+
+      Object.keys(btnMap).forEach(k => {
+        const btn = document.getElementById(btnMap[k]);
+        if (k === tipo) {
+          if (k === 'Rappi') btn.className = 'py-2 px-1 rounded-xl font-black text-xs bg-orange-500 text-black text-center shadow-lg';
+          else if (k === 'Pauta') btn.className = 'py-2 px-1 rounded-xl font-black text-xs bg-purple-500 text-black text-center shadow-lg';
+          else btn.className = 'py-2 px-1 rounded-xl font-black text-xs bg-yellow-400 text-black text-center shadow-lg';
+        } else {
+          btn.className = 'py-2 px-1 rounded-xl font-bold text-xs bg-neutral-800 text-stone-400 border border-stone-700 text-center';
+        }
+      });
+
+      if (tipo === 'Rappi') {
+        document.getElementById('pos-tipo-orden').value = 'Para Llevar';
+        document.getElementById('pos-cli-barrio').selectedIndex = 0;
+        document.getElementById('pos-cli-nombre').value = 'Cliente Rappi';
+        document.getElementById('pos-cli-dir').value = 'Domiciliario Rappi recoge';
+      } else if (tipo === 'Pauta') {
+        document.getElementById('pos-cli-nombre').value = 'Pauta / Cortesía';
+        document.getElementById('pos-cli-barrio').selectedIndex = 0;
+      }
+
+      recalcularTotalPOS();
+    }
+
+    function cambiarTipoOrden() {
+      recalcularTotalPOS();
+    }
+
     function recalcularTotalPOS() {
       const subtotal = comandaPOS.reduce((acc, i) => acc + i.precio, 0);
-      const envio = parseInt(document.getElementById('pos-cli-barrio').value || 0);
+      const tipoOrden = document.getElementById('pos-tipo-orden').value;
+      const envio = (tipoOrden === 'Domicilio' && metodoPagoActual !== 'Rappi') ? parseInt(document.getElementById('pos-cli-barrio').value || 0) : 0;
+
+      let descuento = 0;
+      const rowDesc = document.getElementById('pos-row-descuento');
+      const lblDesc = document.getElementById('pos-lbl-desc-tipo');
+
+      // 1. REGLA RAPPI: RESTAR EL 20% DE COMISIÓN AUTOMÁTICO
+      if (metodoPagoActual === 'Rappi') {
+        descuento = Math.round(subtotal * 0.20);
+        rowDesc.classList.remove('hidden');
+        lblDesc.innerText = 'Comisión Rappi (-20%):';
+        document.getElementById('pos-descuento').innerText = `-$${descuento.toLocaleString()}`;
+      } 
+      // 2. REGLA PAUTA: ENVIAR VENTA EN $0
+      else if (metodoPagoActual === 'Pauta') {
+        descuento = subtotal + envio;
+        rowDesc.classList.remove('hidden');
+        lblDesc.innerText = 'Cortesía Pauta (100%):';
+        document.getElementById('pos-descuento').innerText = `-$${descuento.toLocaleString()}`;
+      } else {
+        rowDesc.classList.add('hidden');
+      }
+
+      descuentoTotal = descuento;
       const total = Math.max(0, subtotal + envio - descuentoTotal);
 
       document.getElementById('pos-subtotal').innerText = `$${subtotal.toLocaleString()}`;
@@ -379,7 +436,6 @@
       document.getElementById('pos-total').innerText = `$${total.toLocaleString()}`;
     }
 
-    // Clientes Frecuentes
     function buscarClienteFrecuente() {
       const cel = document.getElementById('pos-cli-tel').value.trim();
       if (cel.length >= 7) {
@@ -387,7 +443,6 @@
         if (cli) {
           document.getElementById('pos-cli-nombre').value = cli.nombre;
           document.getElementById('pos-cli-dir').value = cli.direccion;
-          // Seleccionar barrio si coincide
           const sel = document.getElementById('pos-cli-barrio');
           for (let i = 0; i < sel.options.length; i++) {
             if (sel.options[i].text.includes(cli.barrio)) {
@@ -400,47 +455,31 @@
       }
     }
 
-    function setMetodoPagoPOS(m) {
-      metodoPagoActual = m;
-      document.getElementById('pos-btn-efec').className = m === 'Efectivo' ? 'px-3 py-1 rounded-lg font-bold text-xs bg-yellow-400 text-black' : 'px-3 py-1 rounded-lg font-bold text-xs bg-neutral-800 text-stone-300 border border-stone-700';
-      document.getElementById('pos-btn-nequi').className = m.includes('Nequi') ? 'px-3 py-1 rounded-lg font-bold text-xs bg-yellow-400 text-black' : 'px-3 py-1 rounded-lg font-bold text-xs bg-neutral-800 text-stone-300 border border-stone-700';
-    }
-
-    function aplicarDescuentoPrompt() {
-      const desc = prompt('Ingresa el valor del descuento en pesos (ej: 2000):', '0');
-      if (desc !== null) {
-        descuentoTotal = parseInt(desc) || 0;
-        document.getElementById('lbl-descuento').innerText = `-$${descuentoTotal.toLocaleString()}`;
-        recalcularTotalPOS();
-      }
-    }
-
     function limpiarComandaPOS() {
       comandaPOS = [];
       descuentoTotal = 0;
-      document.getElementById('lbl-descuento').innerText = '$0';
       document.getElementById('pos-cli-tel').value = '';
       document.getElementById('pos-cli-nombre').value = '';
       document.getElementById('pos-cli-dir').value = '';
       document.getElementById('pos-cli-barrio').selectedIndex = 0;
+      setMetodoPagoPOS('Efectivo');
       renderComandaActiva();
     }
 
-    // Cobrar e Imprimir Ticket 80mm
     function cobrarEImprimirPOS() {
       if (comandaPOS.length === 0) return alert('La comanda está vacía');
 
       const nombre = document.getElementById('pos-cli-nombre').value.trim() || 'Cliente Mostrador';
       const celular = document.getElementById('pos-cli-tel').value.trim() || 'Local';
-      const direccion = document.getElementById('pos-cli-dir').value.trim() || 'Mesa / Local';
+      const direccion = document.getElementById('pos-cli-dir').value.trim() || 'En Local';
       const barrioSel = document.getElementById('pos-cli-barrio');
-      const costoEnvio = parseInt(barrioSel.value || 0);
+      const costoEnvio = (metodoPagoActual === 'Rappi' || metodoPagoActual === 'Pauta') ? 0 : parseInt(barrioSel.value || 0);
       const subtotal = comandaPOS.reduce((a, b) => a + b.precio, 0);
       const total = Math.max(0, subtotal + costoEnvio - descuentoTotal);
 
       const pedidoPayload = {
         cliente: { nombre, celular, direccion, barrio: barrioSel.options[barrioSel.selectedIndex].text },
-        modalidad: document.getElementById('pos-tipo-orden').value,
+        modalidad: (metodoPagoActual === 'Rappi') ? 'Rappi' : (metodoPagoActual === 'Pauta' ? 'Pauta / Cortesía' : document.getElementById('pos-tipo-orden').value),
         cajero: cajeroActivo ? cajeroActivo.nombre : 'Cajero 1',
         items: comandaPOS,
         metodoPago: metodoPagoActual,
@@ -450,11 +489,9 @@
         total
       };
 
-      // Emitir comanda a la cocina por Sockets
       socket.emit('nuevo-pedido', pedidoPayload);
     }
 
-    // Al confirmarse el pedido, generamos el ticket térmico y llamamos a imprimir
     socket.on('confirmacion-pedido', ({ id, numero }) => {
       imprimirTicket80mm(numero);
       limpiarComandaPOS();
@@ -462,26 +499,22 @@
 
     function imprimirTicket80mm(numero) {
       const nombre = document.getElementById('pos-cli-nombre').value || 'Cliente Mostrador';
-      const celular = document.getElementById('pos-cli-tel').value || 'Mostrador';
       const direccion = document.getElementById('pos-cli-dir').value || 'En mesa';
       const subtotal = comandaPOS.reduce((a, b) => a + b.precio, 0);
-      const envio = parseInt(document.getElementById('pos-cli-barrio').value || 0);
-      const total = Math.max(0, subtotal + envio - descuentoTotal);
+      const total = Math.max(0, subtotal - descuentoTotal);
 
       const ticket = document.getElementById('ticket-impresion');
       ticket.innerHTML = `
         <div style="text-align: center; font-weight: bold; font-size: 14px;">ARY LA AREPA</div>
-        <div style="text-align: center; font-size: 10px;">De Popayan para el mundo</div>
-        <div style="text-align: center; font-size: 10px;">NIT: 1061789456-1</div>
         <div style="text-align: center; font-size: 10px;">Cra 7 #10N-22 B (Prados del norte)</div>
         <div style="text-align: center; font-size: 10px;">Tel: 321 5035691</div>
         <div style="text-align: center;">================================</div>
         <div style="font-size: 15px; font-weight: bold; text-align: center;">ORDEN: ${numero}</div>
+        <div style="text-align: center; font-weight: bold; font-size: 11px;">CANAL: ${metodoPagoActual.toUpperCase()}</div>
         <div>Fecha: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
-        <div>Atendido por: ${cajeroActivo ? cajeroActivo.nombre : 'Caja'}</div>
+        <div>Cajero: ${cajeroActivo ? cajeroActivo.nombre : 'Caja'}</div>
         <div>Cliente: ${nombre}</div>
-        <div>Tel: ${celular}</div>
-        <div>Dir: ${direccion}</div>
+        <div>Destino: ${direccion}</div>
         <div style="text-align: center;">--------------------------------</div>
         <div style="font-weight: bold;">CANT  DESCRIPCION            TOTAL</div>
         ${comandaPOS.map(i => `
@@ -490,14 +523,13 @@
         `).join('')}
         <div style="text-align: center;">--------------------------------</div>
         <div>Subtotal:                 $${subtotal.toLocaleString()}</div>
-        ${descuentoTotal > 0 ? `<div>Descuento:               -$${descuentoTotal.toLocaleString()}</div>` : ''}
-        ${envio > 0 ? `<div>Domicilio:                +$${envio.toLocaleString()}</div>` : ''}
-        <div style="font-weight: bold; font-size: 13px;">TOTAL A PAGAR:        $${total.toLocaleString()}</div>
-        <div>Metodo de Pago: ${metodoPagoActual}</div>
+        ${metodoPagoActual === 'Rappi' ? `<div>Comisión Rappi (-20%):   -$${descuentoTotal.toLocaleString()}</div>` : ''}
+        ${metodoPagoActual === 'Pauta' ? `<div>Descuento Pauta (100%):  -$${descuentoTotal.toLocaleString()}</div>` : ''}
+        <div style="font-weight: bold; font-size: 13px;">TOTAL A COBRAR:       $${total.toLocaleString()}</div>
+        <div>Método: ${metodoPagoActual}</div>
         <div style="text-align: center;">================================</div>
         <div style="text-align: center; font-size: 10px; margin-top: 5px;">
-          ¡Gracias por tu compra!<br>
-          Base de arepa con abundante queso.
+          ${metodoPagoActual === 'Pauta' ? '*** CORTESÍA / PUBLICIDAD ***' : '¡Gracias por su compra!'}
         </div>
         <div style="height: 30px;">.</div>
       `;
@@ -507,29 +539,28 @@
       ticket.classList.add('hidden');
     }
 
-    // Modal Arqueo de Turno
     async function abrirModalArqueo() {
       const res = await fetch('/api/caja/resumen');
       const data = await res.json();
-      if (!data.turnoActivo) return alert('No hay turno abierto actualmente.');
+      if (!data.turnoActivo) return alert('No hay turno abierto.');
 
       document.getElementById('arq-base').innerText = `$${data.turno.baseInicial.toLocaleString()}`;
       document.getElementById('arq-efectivo').innerText = `$${data.ventasEfectivo.toLocaleString()}`;
       document.getElementById('arq-digital').innerText = `$${data.ventasDigital.toLocaleString()}`;
+      document.getElementById('arq-rappi').innerText = `$${(data.ventasRappi || 0).toLocaleString()}`;
+      document.getElementById('arq-pauta').innerText = `${data.ventasPauta || 0} órdenes ($0)`;
       document.getElementById('arq-total-caja').innerText = `$${data.totalEnCajaEsperado.toLocaleString()}`;
 
       document.getElementById('modal-arqueo').classList.remove('hidden');
     }
 
-    function cerrarModalArqueo() {
-      document.getElementById('modal-arqueo').classList.add('hidden');
-    }
+    function cerrarModalArqueo() { document.getElementById('modal-arqueo').classList.add('hidden'); }
 
     async function cerrarTurnoDefinitivo() {
-      if (!confirm('¿Estás seguro de cerrar el turno de caja actual?')) return;
+      if (!confirm('¿Cerrar el turno de caja definitivamente?')) return;
       const res = await fetch('/api/caja/cerrar', { method: 'POST' });
       const data = await res.json();
-      alert(`Turno cerrado con éxito. Total en caja: $${data.resumenCierre.totalCajaEsperado.toLocaleString()}`);
+      alert(`Turno cerrado. Total efectivo a entregar: $${data.resumenCierre.totalCajaEsperado.toLocaleString()}`);
       location.reload();
     }
 
@@ -537,21 +568,26 @@
       const base = document.getElementById('arq-base').innerText;
       const efec = document.getElementById('arq-efectivo').innerText;
       const digi = document.getElementById('arq-digital').innerText;
+      const rappi = document.getElementById('arq-rappi').innerText;
+      const pauta = document.getElementById('arq-pauta').innerText;
       const total = document.getElementById('arq-total-caja').innerText;
 
       const ticket = document.getElementById('ticket-impresion');
       ticket.innerHTML = `
         <div style="text-align: center; font-weight: bold; font-size: 14px;">ARY LA AREPA</div>
-        <div style="text-align: center; font-size: 12px; font-weight: bold;">CIERRE Y ARQUEO DE CAJA</div>
+        <div style="text-align: center; font-size: 11px; font-weight: bold;">CIERRE DE TURNO Y ARQUEO</div>
         <div>Fecha: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</div>
         <div>Cajero: ${cajeroActivo ? cajeroActivo.nombre : 'Cajero'}</div>
         <div>================================</div>
         <div>Base Inicial Efectivo:    ${base}</div>
-        <div>Ventas en Efectivo (+):   ${efec}</div>
-        <div>Ventas Nequi/Transf:      ${digi}</div>
+        <div>Ventas Efectivo (+):      ${efec}</div>
+        <div>Ventas Nequi / Bre-B:     ${digi}</div>
+        <div>Ventas Rappi (Neto):      ${rappi}</div>
+        <div>Cortesías / Pautas:       ${pauta}</div>
         <div>--------------------------------</div>
-        <div style="font-size: 13px; font-weight: bold;">TOTAL ESPERADO EN CAJA: ${total}</div>
+        <div style="font-size: 13px; font-weight: bold;">TOTAL EFECTIVO EN CAJÓN: ${total}</div>
         <div>================================</div>
+        <div style="font-size: 9px; margin-top: 5px;">* Rappi y Nequi van a cuenta bancaria.</div>
         <br><br>
         <div>Firma Cajero: ___________________</div>
         <div style="height: 30px;">.</div>
