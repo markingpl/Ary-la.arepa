@@ -1,5 +1,5 @@
-process.on('unhandledRejection', (reason) => console.error('⚠️ Rejection capturada:', reason));
-process.on('uncaughtException', (err) => console.error('⚠️ Exception capturada:', err.message));
+process.on('unhandledRejection', (reason) => console.error('⚠️ Rejection:', reason));
+process.on('uncaughtException', (err) => console.error('⚠️ Exception:', err.message));
 
 const express = require('express');
 const http = require('http');
@@ -11,7 +11,7 @@ let createClient = null;
 try {
   createClient = require('@supabase/supabase-js').createClient;
 } catch (e) {
-  console.log("ℹ️ Operando en modo local (sin librería Supabase instalada).");
+  console.log("ℹ️ Operando en modo local (sin librería Supabase).");
 }
 
 const app = express();
@@ -161,7 +161,6 @@ if (fs.existsSync(DATA_FILE)) {
   }
 }
 
-// Asegurar que nunca sea nulo
 if (!Array.isArray(DB.clientesFrecuentes)) DB.clientesFrecuentes = [];
 if (!Array.isArray(DB.pedidos)) DB.pedidos = [];
 if (!Array.isArray(DB.inventario)) DB.inventario = DB_DEFAULT.inventario;
@@ -215,11 +214,9 @@ async function sincronizarConSupabase() {
   } catch (err) {}
 }
 
-// CÁLCULO SEGURO DE HORA EN COLOMBIA (A PRUEBA DE FALLOS EN WINDOWS)
 function obtenerMinutosDiaColombia() {
   try {
     const now = new Date();
-    // Cálculo matemático puro en UTC-5 (No falla jamás con formatos de idioma)
     const utcHours = now.getUTCHours();
     const utcMins = now.getUTCMinutes();
     const colHours = (utcHours - 5 + 24) % 24;
@@ -232,10 +229,8 @@ function obtenerMinutosDiaColombia() {
 
 function verificarEstadoServicios() {
   const mins = obtenerMinutosDiaColombia();
-  // 4:00 PM (960 min) a 9:30 PM (1290 min)
-  const abiertoDomicilio = (mins >= 960 && mins <= 1290);
-  // 4:00 PM (960 min) a 9:45 PM (1305 min)
-  const abiertoMesaYRecoger = (mins >= 960 && mins <= 1305);
+  const abiertoDomicilio = (mins >= 960 && mins <= 1290); // 4:00 PM a 9:30 PM
+  const abiertoMesaYRecoger = (mins >= 960 && mins <= 1305); // 4:00 PM a 9:45 PM
   return { abiertoDomicilio, abiertoMesa: abiertoMesaYRecoger, abiertoRecoger: abiertoMesaYRecoger };
 }
 
@@ -265,6 +260,11 @@ function descontarInventarioPorPedido(items, modalidad) {
           insumo.stockActual = Math.max(0, insumo.stockActual - receta[invId]);
         }
       });
+    }
+
+    const bebidaInsumo = DB.inventario.find(i => (i.nombre || '').toLowerCase().includes((item.nombre || '').toLowerCase()));
+    if (bebidaInsumo) {
+      bebidaInsumo.stockActual = Math.max(0, bebidaInsumo.stockActual - 1);
     }
   });
 
@@ -297,7 +297,6 @@ function devolverInventarioCancelado(items, modalidad) {
   guardarDB('inventario');
 }
 
-// CREACIÓN DE PEDIDOS 100% BLINDADA
 function registrarPedidoEnSistema(pedidoData) {
   try {
     if (!Array.isArray(DB.clientesFrecuentes)) DB.clientesFrecuentes = [];
@@ -319,7 +318,7 @@ function registrarPedidoEnSistema(pedidoData) {
 
     descontarInventarioPorPedido(nuevoPedido.items || [], nuevoPedido.modalidad);
 
-    // Guardar o actualizar puntos cliente frecuente
+    // Guardar puntos cliente frecuente
     if (pedidoData.cliente && pedidoData.cliente.celular && !String(pedidoData.metodoPago).includes('Pauta')) {
       const idx = DB.clientesFrecuentes.findIndex(c => c && c.celular === pedidoData.cliente.celular);
       const cantArepas = (nuevoPedido.items || []).filter(i => i && (!i.desc || !i.desc.includes('Bebida'))).length || 1;
@@ -373,6 +372,7 @@ function registrarPedidoEnSistema(pedidoData) {
       }]).catch(() => {});
     }
 
+    // EMISIÓN EN TIEMPO REAL A COCINA
     io.emit('pedido-creado', nuevoPedido);
     return nuevoPedido;
   } catch (err) {
@@ -381,16 +381,54 @@ function registrarPedidoEnSistema(pedidoData) {
       id: `ORD-${Date.now()}`,
       numero: `#${String(Date.now()).slice(-3)}`,
       total: pedidoData.total || 0,
+      estado: 'PENDIENTE',
       ...pedidoData
     };
+    DB.pedidos.unshift(fallback);
     io.emit('pedido-creado', fallback);
     return fallback;
   }
 }
 
-// ENDPOINTS API
+// ENDPOINTS API GENERALES
 app.get('/api/data-inicial', (req, res) => res.json(DB));
 app.get('/api/pedidos', (req, res) => res.json(DB.pedidos));
+
+// RUTA CLAVE: CONSULTAR PEDIDO INDIVIDUAL POR ID (Evita "Pedido no encontrado")
+app.get('/api/pedido/:id', (req, res) => {
+  const p = DB.pedidos.find(x => x.id === req.params.id);
+  if (p) return res.json(p);
+
+  // Respaldo en Supabase si no está en memoria
+  if (supabase) {
+    supabase.from('pedidos').select('*').eq('id', req.params.id).single()
+      .then(({ data }) => {
+        if (data) {
+          return res.json({
+            id: data.id,
+            numero: data.numero,
+            fecha: data.fecha,
+            hora: data.hora,
+            timestamp: Number(data.timestamp),
+            cliente: data.cliente,
+            modalidad: data.modalidad,
+            items: data.items,
+            metodoPago: data.metodo_pago,
+            subtotal: Number(data.subtotal),
+            costoEnvio: Number(data.costo_envio),
+            descuento: Number(data.descuento),
+            total: Number(data.total),
+            estado: data.estado,
+            turnoId: data.turno_id
+          });
+        }
+        res.status(404).json({ error: 'Pedido no encontrado' });
+      })
+      .catch(() => res.status(404).json({ error: 'Pedido no encontrado' }));
+  } else {
+    res.status(404).json({ error: 'Pedido no encontrado' });
+  }
+});
 
 // RUTA POST DE PEDIDOS CON RESPUESTA INMEDIATA
 app.post('/api/pedidos', (req, res) => {
@@ -410,7 +448,7 @@ app.post('/api/pedidos', (req, res) => {
     }
 
     const nuevoPedido = registrarPedidoEnSistema(pedidoData);
-    res.json({ ok: true, id: nuevoPedido.id, numero: nuevoPedido.numero, total: nuevoPedido.total });
+    res.json({ ok: true, id: nuevoPedido.id, numero: nuevoPedido.numero, total: nuevoPedido.total, pedido: nuevoPedido });
   } catch (err) {
     console.error("Error en POST /api/pedidos:", err);
     res.status(500).json({ ok: false, error: 'Error procesando la orden: ' + err.message });
