@@ -3,6 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const fs = require('fs');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const server = http.createServer(app);
@@ -12,6 +13,14 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/img', express.static(path.join(__dirname, 'public', 'img')));
+
+// CONEXIÓN A SUPABASE (POSTGRESQL EN LA NUBE)
+const SUPABASE_URL = process.env.SUPABASE_URL || 'PEGA_AQUI_TU_PROJECT_URL_DE_SUPABASE';
+const SUPABASE_KEY = process.env.SUPABASE_KEY || 'PEGA_AQUI_TU_ANON_KEY_DE_SUPABASE';
+
+const supabase = (SUPABASE_URL && !SUPABASE_URL.includes('PEGA_AQUI')) 
+  ? createClient(SUPABASE_URL, SUPABASE_KEY) 
+  : null;
 
 const DATA_FILE = path.join(__dirname, 'data.json');
 
@@ -109,18 +118,93 @@ const DB_DEFAULT = {
 };
 
 let DB = DB_DEFAULT;
+
+// Cargar backup local primero
 if (fs.existsSync(DATA_FILE)) {
   try {
     DB = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
-    if (!DB.info.pinAdmin) DB.info.pinAdmin = "1234";
-  } catch (e) { DB = DB_DEFAULT; }
-} else {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(DB, null, 2));
+  } catch (e) {
+    DB = DB_DEFAULT;
+  }
 }
 
-function guardarDB() {
-  try { fs.writeFileSync(DATA_FILE, JSON.stringify(DB, null, 2)); }
-  catch (err) { console.error("Error guardando data.json:", err); }
+// INICIALIZACIÓN Y SINCRONIZACIÓN CON SUPABASE
+async function sincronizarConSupabase() {
+  if (!supabase) {
+    console.log("ℹ️ Supabase no configurado aún. Operando con data.json local.");
+    return;
+  }
+
+  try {
+    // 1. Cargar configuración general (menú, inventario, cupones, etc.)
+    const { data: configData } = await supabase.from('configuracion').select('*');
+    
+    if (configData && configData.length > 0) {
+      configData.forEach(row => {
+        if (row.clave && row.datos) {
+          DB[row.clave] = row.datos;
+        }
+      });
+      console.log("✓ Catálogos e inventario cargados desde Supabase PostgreSQL.");
+    } else {
+      // Si está vacío, migrar automáticamente los datos iniciales a Supabase
+      console.log("⚡ Supabase está vacío: migrando datos iniciales a la nube...");
+      const clavesMigrar = ['info', 'usuarios', 'clientesFrecuentes', 'cupones', 'inventario', 'recetas', 'barrios', 'productos', 'extras', 'bebidas'];
+      for (const clave of clavesMigrar) {
+        await supabase.from('configuracion').upsert({ clave, datos: DB[clave] });
+      }
+      console.log("✓ ¡Migración inicial a Supabase completada con éxito!");
+    }
+
+    // 2. Cargar historial de pedidos desde PostgreSQL
+    const { data: pedidosDb } = await supabase.from('pedidos').select('*').order('timestamp', { ascending: false }).limit(200);
+    if (pedidosDb && pedidosDb.length > 0) {
+      DB.pedidos = pedidosDb.map(p => ({
+        id: p.id,
+        numero: p.numero,
+        fecha: p.fecha,
+        hora: p.hora,
+        timestamp: Number(p.timestamp),
+        cliente: p.cliente,
+        modalidad: p.modalidad,
+        items: p.items,
+        metodoPago: p.metodo_pago,
+        subtotal: Number(p.subtotal),
+        costoEnvio: Number(p.costo_envio),
+        descuento: Number(p.descuento),
+        total: Number(p.total),
+        estado: p.estado,
+        turnoId: p.turno_id,
+        origen: p.origen
+      }));
+      DB.contadorPedido = DB.pedidos.length;
+      console.log(`✓ ${DB.pedidos.length} pedidos sincronizados desde PostgreSQL.`);
+    }
+
+  } catch (err) {
+    console.error("⚠️ Error sincronizando con Supabase, usando respaldo local:", err.message);
+  }
+}
+
+// Guardado dual (guarda en data.json y en Supabase en paralelo)
+function guardarDB(claveModificada = null) {
+  // 1. Respaldo local
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(DB, null, 2));
+  } catch (err) {
+    console.error("Error guardando data.json:", err);
+  }
+
+  // 2. Persistencia en Supabase
+  if (supabase && claveModificada && DB[claveModificada]) {
+    supabase.from('configuracion').upsert({
+      clave: claveModificada,
+      datos: DB[claveModificada],
+      updated_at: new Date().toISOString()
+    }).then(({ error }) => {
+      if (error) console.error(`Error actualizando ${claveModificada} en Supabase:`, error.message);
+    });
+  }
 }
 
 // Descontar inventario automático
@@ -147,7 +231,7 @@ function descontarInventarioPorPedido(items, modalidad) {
     if (bowl) bowl.stockActual = Math.max(0, bowl.stockActual - items.length);
   }
 
-  guardarDB();
+  guardarDB('inventario');
 }
 
 function registrarPedidoEnSistema(pedidoData) {
@@ -183,10 +267,36 @@ function registrarPedidoEnSistema(pedidoData) {
         puntos: cantArepas
       });
     }
+    guardarDB('clientesFrecuentes');
   }
 
   DB.pedidos.unshift(nuevoPedido);
   guardarDB();
+
+  // Guardar pedido individual en PostgreSQL de Supabase
+  if (supabase) {
+    supabase.from('pedidos').insert([{
+      id: nuevoPedido.id,
+      numero: nuevoPedido.numero,
+      fecha: nuevoPedido.fecha,
+      hora: nuevoPedido.hora,
+      timestamp: nuevoPedido.timestamp,
+      cliente: nuevoPedido.cliente,
+      modalidad: nuevoPedido.modalidad,
+      items: nuevoPedido.items,
+      metodo_pago: nuevoPedido.metodoPago,
+      subtotal: nuevoPedido.subtotal,
+      costo_envio: nuevoPedido.costoEnvio,
+      descuento: nuevoPedido.descuento || 0,
+      total: nuevoPedido.total,
+      estado: nuevoPedido.estado,
+      turno_id: nuevoPedido.turnoId,
+      origen: nuevoPedido.origen || 'Web/POS'
+    }]).then(({ error }) => {
+      if (error) console.error("Error guardando pedido en Supabase:", error.message);
+    });
+  }
+
   io.emit('pedido-creado', nuevoPedido);
   return nuevoPedido;
 }
@@ -209,12 +319,13 @@ app.post('/api/admin/cambiar-pin', (req, res) => {
   DB.info.pinAdmin = nuevoPin.trim();
   const u = DB.usuarios.find(x => x.rol === 'ADMIN');
   if (u) u.clave = nuevoPin.trim();
-  guardarDB();
+  guardarDB('info');
+  guardarDB('usuarios');
   res.json({ ok: true });
 });
 
 app.post('/api/admin/inventario', (req, res) => {
-  if (Array.isArray(req.body.inventario)) { DB.inventario = req.body.inventario; guardarDB(); res.json({ ok: true }); }
+  if (Array.isArray(req.body.inventario)) { DB.inventario = req.body.inventario; guardarDB('inventario'); res.json({ ok: true }); }
   else res.status(400).json({ error: 'Inválido' });
 });
 
@@ -227,27 +338,27 @@ app.post('/api/cupones/validar', (req, res) => {
 });
 
 app.post('/api/admin/cupones', (req, res) => {
-  if (Array.isArray(req.body.cupones)) { DB.cupones = req.body.cupones; guardarDB(); res.json({ ok: true }); }
+  if (Array.isArray(req.body.cupones)) { DB.cupones = req.body.cupones; guardarDB('cupones'); res.json({ ok: true }); }
   else res.status(400).json({ error: 'Inválido' });
 });
 
 app.post('/api/admin/barrios', (req, res) => {
-  if (Array.isArray(req.body.barrios)) { DB.barrios = req.body.barrios; guardarDB(); res.json({ ok: true }); }
+  if (Array.isArray(req.body.barrios)) { DB.barrios = req.body.barrios; guardarDB('barrios'); res.json({ ok: true }); }
   else res.status(400).json({ error: 'Inválido' });
 });
 
 app.post('/api/admin/productos', (req, res) => {
-  if (Array.isArray(req.body.productos)) { DB.productos = req.body.productos; guardarDB(); res.json({ ok: true }); }
+  if (Array.isArray(req.body.productos)) { DB.productos = req.body.productos; guardarDB('productos'); res.json({ ok: true }); }
   else res.status(400).json({ error: 'Inválido' });
 });
 
 app.post('/api/admin/extras', (req, res) => {
-  if (Array.isArray(req.body.extras)) { DB.extras = req.body.extras; guardarDB(); res.json({ ok: true }); }
+  if (Array.isArray(req.body.extras)) { DB.extras = req.body.extras; guardarDB('extras'); res.json({ ok: true }); }
   else res.status(400).json({ error: 'Inválido' });
 });
 
 app.post('/api/admin/bebidas', (req, res) => {
-  if (Array.isArray(req.body.bebidas)) { DB.bebidas = req.body.bebidas; guardarDB(); res.json({ ok: true }); }
+  if (Array.isArray(req.body.bebidas)) { DB.bebidas = req.body.bebidas; guardarDB('bebidas'); res.json({ ok: true }); }
   else res.status(400).json({ error: 'Inválido' });
 });
 
@@ -257,7 +368,7 @@ app.post('/api/usuarios', (req, res) => {
   if (!usuario || !clave || !nombre) return res.status(400).json({ error: 'Requeridos' });
   const nuevo = { id: Date.now(), usuario: usuario.trim().toLowerCase(), clave: clave.trim(), nombre: nombre.trim(), rol: 'CAJERO' };
   DB.usuarios.push(nuevo);
-  guardarDB();
+  guardarDB('usuarios');
   res.json({ ok: true, usuario: nuevo });
 });
 
@@ -265,7 +376,7 @@ app.delete('/api/usuarios/:id', (req, res) => {
   const idx = DB.usuarios.findIndex(u => u.id === parseInt(req.params.id));
   if (idx !== -1 && DB.usuarios[idx].rol !== 'ADMIN') {
     DB.usuarios.splice(idx, 1);
-    guardarDB();
+    guardarDB('usuarios');
     res.json({ ok: true });
   } else res.status(403).json({ error: 'No permitido' });
 });
@@ -290,7 +401,6 @@ app.post('/api/caja/abrir', (req, res) => {
   res.json({ ok: true, turno: DB.turnoActual });
 });
 
-// RESUMEN DE ARQUEO (INCLUYE RAPPI Y PAUTAS)
 app.get('/api/caja/resumen', (req, res) => {
   if (!DB.turnoActual) return res.json({ turnoActivo: false });
   const pedidosTurno = DB.pedidos.filter(p => p.turnoId === DB.turnoActual.id && p.estado !== 'CANCELADO');
@@ -308,7 +418,7 @@ app.get('/api/caja/resumen', (req, res) => {
     ventasRappi,
     ventasPauta,
     totalVentas: ventasEfectivo + ventasDigital + ventasRappi,
-    totalEnCajaEsperado: DB.turnoActual.baseInicial + ventasEfectivo, // SOLO EFECTIVO FÍSICO
+    totalEnCajaEsperado: DB.turnoActual.baseInicial + ventasEfectivo,
     totalPedidos: pedidosTurno.length
   });
 });
@@ -336,6 +446,27 @@ app.post('/api/caja/cerrar', (req, res) => {
   DB.historialTurnos.unshift(turnoCerrado);
   DB.turnoActual = null;
   guardarDB();
+
+  // Guardar turno cerrado en Supabase
+  if (supabase) {
+    supabase.from('turnos_caja').insert([{
+      id: turnoCerrado.id,
+      cajero: turnoCerrado.cajero,
+      base_inicial: turnoCerrado.baseInicial,
+      hora_apertura: turnoCerrado.horaApertura,
+      hora_cierre: turnoCerrado.horaCierre,
+      fecha: turnoCerrado.fecha,
+      estado: turnoCerrado.estado,
+      ventas_efectivo: turnoCerrado.ventasEfectivo,
+      ventas_digital: turnoCerrado.ventasDigital,
+      ventas_rappi: turnoCerrado.ventasRappi,
+      ventas_pauta: turnoCerrado.ventasPauta,
+      total_caja_esperado: turnoCerrado.totalCajaEsperado
+    }]).then(({ error }) => {
+      if (error) console.error("Error guardando turno en Supabase:", error.message);
+    });
+  }
+
   res.json({ ok: true, resumenCierre: turnoCerrado });
 });
 
@@ -351,10 +482,20 @@ io.on('connection', (socket) => {
     if (pedido) {
       pedido.estado = nuevoEstado;
       guardarDB();
+
+      // Actualizar estado en Supabase
+      if (supabase) {
+        supabase.from('pedidos').update({ estado: nuevoEstado }).eq('id', id).then();
+      }
+
       io.emit('estado-actualizado', { id, nuevoEstado, pedido });
     }
   });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Ary la arepa activo en puerto ${PORT}`));
+server.listen(PORT, async () => {
+  console.log(` Servidor activo: http://localhost:${PORT}`);
+  // Iniciar sincronización con Supabase al arrancar
+  await sincronizarConSupabase();
+});
