@@ -260,16 +260,22 @@
         </div>
       </section>
 
-      <!-- SECCIÓN 3: EDITOR DE MENÚ -->
+      <!-- SECCIÓN 3: EDITOR DE MENÚ (CON AGREGAR Y ELIMINAR) -->
       <section id="vista-menu" class="hidden space-y-6">
-        <div class="flex justify-between items-center">
+        <div class="flex flex-wrap justify-between items-center gap-4">
           <div>
             <h1 class="text-2xl font-black text-yellow-400">Editor de Menú & Precios</h1>
-            <p class="text-xs text-stone-400">Actualiza precios, nombres y descripciones en tiempo real.</p>
+            <p class="text-xs text-stone-400">Agrega nuevos productos, elimina los que no uses y actualiza precios al instante.</p>
           </div>
-          <button onclick="guardarTodoElMenu()" class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2.5 rounded-xl text-xs font-black shadow-lg">
-            <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios del Menú
-          </button>
+          
+          <div class="flex flex-wrap items-center gap-2">
+            <button onclick="abrirModalNuevoProducto()" class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2.5 rounded-xl text-xs font-black shadow-lg shadow-yellow-500/20 flex items-center gap-2">
+              <i class="fa-solid fa-plus"></i> + Agregar Producto al Menú
+            </button>
+            <button onclick="guardarTodoElMenu(true)" class="bg-neutral-800 hover:bg-neutral-700 border border-stone-700 text-stone-200 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2">
+              <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios
+            </button>
+          </div>
         </div>
 
         <div class="flex gap-2">
@@ -314,6 +320,52 @@
     </main>
   </div>
 
+  <!-- Modal Crear Producto (Arepa, Extra o Bebida) -->
+  <div id="modal-nuevo-producto" class="fixed inset-0 z-50 bg-black/90 hidden flex items-center justify-center p-4">
+    <div class="bg-neutral-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-stone-800 pb-2">
+        <h3 class="font-black text-yellow-400 text-base">Nuevo Producto al Menú</h3>
+        <button onclick="cerrarModalNuevoProducto()" class="text-stone-400 hover:text-white font-bold text-lg">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-stone-300 mb-1">Categoría del producto *</label>
+          <select id="prod-categoria" onchange="toggleCamposProducto()" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold">
+            <option value="arepas">Arepa Principal</option>
+            <option value="extras">Extra / Adición</option>
+            <option value="bebidas">Bebida</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-bold text-stone-300 mb-1">Nombre del producto *</label>
+          <input type="text" id="prod-nombre" placeholder="Ej: Arepa Costilla Ahumada" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold">
+        </div>
+
+        <div>
+          <label class="block font-bold text-stone-300 mb-1">Precio de venta ($ COP) *</label>
+          <input type="number" id="prod-precio" placeholder="Ej: 28000" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold">
+        </div>
+
+        <div id="campo-prod-desc">
+          <label class="block font-bold text-stone-300 mb-1">Ingredientes / Descripción</label>
+          <textarea id="prod-desc" rows="2" placeholder="Ej: Costilla bbq • queso fundido • papas al hilo" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white text-xs"></textarea>
+        </div>
+
+        <div id="campo-prod-img">
+          <label class="block font-bold text-stone-300 mb-1">Ruta de imagen (opcional)</label>
+          <input type="text" id="prod-img" value="/img/mascota.png" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white text-xs">
+          <span class="text-[10px] text-stone-500">Puedes guardar la foto en la carpeta `img/`</span>
+        </div>
+      </div>
+
+      <button onclick="guardarProductoEnMenu()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-3 rounded-xl font-black text-xs uppercase shadow-lg shadow-yellow-500/20">
+        Agregar y Guardar
+      </button>
+    </div>
+  </div>
+
   <!-- Modal Crear Cajero -->
   <div id="modal-crear-usuario" class="fixed inset-0 z-50 bg-black/90 hidden flex items-center justify-center p-4">
     <div class="bg-neutral-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
@@ -350,8 +402,8 @@
     let todosLosPedidos = [];
     let pedidosFiltrados = [];
     let periodoSeleccionado = 'hoy';
+    let subMenuActual = 'arepas';
 
-    // Función inteligente para encontrar la mascota
     const variantesMascota = [
       '/img/mascota.png',
       '/img/mascota.jpg',
@@ -725,6 +777,7 @@
       XLSX.writeFile(wb, `Reporte_Ventas_Ary_La_Arepa_${fechaNombre}.xlsx`);
     }
 
+    // --- BARRIOS Y TARIFAS ---
     function renderBarriosAdmin() {
       const tabla = document.getElementById('tabla-barrios-admin');
       tabla.innerHTML = DB_LOCAL.barrios.map((b, idx) => `
@@ -775,7 +828,9 @@
       if (data.ok) alert('¡Tarifas de domicilios guardadas con éxito!');
     }
 
+    // --- EDITOR DE MENÚ (CON AGREGAR Y ELIMINAR) ---
     function mostrarSubMenu(tipo) {
+      subMenuActual = tipo;
       document.getElementById('box-editor-arepas').classList.toggle('hidden', tipo !== 'arepas');
       document.getElementById('box-editor-extras').classList.toggle('hidden', tipo !== 'extras');
       document.getElementById('box-editor-bebidas').classList.toggle('hidden', tipo !== 'bebidas');
@@ -788,19 +843,26 @@
     }
 
     function renderMenuEditor() {
+      // 1. Arepas Principales con botón de Eliminar
       document.getElementById('box-editor-arepas').innerHTML = DB_LOCAL.productos.map((p, idx) => `
         <div class="bg-neutral-800/60 border border-stone-700/60 p-3.5 rounded-2xl flex flex-wrap gap-4 items-center justify-between">
           <div class="flex-1 min-w-[240px]">
             <input type="text" value="${p.nombre}" onchange="DB_LOCAL.productos[${idx}].nombre = this.value" class="bg-neutral-900 border border-stone-700 p-1.5 rounded-lg text-yellow-400 font-black text-sm w-full mb-1">
             <textarea onchange="DB_LOCAL.productos[${idx}].desc = this.value" class="w-full bg-neutral-900 border border-stone-700 p-1.5 rounded-lg text-stone-300 text-xs">${p.desc}</textarea>
           </div>
-          <div class="w-40">
+          <div class="w-36">
             <label class="text-[10px] text-stone-400 uppercase font-bold block mb-1">Precio Arepa ($)</label>
-            <input type="number" value="${p.precio}" onchange="DB_LOCAL.productos[${idx}].precio = parseInt(this.value) || 0" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-white font-black text-base w-full">
+            <input type="number" value="${p.precio}" onchange="DB_LOCAL.productos[${idx}].precio = parseInt(this.value) || 0" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-white font-black text-sm w-full">
+          </div>
+          <div>
+            <button onclick="eliminarProducto(${idx})" class="p-2.5 bg-red-950/40 hover:bg-red-900/60 border border-red-800/60 text-red-400 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+              <i class="fa-solid fa-trash-can"></i> Quitar
+            </button>
           </div>
         </div>
       `).join('');
 
+      // 2. Extras / Adiciones con botón de Eliminar
       document.getElementById('box-editor-extras').innerHTML = DB_LOCAL.extras.map((ex, idx) => `
         <div class="bg-neutral-800/60 border border-stone-700/60 p-3 rounded-2xl flex justify-between items-center gap-4">
           <input type="text" value="${ex.nombre}" onchange="DB_LOCAL.extras[${idx}].nombre = this.value" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-stone-200 font-bold text-xs flex-1">
@@ -808,9 +870,13 @@
             <span class="text-stone-400 font-bold">$</span>
             <input type="number" value="${ex.precio}" onchange="DB_LOCAL.extras[${idx}].precio = parseInt(this.value) || 0" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-yellow-400 font-black text-xs w-full">
           </div>
+          <button onclick="eliminarExtra(${idx})" class="text-red-400 hover:text-red-300 text-xs font-bold p-2 bg-red-950/40 border border-red-800/60 rounded-xl">
+            <i class="fa-solid fa-trash-can"></i> Quitar
+          </button>
         </div>
       `).join('');
 
+      // 3. Bebidas con botón de Eliminar
       document.getElementById('box-editor-bebidas').innerHTML = DB_LOCAL.bebidas.map((b, idx) => `
         <div class="bg-neutral-800/60 border border-stone-700/60 p-3 rounded-2xl flex justify-between items-center gap-4">
           <input type="text" value="${b.nombre}" onchange="DB_LOCAL.bebidas[${idx}].nombre = this.value" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-white font-bold text-xs flex-1">
@@ -818,17 +884,107 @@
             <span class="text-stone-400 font-bold">$</span>
             <input type="number" value="${b.precio}" onchange="DB_LOCAL.bebidas[${idx}].precio = parseInt(this.value) || 0" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-yellow-400 font-black text-xs w-full">
           </div>
+          <button onclick="eliminarBebida(${idx})" class="text-red-400 hover:text-red-300 text-xs font-bold p-2 bg-red-950/40 border border-red-800/60 rounded-xl">
+            <i class="fa-solid fa-trash-can"></i> Quitar
+          </button>
         </div>
       `).join('');
     }
 
-    async function guardarTodoElMenu() {
+    // Funciones para Quitar
+    function eliminarProducto(idx) {
+      if (!confirm(`¿Estás seguro de eliminar la arepa "${DB_LOCAL.productos[idx].nombre}" del menú?`)) return;
+      DB_LOCAL.productos.splice(idx, 1);
+      renderMenuEditor();
+      guardarTodoElMenu(false);
+    }
+
+    function eliminarExtra(idx) {
+      if (!confirm(`¿Eliminar la adición "${DB_LOCAL.extras[idx].nombre}"?`)) return;
+      DB_LOCAL.extras.splice(idx, 1);
+      renderMenuEditor();
+      guardarTodoElMenu(false);
+    }
+
+    function eliminarBebida(idx) {
+      if (!confirm(`¿Eliminar la bebida "${DB_LOCAL.bebidas[idx].nombre}"?`)) return;
+      DB_LOCAL.bebidas.splice(idx, 1);
+      renderMenuEditor();
+      guardarTodoElMenu(false);
+    }
+
+    // Modal para Agregar Nuevos Productos
+    function abrirModalNuevoProducto() {
+      document.getElementById('prod-categoria').value = subMenuActual;
+      toggleCamposProducto();
+      document.getElementById('prod-nombre').value = '';
+      document.getElementById('prod-precio').value = '';
+      document.getElementById('prod-desc').value = '';
+      document.getElementById('prod-img').value = '/img/mascota.png';
+      document.getElementById('modal-nuevo-producto').classList.remove('hidden');
+    }
+
+    function cerrarModalNuevoProducto() {
+      document.getElementById('modal-nuevo-producto').classList.add('hidden');
+    }
+
+    function toggleCamposProducto() {
+      const cat = document.getElementById('prod-categoria').value;
+      const esArepa = (cat === 'arepas');
+      document.getElementById('campo-prod-desc').classList.toggle('hidden', !esArepa);
+      document.getElementById('campo-prod-img').classList.toggle('hidden', !esArepa);
+    }
+
+    function guardarProductoEnMenu() {
+      const cat = document.getElementById('prod-categoria').value;
+      const nombre = document.getElementById('prod-nombre').value.trim();
+      const precio = parseInt(document.getElementById('prod-precio').value);
+
+      if (!nombre || isNaN(precio) || precio <= 0) {
+        return alert('Por favor escribe un nombre y precio válidos.');
+      }
+
+      if (cat === 'arepas') {
+        const desc = document.getElementById('prod-desc').value.trim() || 'Deliciosa arepa con queso fundido.';
+        const img = document.getElementById('prod-img').value.trim() || '/img/mascota.png';
+        DB_LOCAL.productos.push({
+          id: Date.now(),
+          cat: 'arepas',
+          nombre,
+          desc,
+          precio,
+          img
+        });
+        mostrarSubMenu('arepas');
+      } else if (cat === 'extras') {
+        DB_LOCAL.extras.push({
+          id: `ex-${Date.now()}`,
+          nombre,
+          precio
+        });
+        mostrarSubMenu('extras');
+      } else if (cat === 'bebidas') {
+        DB_LOCAL.bebidas.push({
+          id: Date.now(),
+          nombre,
+          precio
+        });
+        mostrarSubMenu('bebidas');
+      }
+
+      cerrarModalNuevoProducto();
+      renderMenuEditor();
+      guardarTodoElMenu(true);
+    }
+
+    async function guardarTodoElMenu(mostrarMensaje = true) {
       await fetch('/api/admin/productos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productos: DB_LOCAL.productos }) });
       await fetch('/api/admin/extras', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ extras: DB_LOCAL.extras }) });
       await fetch('/api/admin/bebidas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bebidas: DB_LOCAL.bebidas }) });
-      alert('¡Menú y precios guardados con éxito!');
+      if (mostrarMensaje) alert('¡Menú y precios guardados con éxito!');
     }
 
+    // --- USUARIOS POS ---
     async function cargarUsuarios() {
       const res = await fetch('/api/usuarios');
       const usuarios = await res.json();
