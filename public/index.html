@@ -541,5 +541,8 @@
       if (pedidoCreadoId) window.location.href = `/seguimiento.html?id=${pedidoCreadoId}`;
     }
   </script>
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+  </script>
 </body>
 </html>
