@@ -16,7 +16,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-  <!-- Estilos para Imprimir los Adhesivos de las Mesas -->
   <style>
     @media print {
       body * { visibility: hidden; }
@@ -28,7 +27,7 @@
         width: 100%; 
         color: black !important; 
         display: grid !important;
-        grid-template-cols: repeat(2, minmax(0, 1fr)) !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
         gap: 1.5rem !important;
       }
       .card-qr-mesa {
@@ -115,7 +114,11 @@
             <i class="fa-solid fa-users text-yellow-400"></i> Cajeros POS
           </button>
 
+          <!-- ENLACES OPERATIVOS -->
           <div class="pt-3 border-t border-stone-800 space-y-1">
+            <a href="/domicilios.html" target="_blank" class="flex items-center gap-3 p-2 text-red-400 hover:bg-neutral-800 font-black rounded-xl transition">
+              <i class="fa-solid fa-motorcycle text-red-500"></i> Pantalla Repartidores
+            </a>
             <a href="/cocina.html" target="_blank" class="flex items-center gap-3 p-2 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl transition">
               <i class="fa-solid fa-fire text-amber-500"></i> Cocina KDS
             </a>
@@ -194,19 +197,27 @@
         </div>
       </section>
 
-      <!-- 2. GENERADOR DE CÓDIGOS QR PARA LAS MESAS (CORREGIDO AL 100% - NUNCA MÁS EN BLANCO) -->
+      <!-- 2. GENERADOR DINÁMICO DE MESAS (CON CANTIDAD CONFIGURABLE) -->
       <section id="vista-qr-mesas" class="space-y-6 hidden">
         <div class="flex flex-wrap justify-between items-center gap-4 bg-neutral-900 border border-stone-800 p-4 rounded-2xl">
           <div>
             <h1 class="text-2xl font-black text-yellow-400">Códigos QR para las Mesas (WokHouse)</h1>
-            <p class="text-xs text-stone-400">Imprime estos adhesivos para que tus clientes ordenen desde la mesa sin esperar mesero.</p>
+            <p class="text-xs text-stone-400">Configura cuántas mesas tienes en el local y genera sus adhesivos listos para imprimir.</p>
           </div>
-          <button onclick="window.print()" class="bg-yellow-400 hover:bg-yellow-300 text-black px-5 py-2.5 rounded-xl text-xs font-black shadow-lg flex items-center gap-2">
-            <i class="fa-solid fa-print text-sm"></i> Imprimir Códigos de Mesas
-          </button>
+
+          <!-- Selector de Cantidad de Mesas -->
+          <div class="flex items-center gap-3 bg-neutral-800 border border-stone-700 p-2 rounded-2xl">
+            <label class="text-xs font-bold text-stone-300">Total Mesas:</label>
+            <input type="number" id="input-total-mesas" min="1" max="50" value="8" class="w-16 bg-neutral-900 border border-stone-600 p-1.5 rounded-xl text-yellow-400 font-black text-center text-sm">
+            <button onclick="guardarYGenerarMesas()" class="bg-yellow-400 hover:bg-yellow-300 text-black px-3.5 py-1.5 rounded-xl text-xs font-black transition">
+              Actualizar Mesas
+            </button>
+            <button onclick="window.print()" class="bg-neutral-700 hover:bg-neutral-600 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5">
+              <i class="fa-solid fa-print"></i> Imprimir
+            </button>
+          </div>
         </div>
 
-        <!-- Cuadrícula con los QR de las Mesas -->
         <div id="zona-impresion-qr" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"></div>
       </section>
 
@@ -271,15 +282,15 @@
 
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
             <div>
-              <label class="block font-bold text-stone-300 mb-1">1. Puntos por arepa</label>
+              <label class="block font-bold text-stone-300 mb-1">Puntos por arepa</label>
               <input type="number" id="cfg-puntos-arepa" min="1" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-black text-sm text-center">
             </div>
             <div>
-              <label class="block font-bold text-stone-300 mb-1">2. Puntos mínimos para canje</label>
+              <label class="block font-bold text-stone-300 mb-1">Puntos mínimos para canje</label>
               <input type="number" id="cfg-puntos-minimos" min="1" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-yellow-400 font-black text-sm text-center">
             </div>
             <div>
-              <label class="block font-bold text-stone-300 mb-1">3. Valor Descuento ($ COP)</label>
+              <label class="block font-bold text-stone-300 mb-1">Valor Descuento ($ COP)</label>
               <input type="number" id="cfg-valor-descuento" min="1000" step="500" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-green-400 font-black text-sm text-center">
             </div>
           </div>
@@ -312,10 +323,7 @@
             <div id="lista-cupones-box" class="space-y-2"></div>
           </div>
           <div class="bg-neutral-900 border border-stone-800 rounded-2xl p-4">
-            <div class="flex justify-between items-center mb-3">
-              <h3 class="font-black text-yellow-400 text-sm">Ranking Clientes VIP</h3>
-              <span class="text-[10px] text-stone-500">Edita los puntos en la casilla</span>
-            </div>
+            <h3 class="font-black text-yellow-400 text-sm mb-3">Ranking Clientes VIP</h3>
             <div class="overflow-y-auto max-h-72">
               <table class="w-full text-left text-xs">
                 <thead class="bg-neutral-800/60 text-stone-400 uppercase text-[10px]">
@@ -475,6 +483,9 @@
     async function cargarDatosBase() {
       const res = await fetch('/api/data-inicial');
       DB_LOCAL = await res.json();
+      if (DB_LOCAL && DB_LOCAL.info && DB_LOCAL.info.numeroMesas) {
+        document.getElementById('input-total-mesas').value = DB_LOCAL.info.numeroMesas;
+      }
     }
 
     function mostrarVista(vista) {
@@ -490,19 +501,18 @@
       if (vista === 'qr-mesas') generarQRsMesas();
     }
 
-    // GENERADOR DIRECTO DE CÓDIGOS QR (ALTA RESOLUCIÓN - NUNCA MÁS EN BLANCO)
+    // GENERADOR DINÁMICO DE MESAS (CON CANTIDAD CONFIGURABLE)
     function generarQRsMesas() {
       const box = document.getElementById('zona-impresion-qr');
       if (!box) return;
       box.innerHTML = '';
       
       const baseUrl = window.location.origin;
-      const totalMesas = (DB_LOCAL && DB_LOCAL.info && DB_LOCAL.info.numeroMesas) ? parseInt(DB_LOCAL.info.numeroMesas) : 8;
+      const totalMesas = parseInt(document.getElementById('input-total-mesas').value) || 8;
       
       let htmlCards = '';
       for (let i = 1; i <= totalMesas; i++) {
         const mesaUrl = `${baseUrl}/?mesa=${i}`;
-        // Generador directo de imagen PNG en alta definición (100% confiable e instantáneo)
         const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(mesaUrl)}&margin=1`;
 
         htmlCards += `
@@ -524,11 +534,28 @@
           </div>
         `;
       }
-      
       box.innerHTML = htmlCards;
     }
 
-    // Funciones complementarias
+    // GUARDAR NUEVA CANTIDAD DE MESAS EN EL SERVIDOR
+    async function guardarYGenerarMesas() {
+      const total = parseInt(document.getElementById('input-total-mesas').value) || 8;
+      if (total < 1 || total > 50) return alert('Por favor ingresa entre 1 y 50 mesas.');
+
+      if (DB_LOCAL && DB_LOCAL.info) {
+        DB_LOCAL.info.numeroMesas = total;
+      }
+
+      await fetch('/api/admin/barrios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ barrios: DB_LOCAL.barrios })
+      });
+
+      generarQRsMesas();
+      alert(`✓ ¡Listo! Se generaron y guardaron los códigos QR para las ${total} mesas.`);
+    }
+
     function abrirModalCambiarPin() { document.getElementById('modal-cambiar-pin').classList.remove('hidden'); }
     function cerrarModalCambiarPin() { document.getElementById('modal-cambiar-pin').classList.add('hidden'); }
 
