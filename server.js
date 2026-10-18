@@ -23,7 +23,8 @@ const DB_DEFAULT = {
     direccion: "Cra 7 #10N-22 B, Prados del Norte en WokHouse",
     telefono: "3215035691",
     nit: "1061789456-1",
-    horario: "4:00 PM a 10:00 PM"
+    horario: "4:00 PM a 10:00 PM",
+    pinAdmin: "1234" // PIN MAESTRO CONFIGURABLE
   },
   usuarios: [
     { id: 1, usuario: 'admin', clave: '1234', nombre: 'Administrador', rol: 'ADMIN' },
@@ -36,7 +37,6 @@ const DB_DEFAULT = {
     { id: 1, codigo: 'POPAYAN10', tipo: 'PORCENTAJE', valor: 10, activo: true, usos: 0 },
     { id: 2, codigo: 'ARY5K', tipo: 'FIJO', valor: 5000, activo: true, usos: 0 }
   ],
-  // INVENTARIO CON GRAMOS, UNIDADES Y TAMAÑO DE PORCIÓN
   inventario: [
     { id: 'inv-1', nombre: 'Arepa Base Agridulce', unidad: 'unidades', porcionTamano: 1, stockActual: 100, stockMinimo: 20 },
     { id: 'inv-2', nombre: 'Queso Fundido Artesanal', unidad: 'gramos', porcionTamano: 80, stockActual: 8000, stockMinimo: 1600 },
@@ -112,9 +112,7 @@ let DB = DB_DEFAULT;
 if (fs.existsSync(DATA_FILE)) {
   try {
     DB = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
-    if (!DB.inventario) DB.inventario = DB_DEFAULT.inventario;
-    if (!DB.cupones) DB.cupones = DB_DEFAULT.cupones;
-    if (!DB.recetas) DB.recetas = DB_DEFAULT.recetas;
+    if (!DB.info.pinAdmin) DB.info.pinAdmin = "1234";
   } catch (e) {
     DB = DB_DEFAULT;
   }
@@ -130,7 +128,41 @@ function guardarDB() {
   }
 }
 
-// Descontar inventario automático por porciones y gramos
+// ==========================================
+// SEGURIDAD: VERIFICAR Y CAMBIAR PIN ADMIN
+// ==========================================
+app.post('/api/admin/verificar-pin', (req, res) => {
+  const { pin } = req.body;
+  const pinActual = DB.info.pinAdmin || "1234";
+  if (pin === pinActual) {
+    res.json({ ok: true });
+  } else {
+    res.status(401).json({ ok: false, error: 'PIN incorrecto' });
+  }
+});
+
+app.post('/api/admin/cambiar-pin', (req, res) => {
+  const { pinActual, nuevoPin } = req.body;
+  const pinGuardado = DB.info.pinAdmin || "1234";
+
+  if (pinActual !== pinGuardado) {
+    return res.status(401).json({ ok: false, error: 'El PIN actual no coincide' });
+  }
+
+  if (!nuevoPin || nuevoPin.length < 4) {
+    return res.status(400).json({ ok: false, error: 'El nuevo PIN debe tener al menos 4 dígitos' });
+  }
+
+  DB.info.pinAdmin = nuevoPin.trim();
+  // Sincronizar también con la clave del usuario admin
+  const userAdmin = DB.usuarios.find(u => u.rol === 'ADMIN');
+  if (userAdmin) userAdmin.clave = nuevoPin.trim();
+
+  guardarDB();
+  res.json({ ok: true, mensaje: '¡Clave de ingreso cambiada con éxito!' });
+});
+
+// Descontar inventario automático
 function descontarInventarioPorPedido(items, modalidad) {
   items.forEach(item => {
     const receta = DB.recetas[item.nombre];
@@ -138,8 +170,7 @@ function descontarInventarioPorPedido(items, modalidad) {
       Object.keys(receta).forEach(invId => {
         const insumo = DB.inventario.find(i => i.id === invId);
         if (insumo) {
-          const cantidadARestar = receta[invId];
-          insumo.stockActual = Math.max(0, insumo.stockActual - cantidadARestar);
+          insumo.stockActual = Math.max(0, insumo.stockActual - receta[invId]);
         }
       });
     }
@@ -201,42 +232,30 @@ function registrarPedidoEnSistema(pedidoData) {
   return nuevoPedido;
 }
 
-// Endpoints
+// Endpoints estándar
 app.get('/api/data-inicial', (req, res) => res.json(DB));
 app.get('/api/pedidos', (req, res) => res.json(DB.pedidos));
 
-// Guardado de Inventario (Con Agregar y Quitar)
 app.post('/api/admin/inventario', (req, res) => {
-  if (Array.isArray(req.body.inventario)) {
-    DB.inventario = req.body.inventario;
-    guardarDB();
-    res.json({ ok: true, inventario: DB.inventario });
-  } else res.status(400).json({ error: 'Inválido' });
+  if (Array.isArray(req.body.inventario)) { DB.inventario = req.body.inventario; guardarDB(); res.json({ ok: true }); }
+  else res.status(400).json({ error: 'Inválido' });
 });
 
-// Cupones
 app.post('/api/cupones/validar', (req, res) => {
   const { codigo, subtotal } = req.body;
   if (!codigo) return res.status(400).json({ error: 'Ingresa un código' });
   const cup = DB.cupones.find(c => c.codigo.toUpperCase() === codigo.trim().toUpperCase() && c.activo);
   if (!cup) return res.status(404).json({ error: 'Cupón no válido o vencido' });
 
-  let descuento = 0;
-  if (cup.tipo === 'PORCENTAJE') descuento = Math.round((subtotal * cup.valor) / 100);
-  else descuento = cup.valor;
-
+  let descuento = (cup.tipo === 'PORCENTAJE') ? Math.round((subtotal * cup.valor) / 100) : cup.valor;
   res.json({ ok: true, cupon: cup, descuento });
 });
 
 app.post('/api/admin/cupones', (req, res) => {
-  if (Array.isArray(req.body.cupones)) {
-    DB.cupones = req.body.cupones;
-    guardarDB();
-    res.json({ ok: true });
-  } else res.status(400).json({ error: 'Inválido' });
+  if (Array.isArray(req.body.cupones)) { DB.cupones = req.body.cupones; guardarDB(); res.json({ ok: true }); }
+  else res.status(400).json({ error: 'Inválido' });
 });
 
-// Menú, Barrios y Usuarios
 app.post('/api/admin/barrios', (req, res) => {
   if (Array.isArray(req.body.barrios)) { DB.barrios = req.body.barrios; guardarDB(); res.json({ ok: true }); }
   else res.status(400).json({ error: 'Inválido' });
