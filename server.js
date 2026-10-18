@@ -260,7 +260,7 @@ function registrarPedidoEnSistema(pedidoData) {
 }
 
 // ========================================================
-// CEREBRO DEL AGENTE IA DE WHATSAPP (CON PREGUNTAS FRECUENTES Y CANCELACIÓN)
+// CEREBRO DEL AGENTE IA DE WHATSAPP (CON FOTOS, ASESOR Y FALLBACK HUMANO)
 // ========================================================
 const sesionesBot = {};
 
@@ -278,7 +278,17 @@ function procesarMensajeAgente(celular, mensajeTexto) {
 
   const sesion = sesionesBot[celular];
 
-  // 1. CANCELACIÓN DE PEDIDOS (INTELIGENTE)
+  // 1. SOLICITAR ATENCIÓN CON UNA PERSONA (ASESOR HUMANO)
+  if (texto.includes('asesor') || texto.includes('humano') || texto.includes('persona') || texto.includes('alguien') || texto.includes('que me atienda alguien') || texto.includes('atencion al cliente') || texto.includes('atención al cliente')) {
+    return `🙋‍♂️ ¡Con gusto! Te estoy transfiriendo con nuestro equipo de atención humana en Popayán.\n\nEn un momento un asesor tomará este chat para colaborarte personalmente. Si es urgente, también puedes llamarnos directamente a nuestra línea telefónica:\n📞 *321 5035691*`;
+  }
+
+  // 2. FOTOS DEL MENÚ O REDES SOCIALES
+  if (texto.includes('foto') || texto.includes('fotos') || texto.includes('imagen') || texto.includes('imagenes') || texto.includes('imágenes') || texto.includes('como se ven') || texto.includes('cómo se ven') || texto.includes('instagram') || texto.includes('verlas')) {
+    return `📸 *¡Claro que sí!*\n\nPuedes ver las fotos reales en alta definición de todas nuestras arepas en nuestro menú interactivo:\n👉 *https://ary-la-arepa.onrender.com*\n\nAllí puedes ver la *Campesina*, *Doriloca*, *Ranchera*, *Tocineta*, *Mexicana*, *Hawaiana* y la dulce de *Quipitos* bañadas en queso fundido.\n\n¿Cuál de ellas se te antoja para pedirte una? 😊`;
+  }
+
+  // 3. CANCELACIÓN DE PEDIDOS
   if (texto.includes('cancelar') || texto.includes('cancelo') || texto.includes('anular') || texto.includes('ya no quiero') || texto.includes('cancelacion') || texto.includes('cancelación')) {
     const ultimoPedido = DB.pedidos.find(p => p.cliente && p.cliente.celular === celular && p.estado !== 'CANCELADO' && p.estado !== 'ENTREGADO');
     
@@ -287,11 +297,9 @@ function procesarMensajeAgente(celular, mensajeTexto) {
         ultimoPedido.estado = 'CANCELADO';
         ultimoPedido.motivoCancelacion = 'Cancelado por el cliente desde WhatsApp';
         guardarDB();
-        // Notificar en tiempo real a cocina y admin para que no lo preparen
         io.emit('estado-actualizado', { id: ultimoPedido.id, nuevoEstado: 'CANCELADO', pedido: ultimoPedido });
-
         delete sesionesBot[celular];
-        return `❌ *¡Tu pedido ${ultimoPedido.numero} ha sido cancelado con éxito!*\n\nYa notificamos a la cocina para que no preparen la comanda. Si ya habías transferido por Nequi/Bre-B, por favor escríbenos directamente a este chat para gestionar tu reembolso de inmediato.`;
+        return `❌ *¡Tu pedido ${ultimoPedido.numero} ha sido cancelado con éxito!*\n\nYa notificamos a la cocina para que no preparen la comanda. Si ya habías transferido por Nequi/Bre-B, por favor escríbenos directamente para gestionar tu reembolso de inmediato.`;
       } else if (ultimoPedido.estado === 'PREPARANDO') {
         return `⚠️ *Atención:* Tu pedido *${ultimoPedido.numero}* ya está en la plancha preparándose 🔥.\n\nPara verificar si aún es posible cancelarlo o cambiarlo, por favor llama de inmediato a nuestra línea directa: *321 5035691*.`;
       } else if (ultimoPedido.estado === 'LISTO') {
@@ -302,12 +310,12 @@ function procesarMensajeAgente(celular, mensajeTexto) {
     }
   }
 
-  // 2. OPCIONES VEGETARIANAS
+  // 4. OPCIONES VEGETARIANAS
   if (texto.includes('vegetariano') || texto.includes('vegetariana') || texto.includes('vegano') || texto.includes('vegana') || texto.includes('sin carne') || texto.includes('vegetales')) {
-    return `🌱 *¡Sí, tenemos opciones vegetarianas deliciosas!*\n\nNuestra base es de *arepa agridulce rellena con abundante queso y bañada en queso fundido artesanal* 🧀.\n\nPuedes pedir la *Arepa Sola con Queso ($7.000)* y armarla a tu gusto con nuestros extras 100% vegetarianos:\n• 🥑 *Guacamole fresco:* $2.000\n• 🍅 *Pico de gallo:* $2.000\n• 🌽 *Maíz tierno / Totopos Doritos:* $2.000\n• 🍍 *Piña calada artesanal:* $2.000\n• 🌶️ *Jalapeños:* $2.000\n• 🥚 *Huevos de codorniz (x2):* $1.000\n• 🧀 *Queso extra fundido:* $5.000\n\nAdemás, nuestra arepa dulce *Quipitos ($16.500)* con arequipe y leche condensada tampoco contiene carne.\n\n👉 *¿Deseas armar una arepa vegetariana hoy?* Escríbeme qué adiciones te gustaría ponerle.`;
+    return `🌱 *¡Sí, tenemos opciones vegetarianas deliciosas!*\n\nNuestra base es de *arepa agridulce rellena con abundante queso y bañada en queso fundido artesanal* 🧀.\n\nPuedes pedir la *Arepa Sola con Queso ($7.000)* y armarla con nuestros extras 100% vegetarianos:\n• 🥑 Guacamole fresco ($2.000)\n• 🍅 Pico de gallo ($2.000)\n• 🌽 Totopos / Doritos ($2.000)\n• 🍍 Piña calada artesanal ($2.000)\n• 🌶️ Jalapeños ($2.000)\n• 🥚 Huevos de codorniz x2 ($1.000)\n• 🧀 Queso extra fundido ($5.000)\n\nAdemás, nuestra arepa dulce *Quipitos ($16.500)* tampoco contiene carne.\n\n👉 ¿Deseas armar una? Dime qué ingredientes te gustaría ponerle.`;
   }
 
-  // 3. CONSULTA DE ESTADO DE PEDIDO
+  // 5. CONSULTA DE ESTADO DE PEDIDO
   if (texto.includes('estado') || texto.includes('mi pedido') || texto.includes('como va') || texto.includes('cómo va') || texto.includes('demora') || texto.includes('cuanto falta')) {
     const ultimoPedido = DB.pedidos.find(p => p.cliente && p.cliente.celular === celular && p.estado !== 'CANCELADO');
     if (ultimoPedido) {
@@ -323,7 +331,7 @@ function procesarMensajeAgente(celular, mensajeTexto) {
     }
   }
 
-  // 4. PREGUNTAS FRECUENTES (Horarios, Dirección, Domicilios, Alérgenos)
+  // 6. PREGUNTAS FRECUENTES (Horarios, Dirección, Tiempos de entrega)
   if (texto.includes('horario') || texto.includes('abierto') || texto.includes('hora') || texto.includes('cierran')) {
     return `🕒 Nuestro horario de atención en Popayán es de *4:00 PM a 10:00 PM*, todos los días. ¡Estamos listos para tomar tu orden!`;
   }
@@ -346,7 +354,7 @@ function procesarMensajeAgente(celular, mensajeTexto) {
     return respuestaMenu;
   }
 
-  // 5. FLUJO DE TOMA DE PEDIDOS
+  // 7. FLUJO DE TOMA DE PEDIDOS
   let productoEncontrado = null;
   DB.productos.forEach(p => {
     if (texto.includes(p.nombre.toLowerCase())) productoEncontrado = p;
@@ -381,11 +389,7 @@ function procesarMensajeAgente(celular, mensajeTexto) {
     return `🥤 Agregué *${bebidaEncontrada.nombre}* ($${bebidaEncontrada.precio.toLocaleString()}).\n\n¿Deseas algo más o escribes *"Listo"* para tomar tus datos de entrega?`;
   }
 
-  if (texto.includes('listo') || texto.includes('eso es todo') || texto.includes('ya') || sesion.fase === 'ARMANDO_PEDIDO') {
-    if (sesion.items.length === 0) {
-      return `¡Hola! Aún no has seleccionado ninguna arepa. Escríbeme qué se te antoja (Campesina, Doriloca, Ranchera, Tocineta...) o escribe *"Menú"*.`;
-    }
-
+  if ((texto.includes('listo') || texto.includes('eso es todo') || texto.includes('ya')) && sesion.items.length > 0) {
     sesion.fase = 'PIDIENDO_DATOS';
     const subtotal = sesion.items.reduce((a, b) => a + b.precio, 0);
     return `📋 *Resumen de tu comanda:*
@@ -457,11 +461,16 @@ Para enviártelo a domicilio en Popayán, por favor indícame en un solo mensaje
     return respuestaFinal;
   }
 
-  // 6. SALUDO GENERAL Y AYUDA
-  return `👋 ¡Hola! Bienvenido a *Ary la arepa* Popayán 🧀 (De Popayán para el mundo).\n\nSoy tu asistente virtual. ¿En qué te puedo colaborar?\n\n1️⃣ Escribe *"Menú"* para ver nuestras arepas y precios.\n2️⃣ Escribe *"Vegetariano"* para ver opciones sin carne.\n3️⃣ Escribe *"Estado"* para saber cómo va tu comanda.\n4️⃣ O dime qué deseas pedir (ej: _"Quiero una arepa Campesina"_).`;
+  // 8. SALUDOS EXPLÍCITOS
+  if (['hola', 'buenas', 'buenos dias', 'buenas tardes', 'buenas noches', 'hey', 'inicio'].includes(texto)) {
+    return `👋 ¡Hola! Bienvenido a *Ary la arepa* Popayán 🧀 (De Popayán para el mundo).\n\nSoy tu asistente virtual. ¿En qué te puedo colaborar?\n\n1️⃣ Escribe *"Menú"* para ver nuestras arepas y precios.\n2️⃣ Escribe *"Fotos"* para ver fotos de los platos.\n3️⃣ Escribe *"Vegetariano"* para opciones sin carne.\n4️⃣ Escribe *"Asesor"* para comunicarte con una persona real.\n5️⃣ O simplemente dime qué se te antoja ordenar.`;
+  }
+
+  // 9. FALLBACK INTELIGENTE (CUANDO LA PREGUNTA NO SE ENTIENDE)
+  return `🤖 *Disculpa, no comprendí bien tu mensaje o no tengo esa información a la mano.*\n\n👉 Si deseas que te atienda un *asesor humano* de nuestro equipo en Prados del Norte, escribe *"Asesor"* o llámanos directamente al 📞 *321 5035691*.\n\n👉 Si deseas hacer un pedido, escribe *"Menú"* o dime el nombre de la arepa que te gustaría comer.`;
 }
 
-// Endpoint simulador y webhooks
+// Endpoints
 app.post('/api/bot/chat', (req, res) => {
   const { celular, mensaje } = req.body;
   if (!celular || !mensaje) return res.status(400).json({ error: 'Faltan datos' });
@@ -473,20 +482,14 @@ app.get('/api/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
-  if (mode && token === 'ARY_TOKEN_SECRETO_2026') {
-    res.status(200).send(challenge);
-  } else {
-    res.sendStatus(403);
-  }
+  if (mode && token === 'ARY_TOKEN_SECRETO_2026') res.status(200).send(challenge);
+  else res.sendStatus(403);
 });
 
 app.post('/api/webhook', (req, res) => {
   try {
     const entry = req.body.entry?.[0];
-    const changes = entry?.changes?.[0];
-    const value = changes?.value;
-    const message = value?.messages?.[0];
-
+    const message = entry?.changes?.[0]?.value?.messages?.[0];
     if (message && message.type === 'text') {
       const from = message.from;
       const text = message.text.body;
