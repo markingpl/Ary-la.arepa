@@ -3,7 +3,14 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const fs = require('fs');
-const { createClient } = require('@supabase/supabase-js');
+
+// Carga segura de Supabase (si no está instalado, no tumba el servidor)
+let createClient = null;
+try {
+  createClient = require('@supabase/supabase-js').createClient;
+} catch (e) {
+  console.log("ℹ️ Nota: Librería @supabase/supabase-js no detectada. Operando en modo local.");
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -17,7 +24,7 @@ app.use('/img', express.static(path.join(__dirname, 'public', 'img')));
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://rwoioajzmkjtaveosgyh.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_KEY || '';
 
-const supabase = (SUPABASE_URL && SUPABASE_KEY && !SUPABASE_KEY.includes('PEGA_AQUI')) 
+const supabase = (createClient && SUPABASE_URL && SUPABASE_KEY && !SUPABASE_KEY.includes('PEGA_AQUI')) 
   ? createClient(SUPABASE_URL, SUPABASE_KEY) 
   : null;
 
@@ -117,12 +124,19 @@ const DB_DEFAULT = {
   historialTurnos: []
 };
 
+// Carga con fusión segura (auto-repara archivos data.json viejos)
 let DB = DB_DEFAULT;
-
 if (fs.existsSync(DATA_FILE)) {
   try {
-    DB = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
-    if (!DB.info.pinAdmin) DB.info.pinAdmin = "1234";
+    const dataGuardada = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+    DB = {
+      ...DB_DEFAULT,
+      ...dataGuardada,
+      info: { ...DB_DEFAULT.info, ...(dataGuardada.info || {}) },
+      recetas: { ...DB_DEFAULT.recetas, ...(dataGuardada.recetas || {}) },
+      cupones: dataGuardada.cupones || DB_DEFAULT.cupones,
+      inventario: dataGuardada.inventario || DB_DEFAULT.inventario
+    };
   } catch (e) {
     DB = DB_DEFAULT;
   }
@@ -136,14 +150,62 @@ function guardarDB(claveModificada = null) {
   }
 
   if (supabase && claveModificada && DB[claveModificada]) {
-    supabase.from('configuracion').upsert({
-      clave: claveModificada,
-      datos: DB[claveModificada],
-      updated_at: new Date().toISOString()
-    }).then();
+    try {
+      supabase.from('configuracion').upsert({
+        clave: claveModificada,
+        datos: DB[claveModificada],
+        updated_at: new Date().toISOString()
+      }).then();
+    } catch (e) {}
   }
 }
 
+async function sincronizarConSupabase() {
+  if (!supabase) return;
+
+  try {
+    const { data: configData } = await supabase.from('configuracion').select('*');
+    if (configData && configData.length > 0) {
+      configData.forEach(row => {
+        if (row.clave && row.datos) DB[row.clave] = row.datos;
+      });
+      console.log("✓ Sincronizado con Supabase PostgreSQL.");
+    } else {
+      const claves = ['info', 'usuarios', 'clientesFrecuentes', 'cupones', 'inventario', 'recetas', 'barrios', 'productos', 'extras', 'bebidas'];
+      for (const k of claves) {
+        if (DB[k]) await supabase.from('configuracion').upsert({ clave: k, datos: DB[k] });
+      }
+      console.log("✓ Migración a Supabase completada.");
+    }
+
+    const { data: pedidosDb } = await supabase.from('pedidos').select('*').order('timestamp', { ascending: false }).limit(200);
+    if (pedidosDb && pedidosDb.length > 0) {
+      DB.pedidos = pedidosDb.map(p => ({
+        id: p.id,
+        numero: p.numero,
+        fecha: p.fecha,
+        hora: p.hora,
+        timestamp: Number(p.timestamp),
+        cliente: p.cliente,
+        modalidad: p.modalidad,
+        items: p.items,
+        metodoPago: p.metodo_pago,
+        subtotal: Number(p.subtotal),
+        costoEnvio: Number(p.costo_envio),
+        descuento: Number(p.descuento),
+        total: Number(p.total),
+        estado: p.estado,
+        turnoId: p.turno_id,
+        origen: p.origen
+      }));
+      DB.contadorPedido = DB.pedidos.length;
+    }
+  } catch (err) {
+    console.log("⚠️ No se pudo conectar a Supabase, operando con data.json local.");
+  }
+}
+
+// CONTROL DE HORARIOS (COLOMBIA UTC-5)
 function obtenerMinutosDiaColombia() {
   const ahoraCo = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Bogota" }));
   return ahoraCo.getHours() * 60 + ahoraCo.getMinutes();
@@ -151,7 +213,9 @@ function obtenerMinutosDiaColombia() {
 
 function verificarEstadoServicios() {
   const mins = obtenerMinutosDiaColombia();
+  // 4:00 PM (960m) a 9:30 PM (1290m)
   const abiertoDomicilio = (mins >= 960 && mins <= 1290);
+  // 4:00 PM (960m) a 9:45 PM (1305m)
   const abiertoMesaYRecoger = (mins >= 960 && mins <= 1305);
   return { abiertoDomicilio, abiertoMesa: abiertoMesaYRecoger, abiertoRecoger: abiertoMesaYRecoger };
 }
@@ -170,9 +234,11 @@ app.get('/api/estado-horarios', (req, res) => {
   });
 });
 
-// Descontar inventario automático
+// DESCARGO Y RESTAURACIÓN DE INVENTARIO
 function descontarInventarioPorPedido(items, modalidad) {
-  items.forEach(item => {
+  if (!DB.recetas || !DB.inventario) return;
+
+  (items || []).forEach(item => {
     const receta = DB.recetas[item.nombre];
     if (receta) {
       Object.keys(receta).forEach(invId => {
@@ -183,7 +249,7 @@ function descontarInventarioPorPedido(items, modalidad) {
       });
     }
 
-    const bebidaInsumo = DB.inventario.find(i => i.nombre.toLowerCase().includes(item.nombre.toLowerCase()));
+    const bebidaInsumo = DB.inventario.find(i => i.nombre.toLowerCase().includes((item.nombre || '').toLowerCase()));
     if (bebidaInsumo) {
       bebidaInsumo.stockActual = Math.max(0, bebidaInsumo.stockActual - 1);
     }
@@ -191,26 +257,27 @@ function descontarInventarioPorPedido(items, modalidad) {
 
   if (modalidad === 'Domicilio' || modalidad === 'Para Llevar' || modalidad === 'Rappi') {
     const bowl = DB.inventario.find(i => i.id === 'inv-8');
-    if (bowl) bowl.stockActual = Math.max(0, bowl.stockActual - items.length);
+    if (bowl) bowl.stockActual = Math.max(0, bowl.stockActual - (items ? items.length : 1));
   }
 
   guardarDB('inventario');
 }
 
-// DEVOLVER INVENTARIO SI LA COCINA RECHAZA EL PEDIDO
 function devolverInventarioCancelado(items, modalidad) {
-  items.forEach(item => {
+  if (!DB.recetas || !DB.inventario) return;
+
+  (items || []).forEach(item => {
     const receta = DB.recetas[item.nombre];
     if (receta) {
       Object.keys(receta).forEach(invId => {
         const insumo = DB.inventario.find(i => i.id === invId);
         if (insumo) {
-          insumo.stockActual += receta[invId]; // Se reingresan los gramos
+          insumo.stockActual += receta[invId];
         }
       });
     }
 
-    const bebidaInsumo = DB.inventario.find(i => i.nombre.toLowerCase().includes(item.nombre.toLowerCase()));
+    const bebidaInsumo = DB.inventario.find(i => i.nombre.toLowerCase().includes((item.nombre || '').toLowerCase()));
     if (bebidaInsumo) {
       bebidaInsumo.stockActual += 1;
     }
@@ -218,7 +285,7 @@ function devolverInventarioCancelado(items, modalidad) {
 
   if (modalidad === 'Domicilio' || modalidad === 'Para Llevar' || modalidad === 'Rappi') {
     const bowl = DB.inventario.find(i => i.id === 'inv-8');
-    if (bowl) bowl.stockActual += items.length;
+    if (bowl) bowl.stockActual += (items ? items.length : 1);
   }
 
   guardarDB('inventario');
@@ -240,7 +307,7 @@ function registrarPedidoEnSistema(pedidoData) {
 
   descontarInventarioPorPedido(nuevoPedido.items || [], nuevoPedido.modalidad);
 
-  if (pedidoData.cliente && pedidoData.cliente.celular && !pedidoData.metodoPago.includes('Pauta')) {
+  if (pedidoData.cliente && pedidoData.cliente.celular && !String(pedidoData.metodoPago).includes('Pauta')) {
     const idx = DB.clientesFrecuentes.findIndex(c => c.celular === pedidoData.cliente.celular);
     const cantArepas = (nuevoPedido.items || []).filter(i => !i.desc || !i.desc.includes('Bebida')).length || 1;
     if (idx >= 0) {
@@ -264,34 +331,37 @@ function registrarPedidoEnSistema(pedidoData) {
   guardarDB();
 
   if (supabase) {
-    supabase.from('pedidos').insert([{
-      id: nuevoPedido.id,
-      numero: nuevoPedido.numero,
-      fecha: nuevoPedido.fecha,
-      hora: nuevoPedido.hora,
-      timestamp: nuevoPedido.timestamp,
-      cliente: nuevoPedido.cliente,
-      modalidad: nuevoPedido.modalidad,
-      items: nuevoPedido.items,
-      metodo_pago: nuevoPedido.metodoPago,
-      subtotal: nuevoPedido.subtotal,
-      costo_envio: nuevoPedido.costoEnvio,
-      descuento: nuevoPedido.descuento || 0,
-      total: nuevoPedido.total,
-      estado: nuevoPedido.estado,
-      turno_id: nuevoPedido.turnoId,
-      origen: nuevoPedido.origen || 'Web/POS'
-    }]).then();
+    try {
+      supabase.from('pedidos').insert([{
+        id: nuevoPedido.id,
+        numero: nuevoPedido.numero,
+        fecha: nuevoPedido.fecha,
+        hora: nuevoPedido.hora,
+        timestamp: nuevoPedido.timestamp,
+        cliente: nuevoPedido.cliente,
+        modalidad: nuevoPedido.modalidad,
+        items: nuevoPedido.items,
+        metodo_pago: nuevoPedido.metodoPago,
+        subtotal: nuevoPedido.subtotal,
+        costo_envio: nuevoPedido.costoEnvio,
+        descuento: nuevoPedido.descuento || 0,
+        total: nuevoPedido.total,
+        estado: nuevoPedido.estado,
+        turno_id: nuevoPedido.turnoId,
+        origen: nuevoPedido.origen || 'Web/POS'
+      }]).then();
+    } catch (e) {}
   }
 
   io.emit('pedido-creado', nuevoPedido);
   return nuevoPedido;
 }
 
-// Endpoints
+// ENDPOINTS API
 app.get('/api/data-inicial', (req, res) => res.json(DB));
 app.get('/api/pedidos', (req, res) => res.json(DB.pedidos));
 
+// Verificación y Cambio de PIN
 app.post('/api/admin/verificar-pin', (req, res) => {
   const { pin } = req.body;
   if (pin === (DB.info.pinAdmin || "1234")) res.json({ ok: true });
@@ -435,20 +505,22 @@ app.post('/api/caja/cerrar', (req, res) => {
   guardarDB();
 
   if (supabase) {
-    supabase.from('turnos_caja').insert([{
-      id: turnoCerrado.id,
-      cajero: turnoCerrado.cajero,
-      base_inicial: turnoCerrado.baseInicial,
-      hora_apertura: turnoCerrado.horaApertura,
-      hora_cierre: turnoCerrado.horaCierre,
-      fecha: turnoCerrado.fecha,
-      estado: turnoCerrado.estado,
-      ventas_efectivo: turnoCerrado.ventasEfectivo,
-      ventas_digital: turnoCerrado.ventasDigital,
-      ventas_rappi: turnoCerrado.ventasRappi,
-      ventas_pauta: turnoCerrado.ventasPauta,
-      total_caja_esperado: turnoCerrado.totalCajaEsperado
-    }]).then();
+    try {
+      supabase.from('turnos_caja').insert([{
+        id: turnoCerrado.id,
+        cajero: turnoCerrado.cajero,
+        base_inicial: turnoCerrado.baseInicial,
+        hora_apertura: turnoCerrado.horaApertura,
+        hora_cierre: turnoCerrado.horaCierre,
+        fecha: turnoCerrado.fecha,
+        estado: turnoCerrado.estado,
+        ventas_efectivo: turnoCerrado.ventasEfectivo,
+        ventas_digital: turnoCerrado.ventasDigital,
+        ventas_rappi: turnoCerrado.ventasRappi,
+        ventas_pauta: turnoCerrado.ventasPauta,
+        total_caja_esperado: turnoCerrado.totalCajaEsperado
+      }]).then();
+    } catch (e) {}
   }
 
   res.json({ ok: true, resumenCierre: turnoCerrado });
@@ -581,26 +653,28 @@ io.on('connection', (socket) => {
       pedido.estado = nuevoEstado;
       guardarDB();
       if (supabase) {
-        supabase.from('pedidos').update({ estado: nuevoEstado }).eq('id', id).then();
+        try {
+          supabase.from('pedidos').update({ estado: nuevoEstado }).eq('id', id).then();
+        } catch (e) {}
       }
       io.emit('estado-actualizado', { id, nuevoEstado, pedido });
     }
   });
 
-  // CANCELACIÓN DIRECTA DESDE LA PANTALLA DE COCINA
   socket.on('cancelar-comanda-cocina', ({ id, motivo }) => {
     const pedido = DB.pedidos.find(p => p.id === id);
     if (pedido && pedido.estado === 'PENDIENTE') {
       pedido.estado = 'CANCELADO';
       pedido.motivoCancelacion = motivo || 'Rechazado por cocina';
 
-      // Reingresar los insumos al inventario
       devolverInventarioCancelado(pedido.items || [], pedido.modalidad);
 
       guardarDB();
 
       if (supabase) {
-        supabase.from('pedidos').update({ estado: 'CANCELADO' }).eq('id', id).then();
+        try {
+          supabase.from('pedidos').update({ estado: 'CANCELADO' }).eq('id', id).then();
+        } catch (e) {}
       }
 
       io.emit('estado-actualizado', { id, nuevoEstado: 'CANCELADO', pedido });
