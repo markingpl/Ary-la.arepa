@@ -22,7 +22,6 @@
       </span>
     </div>
 
-    <!-- Pestañas de Filtros -->
     <div class="flex flex-wrap gap-2">
       <button onclick="setFiltro('TODOS')" id="f-TODOS" class="px-3.5 py-1.5 rounded-xl text-xs font-black bg-yellow-400 text-black">
         Todos (<span id="c-todos">0</span>)
@@ -39,7 +38,6 @@
     </div>
   </header>
 
-  <!-- Grilla de Comandas -->
   <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-6" id="grid-comandas">
     <div class="col-span-full text-center py-16 text-stone-500 italic">
       Esperando pedidos... Las comandas aparecerán aquí al instante.
@@ -51,7 +49,6 @@
     let pedidos = [];
     let filtroActual = 'TODOS';
 
-    // Alarma sonora tipo "Ding"
     function reproducirAlarma() {
       try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -89,11 +86,8 @@
 
     function renderComandas() {
       const grid = document.getElementById('grid-comandas');
-      
-      // Comandas activas en cocina (ocultamos las ya entregadas o canceladas)
       const activos = pedidos.filter(p => p.estado !== 'ENTREGADO' && p.estado !== 'CANCELADO');
 
-      // Actualizar contadores numéricos en las pestañas
       const nPendientes = pedidos.filter(p => p.estado === 'PENDIENTE').length;
       const nPreparando = pedidos.filter(p => p.estado === 'PREPARANDO').length;
       const nListos = pedidos.filter(p => p.estado === 'LISTO').length;
@@ -104,9 +98,7 @@
       document.getElementById('c-listos').innerText = nListos;
       document.getElementById('contador-pendientes').innerText = `${nPendientes} Pendientes`;
 
-      const filtrados = filtroActual === 'TODOS' 
-        ? activos 
-        : activos.filter(p => p.estado === filtroActual);
+      const filtrados = filtroActual === 'TODOS' ? activos : activos.filter(p => p.estado === filtroActual);
 
       if (filtrados.length === 0) {
         grid.innerHTML = `<div class="col-span-full text-center py-16 text-stone-500 italic">No hay comandas activas en esta sección.</div>`;
@@ -115,50 +107,33 @@
 
       grid.innerHTML = filtrados.map(p => {
         const mins = Math.floor((Date.now() - (p.timestamp || Date.now())) / 60000);
-        
-        let colorBorde = 'border-stone-800';
-        let colorBadge = 'bg-stone-800 text-stone-300';
-
-        if (p.estado === 'PENDIENTE') {
-          colorBorde = 'border-red-600/70';
-          colorBadge = 'bg-red-600 text-white';
-        } else if (p.estado === 'PREPARANDO') {
-          colorBorde = 'border-blue-500/70';
-          colorBadge = 'bg-blue-600 text-white';
-        } else if (p.estado === 'LISTO') {
-          colorBorde = 'border-green-500/70';
-          colorBadge = 'bg-green-500 text-black';
-        }
+        let colorBorde = p.estado === 'PENDIENTE' ? 'border-red-600/70' : (p.estado === 'PREPARANDO' ? 'border-blue-500/70' : 'border-green-500/70');
+        let colorBadge = p.estado === 'PENDIENTE' ? 'bg-red-600 text-white' : (p.estado === 'PREPARANDO' ? 'bg-blue-600 text-white' : 'bg-green-500 text-black');
 
         return `
           <div class="bg-neutral-900 border-2 ${colorBorde} rounded-2xl flex flex-col justify-between overflow-hidden shadow-xl">
             <div>
-              <!-- Cabecera -->
               <div class="flex justify-between items-center p-3 border-b border-stone-800 bg-neutral-950">
                 <span class="text-3xl font-black text-yellow-400 tracking-wider">${p.numero}</span>
                 <span class="text-[10px] font-black px-2.5 py-0.5 rounded-full ${colorBadge} uppercase">${p.estado}</span>
                 <span class="text-xs text-stone-400"><i class="fa-regular fa-clock"></i> ${mins} min</span>
               </div>
 
-              <!-- Cliente / Modalidad -->
               <div class="p-3 text-xs border-b border-stone-800 bg-neutral-900/60">
                 <div class="font-black text-white uppercase text-sm">${p.modalidad} • ${p.cliente ? p.cliente.nombre : 'Cliente'}</div>
                 <div class="text-stone-300 text-[11px] mt-0.5">${p.cliente ? p.cliente.direccion : ''} ${p.cliente && p.cliente.barrio ? `(${p.cliente.barrio})` : ''}</div>
                 ${p.cliente && p.cliente.celular ? `<div class="text-[10px] text-stone-400 mt-0.5"><i class="fa-solid fa-phone text-yellow-400"></i> ${p.cliente.celular}</div>` : ''}
               </div>
 
-              <!-- Lista de arepas y extras -->
               <div class="p-3 space-y-3">
                 ${(p.items || []).map(it => `
                   <div class="border-b border-stone-800/60 pb-2.5">
                     <div class="font-black text-base text-yellow-300">1x ${it.nombre}</div>
-                    
                     ${it.extras && it.extras.length ? `
                       <div class="text-xs text-stone-200 mt-1 pl-2 border-l-2 border-yellow-400 font-semibold">
                         + Extras: ${it.extras.map(e => typeof e === 'object' ? e.nombre : e).join(', ')}
                       </div>
                     ` : ''}
-
                     ${it.notas ? `
                       <div class="text-xs text-amber-300 bg-amber-950/40 border border-amber-800/60 p-1.5 rounded-lg mt-1 font-bold">
                         ⚠️ Nota: ${it.notas}
@@ -169,7 +144,7 @@
               </div>
             </div>
 
-            <!-- Botones de Acción de Cocina (3 Estados) -->
+            <!-- Botones de Acción (3 Fases) -->
             <div class="p-3 border-t border-stone-800 bg-neutral-950">
               ${p.estado === 'PENDIENTE' ? `
                 <button onclick="cambiarEstadoComanda('${p.id}', 'PREPARANDO')" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-white shadow-lg transition">
@@ -184,9 +159,7 @@
                   🚀 Marcar como Entregado
                 </button>
               ` : `
-                <span class="block text-center text-xs font-bold text-stone-500 py-2">
-                  ✓ Comanda Despachada
-                </span>
+                <span class="block text-center text-xs font-bold text-stone-500 py-2">✓ Comanda Despachada</span>
               `}
             </div>
           </div>
@@ -198,7 +171,6 @@
       socket.emit('cambiar-estado', { id, nuevoEstado });
     }
 
-    // Eventos Socket en Vivo
     socket.on('pedido-creado', (p) => {
       pedidos.unshift(p);
       reproducirAlarma();
@@ -212,7 +184,7 @@
     });
 
     cargarPedidos();
-    setInterval(renderComandas, 30000); // Actualiza minutos
+    setInterval(renderComandas, 30000);
   </script>
 </body>
 </html>
