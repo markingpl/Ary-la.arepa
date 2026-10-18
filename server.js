@@ -32,24 +32,22 @@ const DB_DEFAULT = {
   clientesFrecuentes: [
     { id: 1, nombre: 'Juan Camilo', celular: '3110000000', direccion: 'Cra 9 # 12N-45', barrio: 'Ciudad Jardín', pedidos: 4, puntos: 4 }
   ],
-  // CUPONES DE DESCUENTO (FEATURE D)
   cupones: [
     { id: 1, codigo: 'POPAYAN10', tipo: 'PORCENTAJE', valor: 10, activo: true, usos: 0 },
     { id: 2, codigo: 'ARY5K', tipo: 'FIJO', valor: 5000, activo: true, usos: 0 }
   ],
-  // CONTROL DE INVENTARIO Y STOCK (FEATURE C)
+  // INVENTARIO CON GRAMOS, UNIDADES Y TAMAÑO DE PORCIÓN
   inventario: [
-    { id: 'inv-1', nombre: 'Arepa Base Agridulce', stockActual: 100, stockMinimo: 20, unidad: 'unidades', costo: 1500 },
-    { id: 'inv-2', nombre: 'Queso Fundido Artesanal', stockActual: 10000, stockMinimo: 2000, unidad: 'gramos', costo: 18 },
-    { id: 'inv-3', nombre: 'Carne Desmechada', stockActual: 5000, stockMinimo: 1000, unidad: 'gramos', costo: 25 },
-    { id: 'inv-4', nombre: 'Pollo Desmechado', stockActual: 5000, stockMinimo: 1000, unidad: 'gramos', costo: 18 },
-    { id: 'inv-5', nombre: 'Chorizo Ahumado', stockActual: 60, stockMinimo: 15, unidad: 'unidades', costo: 1200 },
-    { id: 'inv-6', nombre: 'Tocineta Ahumada', stockActual: 3000, stockMinimo: 600, unidad: 'gramos', costo: 28 },
-    { id: 'inv-7', nombre: 'Doritos / Totopos', stockActual: 50, stockMinimo: 10, unidad: 'bolsas', costo: 1000 },
-    { id: 'inv-8', nombre: 'Bowls Térmicos Domicilio', stockActual: 150, stockMinimo: 30, unidad: 'unidades', costo: 400 },
-    { id: 'inv-9', nombre: 'Coca-Cola Cero 250ml', stockActual: 48, stockMinimo: 12, unidad: 'unidades', costo: 1800 }
+    { id: 'inv-1', nombre: 'Arepa Base Agridulce', unidad: 'unidades', porcionTamano: 1, stockActual: 100, stockMinimo: 20 },
+    { id: 'inv-2', nombre: 'Queso Fundido Artesanal', unidad: 'gramos', porcionTamano: 80, stockActual: 8000, stockMinimo: 1600 },
+    { id: 'inv-3', nombre: 'Carne Desmechada', unidad: 'gramos', porcionTamano: 100, stockActual: 5000, stockMinimo: 1000 },
+    { id: 'inv-4', nombre: 'Pollo Desmechado', unidad: 'gramos', porcionTamano: 100, stockActual: 5000, stockMinimo: 1000 },
+    { id: 'inv-5', nombre: 'Chorizo Ahumado', unidad: 'unidades', porcionTamano: 1, stockActual: 50, stockMinimo: 10 },
+    { id: 'inv-6', nombre: 'Tocineta Ahumada', unidad: 'gramos', porcionTamano: 60, stockActual: 3000, stockMinimo: 600 },
+    { id: 'inv-7', nombre: 'Doritos / Totopos', unidad: 'unidades', porcionTamano: 1, stockActual: 40, stockMinimo: 10 },
+    { id: 'inv-8', nombre: 'Bowls Térmicos Domicilio', unidad: 'unidades', porcionTamano: 1, stockActual: 120, stockMinimo: 25 },
+    { id: 'inv-9', nombre: 'Coca-Cola Cero 250ml', unidad: 'unidades', porcionTamano: 1, stockActual: 36, stockMinimo: 12 }
   ],
-  // ESCANDALLO / RECETAS (Lo que se descuenta por arepa)
   recetas: {
     'Campesina': { 'inv-1': 1, 'inv-2': 80, 'inv-3': 100, 'inv-5': 1 },
     'Doriloca': { 'inv-1': 1, 'inv-2': 80, 'inv-3': 100, 'inv-7': 1 },
@@ -132,28 +130,26 @@ function guardarDB() {
   }
 }
 
-// DESCARGO AUTOMÁTICO DE INVENTARIO
+// Descontar inventario automático por porciones y gramos
 function descontarInventarioPorPedido(items, modalidad) {
   items.forEach(item => {
-    // 1. Descontar según receta de la arepa
     const receta = DB.recetas[item.nombre];
     if (receta) {
       Object.keys(receta).forEach(invId => {
         const insumo = DB.inventario.find(i => i.id === invId);
         if (insumo) {
-          insumo.stockActual = Math.max(0, insumo.stockActual - receta[invId]);
+          const cantidadARestar = receta[invId];
+          insumo.stockActual = Math.max(0, insumo.stockActual - cantidadARestar);
         }
       });
     }
 
-    // 2. Si es bebida
     const bebidaInsumo = DB.inventario.find(i => i.nombre.toLowerCase().includes(item.nombre.toLowerCase()));
     if (bebidaInsumo) {
       bebidaInsumo.stockActual = Math.max(0, bebidaInsumo.stockActual - 1);
     }
   });
 
-  // 3. Descontar empaque si es domicilio o para llevar
   if (modalidad === 'Domicilio' || modalidad === 'Para Llevar') {
     const bowl = DB.inventario.find(i => i.id === 'inv-8');
     if (bowl) bowl.stockActual = Math.max(0, bowl.stockActual - items.length);
@@ -176,10 +172,8 @@ function registrarPedidoEnSistema(pedidoData) {
     ...pedidoData
   };
 
-  // Descontar inventario en tiempo real
   descontarInventarioPorPedido(nuevoPedido.items || [], nuevoPedido.modalidad);
 
-  // Fidelización de puntos (1 punto por comanda / arepa)
   if (pedidoData.cliente && pedidoData.cliente.celular) {
     const idx = DB.clientesFrecuentes.findIndex(c => c.celular === pedidoData.cliente.celular);
     const cantArepas = (nuevoPedido.items || []).filter(i => !i.desc || !i.desc.includes('Bebida')).length || 1;
@@ -207,16 +201,25 @@ function registrarPedidoEnSistema(pedidoData) {
   return nuevoPedido;
 }
 
-// ENDPOINTS PRINCIPALES
+// Endpoints
 app.get('/api/data-inicial', (req, res) => res.json(DB));
 app.get('/api/pedidos', (req, res) => res.json(DB.pedidos));
 
-// VALIDACIÓN DE CUPONES (FEATURE D)
+// Guardado de Inventario (Con Agregar y Quitar)
+app.post('/api/admin/inventario', (req, res) => {
+  if (Array.isArray(req.body.inventario)) {
+    DB.inventario = req.body.inventario;
+    guardarDB();
+    res.json({ ok: true, inventario: DB.inventario });
+  } else res.status(400).json({ error: 'Inválido' });
+});
+
+// Cupones
 app.post('/api/cupones/validar', (req, res) => {
   const { codigo, subtotal } = req.body;
   if (!codigo) return res.status(400).json({ error: 'Ingresa un código' });
   const cup = DB.cupones.find(c => c.codigo.toUpperCase() === codigo.trim().toUpperCase() && c.activo);
-  if (!cup) return res.status(404).json({ error: 'Cupón inválido o expirado' });
+  if (!cup) return res.status(404).json({ error: 'Cupón no válido o vencido' });
 
   let descuento = 0;
   if (cup.tipo === 'PORCENTAJE') descuento = Math.round((subtotal * cup.valor) / 100);
@@ -226,19 +229,8 @@ app.post('/api/cupones/validar', (req, res) => {
 });
 
 app.post('/api/admin/cupones', (req, res) => {
-  const { cupones } = req.body;
-  if (Array.isArray(cupones)) {
-    DB.cupones = cupones;
-    guardarDB();
-    res.json({ ok: true });
-  } else res.status(400).json({ error: 'Inválido' });
-});
-
-// GESTIÓN DE INVENTARIO (FEATURE C)
-app.post('/api/admin/inventario', (req, res) => {
-  const { inventario } = req.body;
-  if (Array.isArray(inventario)) {
-    DB.inventario = inventario;
+  if (Array.isArray(req.body.cupones)) {
+    DB.cupones = req.body.cupones;
     guardarDB();
     res.json({ ok: true });
   } else res.status(400).json({ error: 'Inválido' });
