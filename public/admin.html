@@ -27,7 +27,7 @@
 </head>
 <body class="bg-neutral-950 text-white min-h-screen font-sans">
 
-  <!-- PIN Screen -->
+  <!-- Pantalla PIN -->
   <div id="pin-screen" class="fixed inset-0 z-50 bg-neutral-950 flex flex-col items-center justify-center p-4">
     <div class="max-w-xs w-full text-center space-y-6">
       <div>
@@ -107,7 +107,7 @@
               <i class="fa-solid fa-fire text-amber-500"></i> Cocina KDS
             </a>
             <a href="/pos.html" target="_blank" class="flex items-center gap-3 p-2 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl transition">
-              <i class="fa-solid fa-cash-register text-green-500"></i> Caja POS
+              <i class="fa-solid fa-cash-register text-green-500"></i> Caja POS (Tickets 80mm)
             </a>
             <a href="/" target="_blank" class="flex items-center gap-3 p-2 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl transition">
               <i class="fa-solid fa-mobile-screen text-blue-400"></i> Menú Clientes
@@ -121,7 +121,7 @@
       </button>
     </aside>
 
-    <!-- Área Principal -->
+    <!-- Área de Trabajo -->
     <main class="flex-1 overflow-y-auto p-6">
       
       <!-- 1. DASHBOARD & EXCEL -->
@@ -175,14 +175,13 @@
         </div>
       </section>
 
-      <!-- 2. INVENTARIO & STOCK CON GRAMOS, UNIDADES Y PORCIONES -->
+      <!-- 2. INVENTARIO & STOCK -->
       <section id="vista-inventario" class="hidden space-y-6">
         <div class="flex flex-wrap justify-between items-center gap-4">
           <div>
             <h1 class="text-2xl font-black text-yellow-400">Control de Insumos & Porciones</h1>
             <p class="text-xs text-stone-400">Define gramos o unidades por porción y mira cuántas arepas puedes armar en tiempo real.</p>
           </div>
-          
           <div class="flex gap-2">
             <button onclick="abrirModalNuevoInsumo()" class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2.5 rounded-xl text-xs font-black shadow-lg flex items-center gap-2">
               <i class="fa-solid fa-plus"></i> + Agregar Insumo
@@ -193,7 +192,6 @@
           </div>
         </div>
 
-        <!-- Alerta de Stock Bajo -->
         <div id="alerta-stock-critico" class="hidden bg-red-950/60 border-2 border-red-600 p-4 rounded-2xl flex items-center gap-3 shadow-xl">
           <i class="fa-solid fa-triangle-exclamation text-red-400 text-2xl animate-pulse"></i>
           <div>
@@ -202,7 +200,6 @@
           </div>
         </div>
 
-        <!-- Tabla Inventario -->
         <div class="bg-neutral-900 border border-stone-800 rounded-2xl overflow-hidden shadow-lg">
           <table class="w-full text-left text-xs">
             <thead class="bg-neutral-800/60 text-stone-400 uppercase text-[10px]">
@@ -306,36 +303,147 @@
             Guardar Tarifas
           </button>
         </div>
+
+        <div class="bg-neutral-900 border border-stone-800 p-4 rounded-2xl flex flex-wrap gap-3 items-end">
+          <div class="flex-1 min-w-[200px]">
+            <label class="block text-xs font-bold text-stone-400 mb-1">Nombre del Barrio / Sector</label>
+            <input type="text" id="nuevo-barrio-nombre" placeholder="Ej: La Paz / Yanaconas" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-xs text-white">
+          </div>
+          <div class="w-48">
+            <label class="block text-xs font-bold text-stone-400 mb-1">Costo Domicilio ($ COP)</label>
+            <input type="number" id="nuevo-barrio-costo" placeholder="Ej: 5000" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-xs text-white">
+          </div>
+          <button onclick="agregarBarrio()" class="bg-stone-800 hover:bg-neutral-700 border border-stone-700 text-yellow-400 font-bold px-4 py-2.5 rounded-xl text-xs">
+            <i class="fa-solid fa-plus"></i> Añadir Barrio
+          </button>
+        </div>
+
         <div class="bg-neutral-900 border border-stone-800 rounded-2xl overflow-hidden shadow-lg">
           <table class="w-full text-left text-xs">
+            <thead class="bg-neutral-800/60 text-stone-400 uppercase text-[10px]">
+              <tr>
+                <th class="p-3.5">Barrio o Sector</th>
+                <th class="p-3.5 w-60">Tarifa Actual ($ COP)</th>
+                <th class="p-3.5 text-center w-28">Acción</th>
+              </tr>
+            </thead>
             <tbody id="tabla-barrios-admin" class="divide-y divide-stone-800"></tbody>
           </table>
         </div>
       </section>
 
-      <!-- 6. EDITOR DE MENÚ -->
+      <!-- 6. EDITOR DE MENÚ & FOTOS -->
       <section id="vista-menu" class="hidden space-y-6">
-        <div class="flex justify-between items-center">
-          <h1 class="text-2xl font-black text-yellow-400">Editor de Menú & Precios</h1>
-          <button onclick="guardarTodoElMenu()" class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2.5 rounded-xl text-xs font-black shadow-lg">
-            Guardar Cambios
-          </button>
+        <div class="flex flex-wrap justify-between items-center gap-4">
+          <div>
+            <h1 class="text-2xl font-black text-yellow-400">Editor de Menú & Fotos de Arepas</h1>
+            <p class="text-xs text-stone-400">Cambia fotos desde tu celular/PC, actualiza precios y administra productos.</p>
+          </div>
+          
+          <div class="flex flex-wrap items-center gap-2">
+            <button onclick="abrirModalNuevoProducto()" class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2.5 rounded-xl text-xs font-black shadow-lg flex items-center gap-2">
+              <i class="fa-solid fa-plus"></i> + Agregar Producto al Menú
+            </button>
+            <button onclick="guardarTodoElMenu(true)" class="bg-neutral-800 hover:bg-neutral-700 border border-stone-700 text-stone-200 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2">
+              <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios
+            </button>
+          </div>
         </div>
+
+        <div class="flex gap-2">
+          <button onclick="mostrarSubMenu('arepas')" id="tab-m-arepas" class="px-4 py-2 rounded-xl text-xs font-black bg-yellow-400 text-black">Arepas Principales</button>
+          <button onclick="mostrarSubMenu('extras')" id="tab-m-extras" class="px-4 py-2 rounded-xl text-xs font-bold bg-neutral-900 border border-stone-800 text-stone-300">Extras & Adiciones</button>
+          <button onclick="mostrarSubMenu('bebidas')" id="tab-m-bebidas" class="px-4 py-2 rounded-xl text-xs font-bold bg-neutral-900 border border-stone-800 text-stone-300">Bebidas</button>
+        </div>
+
         <div id="box-editor-arepas" class="bg-neutral-900 border border-stone-800 rounded-2xl p-4 space-y-3"></div>
+        <div id="box-editor-extras" class="bg-neutral-900 border border-stone-800 rounded-2xl p-4 space-y-3 hidden"></div>
+        <div id="box-editor-bebidas" class="bg-neutral-900 border border-stone-800 rounded-2xl p-4 space-y-3 hidden"></div>
       </section>
 
-      <!-- 7. CAJEROS POS -->
+      <!-- 7. CAJEROS & USUARIOS POS (RESTAURADO COMPLETO) -->
       <section id="vista-usuarios" class="hidden space-y-6">
-        <h1 class="text-2xl font-black text-yellow-400">Cajeros POS</h1>
+        <div class="flex flex-wrap justify-between items-center gap-4">
+          <div>
+            <h1 class="text-2xl font-black text-yellow-400">Cajeros y Personal POS</h1>
+            <p class="text-xs text-stone-400">Crea nuevos usuarios, define contraseñas y asigna permisos a la caja registradora.</p>
+          </div>
+          <button onclick="abrirModalCrearUsuario()" class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2.5 rounded-xl text-xs font-black shadow-lg flex items-center gap-2">
+            <i class="fa-solid fa-user-plus"></i> + Crear Nuevo Cajero
+          </button>
+        </div>
+
         <div class="bg-neutral-900 border border-stone-800 rounded-2xl overflow-hidden shadow-lg">
-          <table class="w-full text-left text-xs"><tbody id="tabla-usuarios" class="divide-y divide-stone-800"></tbody></table>
+          <table class="w-full text-left text-xs">
+            <thead class="bg-neutral-800/60 text-stone-400 uppercase text-[10px]">
+              <tr>
+                <th class="p-3.5">Nombre del Empleado</th>
+                <th class="p-3.5">Usuario de Acceso</th>
+                <th class="p-3.5">Contraseña / PIN</th>
+                <th class="p-3.5">Rol</th>
+                <th class="p-3.5 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-usuarios" class="divide-y divide-stone-800"></tbody>
+          </table>
         </div>
       </section>
 
     </main>
   </div>
 
-  <!-- Modal Crear Insumo / Ingrediente Nuevo -->
+  <!-- Modal Crear Producto -->
+  <div id="modal-nuevo-producto" class="fixed inset-0 z-50 bg-black/90 hidden flex items-center justify-center p-4">
+    <div class="bg-neutral-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-stone-800 pb-2">
+        <h3 class="font-black text-yellow-400 text-base">Nuevo Producto al Menú</h3>
+        <button onclick="cerrarModalNuevoProducto()" class="text-stone-400 hover:text-white font-bold text-lg">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-stone-300 mb-1">Categoría *</label>
+          <select id="prod-categoria" onchange="toggleCamposProducto()" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold">
+            <option value="arepas">Arepa Principal</option>
+            <option value="extras">Extra / Adición</option>
+            <option value="bebidas">Bebida</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-bold text-stone-300 mb-1">Nombre *</label>
+          <input type="text" id="prod-nombre" placeholder="Ej: Costilla BBQ" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold">
+        </div>
+
+        <div>
+          <label class="block font-bold text-stone-300 mb-1">Precio ($ COP) *</label>
+          <input type="number" id="prod-precio" placeholder="Ej: 28000" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold">
+        </div>
+
+        <div id="campo-prod-desc">
+          <label class="block font-bold text-stone-300 mb-1">Descripción</label>
+          <textarea id="prod-desc" rows="2" placeholder="Costilla desmechada • queso fundido..." class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white text-xs"></textarea>
+        </div>
+
+        <div id="campo-prod-img" class="space-y-2">
+          <label class="block font-bold text-stone-300 mb-1">Foto del producto</label>
+          <div class="flex items-center gap-3">
+            <img id="preview-nuevo-prod" src="/img/mascota.png" class="w-14 h-14 rounded-full object-cover border-2 border-yellow-400">
+            <label class="flex-1 bg-neutral-800 hover:bg-neutral-700 border border-stone-700 text-stone-200 py-2.5 px-3 rounded-xl font-bold text-center cursor-pointer transition">
+              <i class="fa-solid fa-camera text-yellow-400 mr-1"></i> Subir foto
+              <input type="file" accept="image/*" onchange="procesarFotoNuevoProducto(event)" class="hidden">
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <button onclick="guardarProductoEnMenu()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-3 rounded-xl font-black text-xs uppercase shadow-lg shadow-yellow-500/20">
+        Agregar y Guardar
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal Crear Insumo -->
   <div id="modal-nuevo-insumo" class="fixed inset-0 z-50 bg-black/90 hidden flex items-center justify-center p-4">
     <div class="bg-neutral-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
       <div class="flex justify-between items-center border-b border-stone-800 pb-2">
@@ -345,7 +453,7 @@
 
       <div class="space-y-3 text-xs">
         <div>
-          <label class="block font-bold text-stone-300 mb-1">Nombre del Insumo / Ingrediente *</label>
+          <label class="block font-bold text-stone-300 mb-1">Nombre del Insumo *</label>
           <input type="text" id="ins-nombre" placeholder="Ej: Maíz Dulce Desgranado" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold">
         </div>
 
@@ -357,7 +465,6 @@
               <option value="unidades">Unidades (u)</option>
             </select>
           </div>
-
           <div>
             <label class="block font-bold text-stone-300 mb-1" id="lbl-ins-porcion">Gramos por Porción *</label>
             <input type="number" id="ins-porcion" placeholder="Ej: 80" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold text-center">
@@ -366,20 +473,50 @@
 
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block font-bold text-stone-300 mb-1">Stock Actual Inicial *</label>
+            <label class="block font-bold text-stone-300 mb-1">Stock Actual *</label>
             <input type="number" id="ins-stock-actual" placeholder="Ej: 5000" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold text-center">
           </div>
-
           <div>
-            <label class="block font-bold text-stone-300 mb-1">Alerta Stock Mínimo *</label>
+            <label class="block font-bold text-stone-300 mb-1">Stock Mínimo *</label>
             <input type="number" id="ins-stock-minimo" placeholder="Ej: 1000" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold text-center">
           </div>
         </div>
       </div>
 
-      <button onclick="guardarNuevoInsumo()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-3 rounded-xl font-black text-xs uppercase shadow-lg shadow-yellow-500/20">
+      <button onclick="guardarNuevoInsumo()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-3 rounded-xl font-black text-xs uppercase shadow-lg">
         Agregar al Inventario
       </button>
+    </div>
+  </div>
+
+  <!-- Modal Crear Cajero POS (RESTAURADO COMPLETO) -->
+  <div id="modal-crear-usuario" class="fixed inset-0 z-50 bg-black/90 hidden flex items-center justify-center p-4">
+    <div class="bg-neutral-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-stone-800 pb-2">
+        <h3 class="font-black text-yellow-400 text-base">Crear Nuevo Cajero POS</h3>
+        <button onclick="cerrarModalCrearUsuario()" class="text-stone-400 hover:text-white font-bold text-lg">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-stone-300 mb-1">Nombre completo del empleado *</label>
+          <input type="text" id="nuevo-nombre" placeholder="Ej: Laura Gómez" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold">
+        </div>
+        <div>
+          <label class="block font-bold text-stone-300 mb-1">Nombre de usuario (Login) *</label>
+          <input type="text" id="nuevo-usuario" placeholder="Ej: laura2024" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold">
+        </div>
+        <div>
+          <label class="block font-bold text-stone-300 mb-1">Contraseña / PIN de acceso *</label>
+          <input type="password" id="nueva-clave" placeholder="Ej: 5555" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold">
+        </div>
+      </div>
+
+      <div class="pt-2">
+        <button onclick="guardarNuevoUsuario()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-3.5 rounded-xl font-black text-xs uppercase shadow-lg shadow-yellow-500/20">
+          Guardar y Habilitar Cajero
+        </button>
+      </div>
     </div>
   </div>
 
@@ -390,6 +527,8 @@
     let todosLosPedidos = [];
     let pedidosFiltrados = [];
     let periodoSeleccionado = 'hoy';
+    let subMenuActual = 'arepas';
+    let fotoNuevoProductoTemp = '/img/mascota.png';
 
     const variantesMascota = ['/img/mascota.png', '/img/mascota.jpg', '/img/Mascota.png', '/img/Mascota.jpg'];
     let intentoMascota = 0;
@@ -449,7 +588,79 @@
     }
 
     // ==========================================
-    // INVENTARIO CON PORCIONES, GRAMOS Y UNIDADES
+    // CAJEROS Y USUARIOS POS (RESTAURADO COMPLETO)
+    // ==========================================
+    async function cargarUsuarios() {
+      const res = await fetch('/api/usuarios');
+      const usuarios = await res.json();
+      const tabla = document.getElementById('tabla-usuarios');
+
+      tabla.innerHTML = usuarios.map(u => `
+        <tr class="hover:bg-neutral-800/40">
+          <td class="p-3.5 font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-user-circle text-stone-400 text-base"></i>
+            ${u.nombre}
+          </td>
+          <td class="p-3.5 text-yellow-400 font-mono font-bold">${u.usuario}</td>
+          <td class="p-3.5 text-stone-300 font-mono tracking-widest">${u.clave}</td>
+          <td class="p-3.5">
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black ${u.rol === 'ADMIN' ? 'bg-yellow-400 text-black' : 'bg-neutral-800 text-stone-300 border border-stone-700'}">
+              ${u.rol}
+            </span>
+          </td>
+          <td class="p-3.5 text-center">
+            ${u.rol !== 'ADMIN' ? `
+              <button onclick="eliminarUsuario(${u.id}, '${u.nombre}')" class="bg-red-950 hover:bg-red-900 border border-red-800 text-red-400 px-3 py-1 rounded-lg text-xs font-bold transition">
+                <i class="fa-solid fa-trash-can"></i> Quitar
+              </button>
+            ` : '<span class="text-stone-500 text-[10px] italic">Principal</span>'}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function abrirModalCrearUsuario() {
+      document.getElementById('nuevo-nombre').value = '';
+      document.getElementById('nuevo-usuario').value = '';
+      document.getElementById('nueva-clave').value = '';
+      document.getElementById('modal-crear-usuario').classList.remove('hidden');
+    }
+
+    function cerrarModalCrearUsuario() {
+      document.getElementById('modal-crear-usuario').classList.add('hidden');
+    }
+
+    async function guardarNuevoUsuario() {
+      const nombre = document.getElementById('nuevo-nombre').value.trim();
+      const usuario = document.getElementById('nuevo-usuario').value.trim();
+      const clave = document.getElementById('nueva-clave').value.trim();
+
+      if (!nombre || !usuario || !clave) return alert('Por favor llena todos los campos.');
+
+      const res = await fetch('/api/usuarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, usuario, clave })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        alert(`¡Cajero ${nombre} creado exitosamente! Ya puede iniciar sesión en la caja POS.`);
+        cerrarModalCrearUsuario();
+        cargarUsuarios();
+      } else {
+        alert(data.error || 'Error al crear el cajero.');
+      }
+    }
+
+    async function eliminarUsuario(id, nombre) {
+      if (!confirm(`¿Eliminar el acceso para "${nombre}"?`)) return;
+      const res = await fetch(`/api/usuarios/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.ok) cargarUsuarios();
+    }
+
+    // ==========================================
+    // INVENTARIO CON PORCIONES Y GRAMOS
     // ==========================================
     function renderInventarioAdmin() {
       const tabla = document.getElementById('tabla-inventario');
@@ -459,50 +670,19 @@
         const bajo = item.stockActual <= item.stockMinimo;
         if (bajo) criticos.push(item.nombre);
 
-        // Cálculo de Porciones Restantes
         const porcion = item.porcionTamano || 1;
         const porcionesDisponibles = Math.floor(item.stockActual / porcion);
 
         return `
           <tr class="hover:bg-neutral-800/40">
             <td class="p-3.5 font-bold text-white">${item.nombre}</td>
-            
-            <td class="p-3.5">
-              <span class="px-2 py-0.5 rounded-lg text-[10px] font-black ${item.unidad === 'gramos' ? 'bg-blue-950 text-blue-400 border border-blue-800' : 'bg-purple-950 text-purple-400 border border-purple-800'}">
-                ${item.unidad.toUpperCase()}
-              </span>
-            </td>
-
-            <td class="p-3.5 text-stone-300 font-semibold">
-              ${porcion} ${item.unidad === 'gramos' ? 'g' : 'u'} / porción
-            </td>
-
-            <td class="p-3.5">
-              <div class="flex items-center gap-1.5">
-                <input type="number" value="${item.stockActual}" onchange="DB_LOCAL.inventario[${idx}].stockActual = parseFloat(this.value) || 0; renderInventarioAdmin();" class="bg-neutral-800 border border-stone-700 p-2 rounded-xl text-white font-black w-28 text-xs text-center">
-                <span class="text-stone-400 text-[11px]">${item.unidad === 'gramos' ? 'g' : 'u'}</span>
-              </div>
-            </td>
-
-            <td class="p-3.5 font-black text-yellow-400 text-sm">
-              ${porcionesDisponibles} porciones
-            </td>
-
-            <td class="p-3.5 text-stone-400 font-semibold">
-              ${item.stockMinimo} ${item.unidad === 'gramos' ? 'g' : 'u'}
-            </td>
-
-            <td class="p-3.5">
-              <span class="px-2.5 py-1 rounded-full text-[10px] font-black ${bajo ? 'bg-red-950 text-red-400 border border-red-700 animate-pulse' : 'bg-green-950 text-green-400 border border-green-800'}">
-                ${bajo ? '⚠️ STOCK BAJO' : '✓ ÓPTIMO'}
-              </span>
-            </td>
-
-            <td class="p-3.5 text-center">
-              <button onclick="eliminarInsumo(${idx})" class="text-red-400 hover:text-red-300 p-2 bg-red-950/40 border border-red-800/60 rounded-xl text-xs font-bold transition">
-                <i class="fa-solid fa-trash-can"></i> Quitar
-              </button>
-            </td>
+            <td class="p-3.5"><span class="px-2 py-0.5 rounded-lg text-[10px] font-black ${item.unidad === 'gramos' ? 'bg-blue-950 text-blue-400 border border-blue-800' : 'bg-purple-950 text-purple-400 border border-purple-800'}">${item.unidad.toUpperCase()}</span></td>
+            <td class="p-3.5 text-stone-300 font-semibold">${porcion} ${item.unidad === 'gramos' ? 'g' : 'u'} / porción</td>
+            <td class="p-3.5"><div class="flex items-center gap-1.5"><input type="number" value="${item.stockActual}" onchange="DB_LOCAL.inventario[${idx}].stockActual = parseFloat(this.value) || 0; renderInventarioAdmin();" class="bg-neutral-800 border border-stone-700 p-2 rounded-xl text-white font-black w-28 text-xs text-center"><span class="text-stone-400 text-[11px]">${item.unidad === 'gramos' ? 'g' : 'u'}</span></div></td>
+            <td class="p-3.5 font-black text-yellow-400 text-sm">${porcionesDisponibles} porciones</td>
+            <td class="p-3.5 text-stone-400 font-semibold">${item.stockMinimo} ${item.unidad === 'gramos' ? 'g' : 'u'}</td>
+            <td class="p-3.5"><span class="px-2.5 py-1 rounded-full text-[10px] font-black ${bajo ? 'bg-red-950 text-red-400 border border-red-700 animate-pulse' : 'bg-green-950 text-green-400 border border-green-800'}">${bajo ? '⚠️ STOCK BAJO' : '✓ ÓPTIMO'}</span></td>
+            <td class="p-3.5 text-center"><button onclick="eliminarInsumo(${idx})" class="text-red-400 hover:text-red-300 p-2 bg-red-950/40 border border-red-800/60 rounded-xl text-xs font-bold transition"><i class="fa-solid fa-trash-can"></i> Quitar</button></td>
           </tr>
         `;
       }).join('');
@@ -511,9 +691,7 @@
       if (criticos.length > 0) {
         boxCritico.classList.remove('hidden');
         document.getElementById('lista-insumos-criticos').innerText = `Insumos por agotarse: ${criticos.join(', ')}`;
-      } else {
-        boxCritico.classList.add('hidden');
-      }
+      } else boxCritico.classList.add('hidden');
     }
 
     function abrirModalNuevoInsumo() {
@@ -526,10 +704,7 @@
       document.getElementById('modal-nuevo-insumo').classList.remove('hidden');
     }
 
-    function cerrarModalNuevoInsumo() {
-      document.getElementById('modal-nuevo-insumo').classList.add('hidden');
-    }
-
+    function cerrarModalNuevoInsumo() { document.getElementById('modal-nuevo-insumo').classList.add('hidden'); }
     function actualizarLabelsUnidad() {
       const u = document.getElementById('ins-unidad').value;
       document.getElementById('lbl-ins-porcion').innerText = u === 'gramos' ? 'Gramos por Porción *' : 'Unidades por Porción *';
@@ -542,38 +717,24 @@
       const stockActual = parseFloat(document.getElementById('ins-stock-actual').value);
       const stockMinimo = parseFloat(document.getElementById('ins-stock-minimo').value);
 
-      if (!nombre || isNaN(porcionTamano) || isNaN(stockActual) || isNaN(stockMinimo)) {
-        return alert('Por favor llena todos los datos del insumo.');
-      }
+      if (!nombre || isNaN(porcionTamano) || isNaN(stockActual) || isNaN(stockMinimo)) return alert('Llena todos los campos.');
 
-      DB_LOCAL.inventario.push({
-        id: `inv-${Date.now()}`,
-        nombre,
-        unidad,
-        porcionTamano,
-        stockActual,
-        stockMinimo
-      });
-
+      DB_LOCAL.inventario.push({ id: `inv-${Date.now()}`, nombre, unidad, porcionTamano, stockActual, stockMinimo });
       cerrarModalNuevoInsumo();
       renderInventarioAdmin();
       guardarInventarioAdmin(false);
     }
 
     function eliminarInsumo(idx) {
-      if (!confirm(`¿Eliminar el insumo "${DB_LOCAL.inventario[idx].nombre}" del inventario?`)) return;
+      if (!confirm(`¿Eliminar "${DB_LOCAL.inventario[idx].nombre}"?`)) return;
       DB_LOCAL.inventario.splice(idx, 1);
       renderInventarioAdmin();
       guardarInventarioAdmin(false);
     }
 
     async function guardarInventarioAdmin(notificar = true) {
-      await fetch('/api/admin/inventario', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inventario: DB_LOCAL.inventario })
-      });
-      if (notificar) alert('¡Inventario y existencias guardadas con éxito!');
+      await fetch('/api/admin/inventario', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inventario: DB_LOCAL.inventario }) });
+      if (notificar) alert('¡Inventario guardado con éxito!');
     }
 
     // CUPONES & RANKING
@@ -584,9 +745,7 @@
             <div class="font-black text-yellow-400 text-sm tracking-wider">${c.codigo}</div>
             <div class="text-[11px] text-stone-400">${c.tipo === 'PORCENTAJE' ? `${c.valor}% de descuento` : `-$${c.valor.toLocaleString()} fijos`}</div>
           </div>
-          <button onclick="eliminarCupon(${idx})" class="text-red-400 hover:text-red-300 font-bold text-xs p-2 bg-red-950/40 rounded-xl">
-            <i class="fa-solid fa-trash-can"></i>
-          </button>
+          <button onclick="eliminarCupon(${idx})" class="text-red-400 hover:text-red-300 font-bold text-xs p-2 bg-red-950/40 rounded-xl"><i class="fa-solid fa-trash-can"></i></button>
         </div>
       `).join('');
 
@@ -605,8 +764,7 @@
       const codigo = document.getElementById('nuevo-cupon-codigo').value.trim();
       const tipo = document.getElementById('nuevo-cupon-tipo').value;
       const valor = parseInt(document.getElementById('nuevo-cupon-valor').value);
-      if (!codigo || isNaN(valor)) return alert('Completa los campos del cupón.');
-
+      if (!codigo || isNaN(valor)) return alert('Completa los campos.');
       DB_LOCAL.cupones.push({ id: Date.now(), codigo, tipo, valor, activo: true, usos: 0 });
       document.getElementById('nuevo-cupon-codigo').value = '';
       document.getElementById('nuevo-cupon-valor').value = '';
@@ -621,12 +779,8 @@
     }
 
     async function guardarCuponesAdmin() {
-      await fetch('/api/admin/cupones', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cupones: DB_LOCAL.cupones })
-      });
-      alert('¡Cupones actualizados con éxito!');
+      await fetch('/api/admin/cupones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cupones: DB_LOCAL.cupones }) });
+      alert('¡Cupones actualizados!');
     }
 
     // QR MESAS
@@ -659,40 +813,299 @@
       }
     }
 
-    // Menú, Usuarios y Reportes
+    // BARRIOS & DOMICILIOS
     function renderBarriosAdmin() {
-      document.getElementById('tabla-barrios-admin').innerHTML = DB_LOCAL.barrios.map(b => `
+      document.getElementById('tabla-barrios-admin').innerHTML = DB_LOCAL.barrios.map((b, idx) => `
         <tr class="hover:bg-neutral-800/40">
-          <td class="p-3 font-bold text-white">${b.nombre}</td>
-          <td class="p-3 text-yellow-400 font-black">$${b.costo.toLocaleString()}</td>
+          <td class="p-3.5"><input type="text" value="${b.nombre}" onchange="DB_LOCAL.barrios[${idx}].nombre = this.value" class="bg-neutral-800 border border-stone-700 p-2 rounded-xl text-white font-bold w-full max-w-sm text-xs"></td>
+          <td class="p-3.5"><div class="flex items-center gap-1.5"><span class="text-stone-400 font-bold text-sm">$</span><input type="number" value="${b.costo}" onchange="DB_LOCAL.barrios[${idx}].costo = parseInt(this.value) || 0" class="bg-neutral-800 border border-stone-700 p-2 rounded-xl text-yellow-400 font-black w-36 text-xs"></div></td>
+          <td class="p-3.5 text-center"><button onclick="eliminarBarrio(${idx})" class="text-red-400 hover:text-red-300 text-xs font-bold p-2 bg-red-950/40 border border-red-800/60 rounded-xl"><i class="fa-solid fa-trash-can"></i> Quitar</button></td>
         </tr>
       `).join('');
     }
+
+    function agregarBarrio() {
+      const nombre = document.getElementById('nuevo-barrio-nombre').value.trim();
+      const costo = parseInt(document.getElementById('nuevo-barrio-costo').value);
+      if (!nombre || isNaN(costo)) return alert('Ingresa nombre y costo.');
+      DB_LOCAL.barrios.push({ nombre, costo });
+      document.getElementById('nuevo-barrio-nombre').value = '';
+      document.getElementById('nuevo-barrio-costo').value = '';
+      renderBarriosAdmin();
+      guardarTodosLosBarrios();
+    }
+
+    function eliminarBarrio(idx) {
+      if (!confirm(`¿Eliminar ${DB_LOCAL.barrios[idx].nombre}?`)) return;
+      DB_LOCAL.barrios.splice(idx, 1);
+      renderBarriosAdmin();
+      guardarTodosLosBarrios();
+    }
+
     async function guardarTodosLosBarrios() {
       await fetch('/api/admin/barrios', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ barrios: DB_LOCAL.barrios }) });
       alert('Tarifas guardadas');
     }
 
+    // EDITOR DE MENÚ
+    function mostrarSubMenu(tipo) {
+      subMenuActual = tipo;
+      document.getElementById('box-editor-arepas').classList.toggle('hidden', tipo !== 'arepas');
+      document.getElementById('box-editor-extras').classList.toggle('hidden', tipo !== 'extras');
+      document.getElementById('box-editor-bebidas').classList.toggle('hidden', tipo !== 'bebidas');
+
+      ['arepas', 'extras', 'bebidas'].forEach(t => {
+        document.getElementById(`tab-m-${t}`).className = t === tipo
+          ? 'px-4 py-2 rounded-xl text-xs font-black bg-yellow-400 text-black'
+          : 'px-4 py-2 rounded-xl text-xs font-bold bg-neutral-900 border border-stone-800 text-stone-300';
+      });
+    }
+
+    function comprimirFoto(file, callback) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const MAX_SIZE = 400;
+          let width = img.width, height = img.height;
+          if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } }
+          else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
+          canvas.width = width; canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          callback(canvas.toDataURL('image/jpeg', 0.82));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function cambiarFotoProducto(event, idx) {
+      const file = event.target.files[0];
+      if (!file) return;
+      comprimirFoto(file, (base64) => {
+        DB_LOCAL.productos[idx].img = base64;
+        document.getElementById(`img-arepa-${idx}`).src = base64;
+        guardarTodoElMenu(false);
+      });
+    }
+
+    function procesarFotoNuevoProducto(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      comprimirFoto(file, (base64) => {
+        fotoNuevoProductoTemp = base64;
+        document.getElementById('preview-nuevo-prod').src = base64;
+      });
+    }
+
     function renderMenuEditor() {
-      document.getElementById('box-editor-arepas').innerHTML = DB_LOCAL.productos.map(p => `
-        <div class="bg-neutral-800 p-3 rounded-2xl flex justify-between items-center">
-          <div><strong class="text-yellow-400">${p.nombre}</strong><div class="text-xs text-stone-400">$${p.precio.toLocaleString()}</div></div>
+      document.getElementById('box-editor-arepas').innerHTML = DB_LOCAL.productos.map((p, idx) => `
+        <div class="bg-neutral-800/60 border border-stone-700/60 p-3.5 rounded-2xl flex flex-wrap gap-4 items-center justify-between">
+          <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
+            <img id="img-arepa-${idx}" src="${p.img || '/img/mascota.png'}" onerror="cargarMascotaSegura(this)" class="w-16 h-16 rounded-full object-cover border-2 border-yellow-400 shadow-md">
+            <label class="bg-neutral-700 hover:bg-neutral-600 text-[10px] text-yellow-300 font-bold px-2.5 py-1 rounded-lg cursor-pointer transition shadow">
+              <i class="fa-solid fa-camera"></i> Cambiar
+              <input type="file" accept="image/*" onchange="cambiarFotoProducto(event, ${idx})" class="hidden">
+            </label>
+          </div>
+          <div class="flex-1 min-w-[200px]">
+            <input type="text" value="${p.nombre}" onchange="DB_LOCAL.productos[${idx}].nombre = this.value" class="bg-neutral-900 border border-stone-700 p-1.5 rounded-lg text-yellow-400 font-black text-sm w-full mb-1">
+            <textarea onchange="DB_LOCAL.productos[${idx}].desc = this.value" class="w-full bg-neutral-900 border border-stone-700 p-1.5 rounded-lg text-stone-300 text-xs">${p.desc}</textarea>
+          </div>
+          <div class="w-32">
+            <label class="text-[10px] text-stone-400 uppercase font-bold block mb-1">Precio Arepa ($)</label>
+            <input type="number" value="${p.precio}" onchange="DB_LOCAL.productos[${idx}].precio = parseInt(this.value) || 0" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-white font-black text-sm w-full">
+          </div>
+          <div>
+            <button onclick="eliminarProducto(${idx})" class="p-2.5 bg-red-950/40 hover:bg-red-900/60 border border-red-800/60 text-red-400 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+              <i class="fa-solid fa-trash-can"></i> Quitar
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      document.getElementById('box-editor-extras').innerHTML = DB_LOCAL.extras.map((ex, idx) => `
+        <div class="bg-neutral-800/60 border border-stone-700/60 p-3 rounded-2xl flex justify-between items-center gap-4">
+          <input type="text" value="${ex.nombre}" onchange="DB_LOCAL.extras[${idx}].nombre = this.value" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-stone-200 font-bold text-xs flex-1">
+          <div class="flex items-center gap-1.5 w-36">
+            <span class="text-stone-400 font-bold">$</span>
+            <input type="number" value="${ex.precio}" onchange="DB_LOCAL.extras[${idx}].precio = parseInt(this.value) || 0" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-yellow-400 font-black text-xs w-full">
+          </div>
+          <button onclick="eliminarExtra(${idx})" class="text-red-400 hover:text-red-300 text-xs font-bold p-2 bg-red-950/40 border border-red-800/60 rounded-xl"><i class="fa-solid fa-trash-can"></i> Quitar</button>
+        </div>
+      `).join('');
+
+      document.getElementById('box-editor-bebidas').innerHTML = DB_LOCAL.bebidas.map((b, idx) => `
+        <div class="bg-neutral-800/60 border border-stone-700/60 p-3 rounded-2xl flex justify-between items-center gap-4">
+          <input type="text" value="${b.nombre}" onchange="DB_LOCAL.bebidas[${idx}].nombre = this.value" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-white font-bold text-xs flex-1">
+          <div class="flex items-center gap-1.5 w-36">
+            <span class="text-stone-400 font-bold">$</span>
+            <input type="number" value="${b.precio}" onchange="DB_LOCAL.bebidas[${idx}].precio = parseInt(this.value) || 0" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-yellow-400 font-black text-xs w-full">
+          </div>
+          <button onclick="eliminarBebida(${idx})" class="text-red-400 hover:text-red-300 text-xs font-bold p-2 bg-red-950/40 border border-red-800/60 rounded-xl"><i class="fa-solid fa-trash-can"></i> Quitar</button>
         </div>
       `).join('');
     }
-    async function guardarTodoElMenu() { alert('Menú actualizado'); }
 
-    async function cargarUsuarios() {
-      const res = await fetch('/api/usuarios');
-      const u = await res.json();
-      document.getElementById('tabla-usuarios').innerHTML = u.map(x => `<tr class="p-3"><td>${x.nombre}</td><td>${x.usuario}</td></tr>`).join('');
+    function eliminarProducto(idx) {
+      if (!confirm(`¿Eliminar la arepa "${DB_LOCAL.productos[idx].nombre}"?`)) return;
+      DB_LOCAL.productos.splice(idx, 1);
+      renderMenuEditor();
+      guardarTodoElMenu(false);
+    }
+    function eliminarExtra(idx) {
+      if (!confirm(`¿Eliminar "${DB_LOCAL.extras[idx].nombre}"?`)) return;
+      DB_LOCAL.extras.splice(idx, 1);
+      renderMenuEditor();
+      guardarTodoElMenu(false);
+    }
+    function eliminarBebida(idx) {
+      if (!confirm(`¿Eliminar "${DB_LOCAL.bebidas[idx].nombre}"?`)) return;
+      DB_LOCAL.bebidas.splice(idx, 1);
+      renderMenuEditor();
+      guardarTodoElMenu(false);
     }
 
+    function abrirModalNuevoProducto() {
+      document.getElementById('prod-categoria').value = subMenuActual;
+      toggleCamposProducto();
+      document.getElementById('prod-nombre').value = '';
+      document.getElementById('prod-precio').value = '';
+      document.getElementById('prod-desc').value = '';
+      fotoNuevoProductoTemp = '/img/mascota.png';
+      document.getElementById('preview-nuevo-prod').src = fotoNuevoProductoTemp;
+      document.getElementById('modal-nuevo-producto').classList.remove('hidden');
+    }
+    function cerrarModalNuevoProducto() { document.getElementById('modal-nuevo-producto').classList.add('hidden'); }
+    function toggleCamposProducto() {
+      const esArepa = (document.getElementById('prod-categoria').value === 'arepas');
+      document.getElementById('campo-prod-desc').classList.toggle('hidden', !esArepa);
+      document.getElementById('campo-prod-img').classList.toggle('hidden', !esArepa);
+    }
+
+    function guardarProductoEnMenu() {
+      const cat = document.getElementById('prod-categoria').value;
+      const nombre = document.getElementById('prod-nombre').value.trim();
+      const precio = parseInt(document.getElementById('prod-precio').value);
+      if (!nombre || isNaN(precio) || precio <= 0) return alert('Datos inválidos.');
+
+      if (cat === 'arepas') {
+        DB_LOCAL.productos.push({ id: Date.now(), cat: 'arepas', nombre, desc: document.getElementById('prod-desc').value.trim() || 'Arepa con queso fundido.', precio, img: fotoNuevoProductoTemp });
+        mostrarSubMenu('arepas');
+      } else if (cat === 'extras') {
+        DB_LOCAL.extras.push({ id: `ex-${Date.now()}`, nombre, precio });
+        mostrarSubMenu('extras');
+      } else if (cat === 'bebidas') {
+        DB_LOCAL.bebidas.push({ id: Date.now(), nombre, precio });
+        mostrarSubMenu('bebidas');
+      }
+
+      cerrarModalNuevoProducto();
+      renderMenuEditor();
+      guardarTodoElMenu(true);
+    }
+
+    async function guardarTodoElMenu(mostrarMensaje = true) {
+      await fetch('/api/admin/productos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productos: DB_LOCAL.productos }) });
+      await fetch('/api/admin/extras', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ extras: DB_LOCAL.extras }) });
+      await fetch('/api/admin/bebidas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bebidas: DB_LOCAL.bebidas }) });
+      if (mostrarMensaje) alert('¡Menú y fotos guardados con éxito!');
+    }
+
+    // REPORTES Y MÉTRICAS
     async function cargarReportesEstadisticas() {
       const res = await fetch('/api/pedidos');
       todosLosPedidos = await res.json();
-      const total = todosLosPedidos.reduce((a,b)=>a+(b.total||0),0);
+      aplicarFiltroPeriodo();
+    }
+    function filtrarPeriodo(p) {
+      periodoSeleccionado = p;
+      ['hoy', '7dias', 'mes', 'todo'].forEach(x => {
+        document.getElementById(`btn-p-${x}`).className = x === p ? 'px-3 py-1.5 rounded-lg bg-yellow-400 text-black font-black' : 'px-3 py-1.5 rounded-lg text-stone-300';
+      });
+      aplicarFiltroPeriodo();
+    }
+    function aplicarFiltroPeriodo() {
+      const ahora = new Date();
+      const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate()).getTime();
+      const sieteDias = inicioHoy - (7*24*60*60*1000);
+      const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1).getTime();
+
+      pedidosFiltrados = todosLosPedidos.filter(p => {
+        if (p.estado === 'CANCELADO') return false;
+        const time = p.timestamp || Date.now();
+        if (periodoSeleccionado === 'hoy') return time >= inicioHoy;
+        if (periodoSeleccionado === '7dias') return time >= sieteDias;
+        if (periodoSeleccionado === 'mes') return time >= inicioMes;
+        return true;
+      });
+
+      renderKPIs();
+      renderGraficas();
+    }
+
+    function renderKPIs() {
+      const total = pedidosFiltrados.reduce((a,b)=>a+(b.total||0),0);
       document.getElementById('kpi-total').innerText = `$${total.toLocaleString()}`;
+      document.getElementById('kpi-promedio').innerText = `$${(pedidosFiltrados.length ? Math.round(total/pedidosFiltrados.length):0).toLocaleString()}`;
+
+      const conteoHoras = {};
+      pedidosFiltrados.forEach(p => {
+        const h = new Date(p.timestamp || Date.now()).getHours();
+        conteoHoras[h] = (conteoHoras[h] || 0) + 1;
+      });
+      let pico = '--', maxP = 0;
+      Object.keys(conteoHoras).forEach(h => {
+        if (conteoHoras[h] > maxP) { maxP = conteoHoras[h]; pico = parseInt(h) > 12 ? `${parseInt(h)-12}:00 PM` : `${h}:00 AM`; }
+      });
+      document.getElementById('kpi-hora-pico').innerText = pico;
+
+      const conteoProds = {};
+      pedidosFiltrados.forEach(p => { (p.items||[]).forEach(it => { conteoProds[it.nombre] = (conteoProds[it.nombre]||0)+1; }); });
+      let topA = '--', maxA = 0;
+      Object.keys(conteoProds).forEach(k => { if (conteoProds[k]>maxA) { maxA = conteoProds[k]; topA = k; } });
+      document.getElementById('kpi-top-arepa').innerText = topA;
+    }
+
+    let chartV = null, chartH = null;
+    function renderGraficas() {
+      Chart.defaults.color = '#a8a29e';
+      const ventasPorDia = {};
+      pedidosFiltrados.forEach(p => {
+        const f = new Date(p.timestamp||Date.now()).toLocaleDateString('es-CO', { day:'2-digit', month:'short' });
+        ventasPorDia[f] = (ventasPorDia[f]||0) + (p.total||0);
+      });
+      if (chartV) chartV.destroy();
+      chartV = new Chart(document.getElementById('chart-ventas-dias').getContext('2d'), {
+        type: 'line',
+        data: { labels: Object.keys(ventasPorDia).length ? Object.keys(ventasPorDia) : ['Sin ventas'], datasets: [{ data: Object.values(ventasPorDia).length ? Object.values(ventasPorDia) : [0], borderColor: '#facc15', fill: true, backgroundColor: 'rgba(250,204,21,0.15)' }] },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      const horasRango = [16,17,18,19,20,21,22], horasData = [0,0,0,0,0,0,0];
+      pedidosFiltrados.forEach(p => {
+        const h = new Date(p.timestamp||Date.now()).getHours();
+        const idx = horasRango.indexOf(h);
+        if (idx !== -1) horasData[idx]++;
+      });
+      if (chartH) chartH.destroy();
+      chartH = new Chart(document.getElementById('chart-horas-pico').getContext('2d'), {
+        type: 'bar',
+        data: { labels: ['4 PM','5 PM','6 PM','7 PM','8 PM','9 PM','10 PM'], datasets: [{ data: horasData, backgroundColor: '#fbbf24' }] },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    function exportarExcel() {
+      if (pedidosFiltrados.length === 0) return alert('Sin pedidos para exportar.');
+      const filas = pedidosFiltrados.map(p => ({
+        "Número": p.numero, "Fecha": p.fecha||'', "Hora": p.hora||'', "Cliente": p.cliente?p.cliente.nombre:'', "Teléfono": p.cliente?p.cliente.celular:'', "Dirección": p.cliente?p.cliente.direccion:'', "Barrio": p.cliente?p.cliente.barrio:'', "Modalidad": p.modalidad||'', "Pago": p.metodoPago||'', "TOTAL ($)": p.total||0, "Estado": p.estado||''
+      }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filas), "Ventas");
+      XLSX.writeFile(wb, `Reporte_Ary_${new Date().toISOString().split('T')[0]}.xlsx`);
     }
   </script>
 </body>
