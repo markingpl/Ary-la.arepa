@@ -57,7 +57,7 @@
         <button onclick="pressPin('0')" class="h-14 bg-neutral-900 border border-stone-800 rounded-2xl font-bold text-lg hover:bg-neutral-800">0</button>
         <button onclick="checkPin()" class="h-14 bg-yellow-400 text-black rounded-2xl font-black text-lg hover:bg-yellow-300">✓</button>
       </div>
-      <p id="pin-error" class="text-xs text-red-500 font-bold hidden">PIN incorrecto. Intenta de nuevo.</p>
+      <p id="pin-error" class="text-xs text-red-500 font-bold hidden">PIN incorrecto.</p>
     </div>
   </div>
 
@@ -83,7 +83,7 @@
           </button>
 
           <button onclick="mostrarVista('cupones')" id="nav-cupones" class="w-full flex items-center gap-3 p-2.5 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl text-left transition">
-            <i class="fa-solid fa-ticket text-yellow-400"></i> Cupones & Clientes VIP
+            <i class="fa-solid fa-ticket text-yellow-400"></i> Cupones & Puntos VIP
           </button>
 
           <button onclick="mostrarVista('qr-mesas')" id="nav-qr-mesas" class="w-full flex items-center gap-3 p-2.5 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl text-left transition">
@@ -117,7 +117,6 @@
       </div>
 
       <div class="space-y-1.5 pt-3 border-t border-stone-800">
-        <!-- BOTÓN CAMBIAR PIN MAESTRO -->
         <button onclick="abrirModalCambiarPin()" class="w-full p-2.5 bg-neutral-800 hover:bg-neutral-700 text-yellow-400 rounded-xl text-xs font-bold flex items-center gap-2 transition">
           <i class="fa-solid fa-key"></i> Cambiar Clave de Ingreso
         </button>
@@ -131,7 +130,7 @@
     <!-- Área Principal -->
     <main class="flex-1 overflow-y-auto p-6">
       
-      <!-- 1. DASHBOARD & EXCEL -->
+      <!-- 1. DASHBOARD -->
       <section id="vista-reportes" class="space-y-6">
         <div class="flex flex-wrap justify-between items-center gap-4 bg-neutral-900 border border-stone-800 p-4 rounded-2xl">
           <div>
@@ -226,25 +225,50 @@
         </div>
       </section>
 
-      <!-- 3. CUPONES & CLIENTES VIP -->
+      <!-- 3. CONFIGURACIÓN DEL PROGRAMA VIP Y CUPONES -->
       <section id="vista-cupones" class="hidden space-y-6">
-        <div class="flex flex-wrap justify-between items-center gap-4">
-          <div>
-            <h1 class="text-2xl font-black text-yellow-400">Cupones de Descuento & Fidelización</h1>
-            <p class="text-xs text-stone-400">Crea códigos promocionales y premia a los clientes frecuentes.</p>
+        
+        <div class="bg-neutral-900 border-2 border-yellow-500/50 p-5 rounded-3xl shadow-xl space-y-4">
+          <div class="flex flex-wrap justify-between items-center gap-3 border-b border-stone-800 pb-3">
+            <div>
+              <h2 class="text-lg font-black text-yellow-400 flex items-center gap-2">
+                <i class="fa-solid fa-crown text-yellow-400"></i> Reglas del Programa de Puntos VIP
+              </h2>
+              <p class="text-xs text-stone-400">Define cuántos puntos da cada arepa, desde cuándo son VIP y cuánto dinero se les descuenta.</p>
+            </div>
+            <button onclick="guardarReglasPuntosVIP()" class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2 rounded-xl text-xs font-black shadow-lg">
+              <i class="fa-solid fa-floppy-disk"></i> Guardar Reglas VIP
+            </button>
           </div>
-          <button onclick="guardarCuponesAdmin()" class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2.5 rounded-xl text-xs font-black shadow-lg">
-            <i class="fa-solid fa-floppy-disk"></i> Guardar Cupones
-          </button>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+            <div>
+              <label class="block font-bold text-stone-300 mb-1">1. Puntos que da cada arepa</label>
+              <input type="number" id="cfg-puntos-arepa" min="1" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-black text-sm text-center">
+              <span class="text-[10px] text-stone-500">Normalmente 1 punto por arepa</span>
+            </div>
+
+            <div>
+              <label class="block font-bold text-stone-300 mb-1">2. Puntos mínimos para ser VIP / Canjear</label>
+              <input type="number" id="cfg-puntos-minimos" min="1" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-yellow-400 font-black text-sm text-center">
+              <span class="text-[10px] text-stone-500">Ejemplo: 5 puntos acumulados</span>
+            </div>
+
+            <div>
+              <label class="block font-bold text-stone-300 mb-1">3. Valor del Descuento al canjear ($ COP)</label>
+              <input type="number" id="cfg-valor-descuento" min="1000" step="500" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-green-400 font-black text-sm text-center">
+              <span class="text-[10px] text-stone-500">Ejemplo: $5.000 pesos de rebaja</span>
+            </div>
+          </div>
         </div>
 
         <div class="bg-neutral-900 border border-stone-800 p-4 rounded-2xl flex flex-wrap gap-3 items-end">
           <div class="flex-1 min-w-[150px]">
-            <label class="block text-xs font-bold text-stone-400 mb-1">Código Promocional</label>
+            <label class="block text-xs font-bold text-stone-400 mb-1">Código del Cupón</label>
             <input type="text" id="nuevo-cupon-codigo" placeholder="Ej: VIERNES10" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-xs text-white uppercase font-bold">
           </div>
           <div class="w-40">
-            <label class="block text-xs font-bold text-stone-400 mb-1">Tipo de Descuento</label>
+            <label class="block text-xs font-bold text-stone-400 mb-1">Tipo</label>
             <select id="nuevo-cupon-tipo" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-xs text-white font-bold">
               <option value="PORCENTAJE">Porcentaje (%)</option>
               <option value="FIJO">Monto Fijo ($ COP)</option>
@@ -266,15 +290,17 @@
           </div>
 
           <div class="bg-neutral-900 border border-stone-800 rounded-2xl p-4">
-            <h3 class="font-black text-yellow-400 text-sm mb-3">Ranking Clientes VIP (Puntos)</h3>
+            <div class="flex justify-between items-center mb-3">
+              <h3 class="font-black text-yellow-400 text-sm">Ranking Clientes VIP</h3>
+              <span class="text-[10px] text-stone-500">Puedes editar los puntos en la casilla</span>
+            </div>
             <div class="overflow-y-auto max-h-72">
               <table class="w-full text-left text-xs">
                 <thead class="bg-neutral-800/60 text-stone-400 uppercase text-[10px]">
                   <tr>
                     <th class="p-2.5">Cliente</th>
                     <th class="p-2.5">Celular</th>
-                    <th class="p-2.5">Pedidos</th>
-                    <th class="p-2.5 font-bold text-yellow-400">Puntos</th>
+                    <th class="p-2.5 text-center w-28">Puntos VIP</th>
                   </tr>
                 </thead>
                 <tbody id="tabla-clientes-vip" class="divide-y divide-stone-800"></tbody>
@@ -284,7 +310,7 @@
         </div>
       </section>
 
-      <!-- 4. GENERADOR DE QR PARA MESAS (WOKHOUSE) -->
+      <!-- 4. GENERADOR DE QR PARA MESAS -->
       <section id="vista-qr-mesas" class="space-y-6 hidden">
         <div class="flex flex-wrap justify-between items-center gap-4">
           <div>
@@ -339,16 +365,15 @@
         </div>
       </section>
 
-      <!-- 6. EDITOR DE MENÚ & FOTOS -->
+      <!-- 6. EDITOR DE MENÚ -->
       <section id="vista-menu" class="hidden space-y-6">
         <div class="flex flex-wrap justify-between items-center gap-4">
           <div>
             <h1 class="text-2xl font-black text-yellow-400">Editor de Menú & Fotos de Arepas</h1>
             <p class="text-xs text-stone-400">Cambia fotos desde tu celular/PC, actualiza precios y administra productos.</p>
           </div>
-          
           <div class="flex flex-wrap items-center gap-2">
-            <button onclick="abrirModalNuevoProducto()" class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2.5 rounded-xl text-xs font-black shadow-lg shadow-yellow-500/20 flex items-center gap-2">
+            <button onclick="abrirModalNuevoProducto()" class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2.5 rounded-xl text-xs font-black shadow-lg flex items-center gap-2">
               <i class="fa-solid fa-plus"></i> + Agregar Producto al Menú
             </button>
             <button onclick="guardarTodoElMenu(true)" class="bg-neutral-800 hover:bg-neutral-700 border border-stone-700 text-stone-200 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2">
@@ -368,7 +393,7 @@
         <div id="box-editor-bebidas" class="bg-neutral-900 border border-stone-800 rounded-2xl p-4 space-y-3 hidden"></div>
       </section>
 
-      <!-- 7. CAJEROS & USUARIOS POS (CON CLAVES EN ASTERISCOS Y OJITO) -->
+      <!-- 7. CAJEROS & USUARIOS POS -->
       <section id="vista-usuarios" class="hidden space-y-6">
         <div class="flex flex-wrap justify-between items-center gap-4">
           <div>
@@ -399,7 +424,7 @@
     </main>
   </div>
 
-  <!-- Modal Cambiar PIN Maestro de Ingreso (NUEVO) -->
+  <!-- Modal Cambiar PIN -->
   <div id="modal-cambiar-pin" class="fixed inset-0 z-50 bg-black/90 hidden flex items-center justify-center p-4">
     <div class="bg-neutral-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
       <div class="flex justify-between items-center border-b border-stone-800 pb-2">
@@ -529,7 +554,7 @@
     </div>
   </div>
 
-  <!-- Modal Crear Cajero POS -->
+  <!-- Modal Crear Cajero -->
   <div id="modal-crear-usuario" class="fixed inset-0 z-50 bg-black/90 hidden flex items-center justify-center p-4">
     <div class="bg-neutral-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
       <div class="flex justify-between items-center border-b border-stone-800 pb-2">
@@ -543,7 +568,7 @@
           <input type="text" id="nuevo-nombre" placeholder="Ej: Laura Gómez" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold">
         </div>
         <div>
-          <label class="block font-bold text-stone-300 mb-1">Nombre de usuario (Login) *</label>
+          <label class="block font-bold text-stone-300 mb-1">Usuario (Login) *</label>
           <input type="text" id="nuevo-usuario" placeholder="Ej: laura2024" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold">
         </div>
         <div>
@@ -590,7 +615,6 @@
       });
     }
 
-    // VERIFICACIÓN DINÁMICA DEL PIN DIRECTO EN EL SERVIDOR
     async function checkPin() {
       try {
         const res = await fetch('/api/admin/verificar-pin', {
@@ -611,11 +635,9 @@
           updateDots();
         }
       } catch (err) {
-        // Respaldo de emergencia si no hay red
         if (currentPin === '1234') {
           document.getElementById('pin-screen').classList.add('hidden');
           await cargarDatosBase();
-          cargarReportesEstadisticas();
         } else {
           document.getElementById('pin-error').classList.remove('hidden');
           currentPin = '';
@@ -647,19 +669,98 @@
       else if (vista === 'reportes') cargarReportesEstadisticas();
     }
 
-    // ==========================================
-    // MODAL CAMBIAR PIN MAESTRO DE ACCESO
-    // ==========================================
+    function renderCuponesYClientes() {
+      const cfg = DB_LOCAL.configPuntos || { puntosPorArepa: 1, puntosMinimosParaCanje: 5, valorDescuentoCanje: 5000 };
+      document.getElementById('cfg-puntos-arepa').value = cfg.puntosPorArepa || 1;
+      document.getElementById('cfg-puntos-minimos').value = cfg.puntosMinimosParaCanje || 5;
+      document.getElementById('cfg-valor-descuento').value = cfg.valorDescuentoCanje || 5000;
+
+      document.getElementById('lista-cupones-box').innerHTML = (DB_LOCAL.cupones || []).map((c, idx) => `
+        <div class="bg-neutral-800/70 border border-stone-700 p-3 rounded-2xl flex justify-between items-center">
+          <div>
+            <div class="font-black text-yellow-400 text-sm tracking-wider">${c.codigo}</div>
+            <div class="text-[11px] text-stone-400">${c.tipo === 'PORCENTAJE' ? `${c.valor}% de descuento` : `-$${c.valor.toLocaleString()} fijos`}</div>
+          </div>
+          <button onclick="eliminarCupon(${idx})" class="text-red-400 hover:text-red-300 font-bold text-xs p-2 bg-red-950/40 rounded-xl"><i class="fa-solid fa-trash-can"></i></button>
+        </div>
+      `).join('');
+
+      const clientesOrdenados = [...(DB_LOCAL.clientesFrecuentes || [])].sort((a,b) => (b.puntos||0) - (a.puntos||0));
+      document.getElementById('tabla-clientes-vip').innerHTML = clientesOrdenados.map(cli => `
+        <tr class="hover:bg-neutral-800/40">
+          <td class="p-2.5 font-bold text-white">${cli.nombre}</td>
+          <td class="p-2.5 text-stone-400">${cli.celular}</td>
+          <td class="p-2.5 text-center">
+            <div class="flex items-center justify-center gap-1">
+              <span class="text-yellow-400 font-bold">⭐</span>
+              <input type="number" value="${cli.puntos || 0}" onchange="modificarPuntosCliente(${cli.id}, this.value)" class="w-16 bg-neutral-800 border border-stone-700 p-1.5 rounded-lg text-yellow-400 font-black text-xs text-center">
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function guardarReglasPuntosVIP() {
+      const puntosPorArepa = parseInt(document.getElementById('cfg-puntos-arepa').value) || 1;
+      const puntosMinimosParaCanje = parseInt(document.getElementById('cfg-puntos-minimos').value) || 5;
+      const valorDescuentoCanje = parseInt(document.getElementById('cfg-valor-descuento').value) || 5000;
+
+      const res = await fetch('/api/admin/config-puntos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ puntosPorArepa, puntosMinimosParaCanje, valorDescuentoCanje, activo: true })
+      });
+
+      const data = await res.json();
+      if (data.ok) {
+        DB_LOCAL.configPuntos = data.configPuntos;
+        alert(`✓ ¡Reglas VIP guardadas con éxito!`);
+      }
+    }
+
+    async function modificarPuntosCliente(id, nuevosPuntos) {
+      const res = await fetch(`/api/admin/clientes/${id}/puntos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ puntos: nuevosPuntos })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        const c = DB_LOCAL.clientesFrecuentes.find(x => x.id === id);
+        if (c) c.puntos = data.cliente.puntos;
+      }
+    }
+
+    function agregarCupon() {
+      const codigo = document.getElementById('nuevo-cupon-codigo').value.trim();
+      const tipo = document.getElementById('nuevo-cupon-tipo').value;
+      const valor = parseInt(document.getElementById('nuevo-cupon-valor').value);
+      if (!codigo || isNaN(valor)) return alert('Completa los campos.');
+      DB_LOCAL.cupones.push({ id: Date.now(), codigo, tipo, valor, activo: true, usos: 0 });
+      document.getElementById('nuevo-cupon-codigo').value = '';
+      document.getElementById('nuevo-cupon-valor').value = '';
+      renderCuponesYClientes();
+      guardarCuponesAdmin();
+    }
+
+    function eliminarCupon(idx) {
+      DB_LOCAL.cupones.splice(idx, 1);
+      renderCuponesYClientes();
+      guardarCuponesAdmin();
+    }
+
+    async function guardarCuponesAdmin() {
+      await fetch('/api/admin/cupones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cupones: DB_LOCAL.cupones }) });
+      alert('¡Cupones actualizados!');
+    }
+
     function abrirModalCambiarPin() {
       document.getElementById('pin-actual-input').value = '';
       document.getElementById('pin-nuevo-input').value = '';
       document.getElementById('pin-confirm-input').value = '';
       document.getElementById('modal-cambiar-pin').classList.remove('hidden');
     }
-
-    function cerrarModalCambiarPin() {
-      document.getElementById('modal-cambiar-pin').classList.add('hidden');
-    }
+    function cerrarModalCambiarPin() { document.getElementById('modal-cambiar-pin').classList.add('hidden'); }
 
     async function guardarNuevoPinAdmin() {
       const pinActual = document.getElementById('pin-actual-input').value.trim();
@@ -675,55 +776,32 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pinActual, nuevoPin })
       });
-
       const data = await res.json();
       if (data.ok) {
-        alert('✓ ¡Clave de ingreso actualizada con éxito! Ahora usa tu nuevo PIN.');
+        alert('✓ ¡Clave de ingreso cambiada con éxito!');
         cerrarModalCambiarPin();
-      } else {
-        alert(data.error || 'Error al cambiar PIN.');
-      }
+      } else alert(data.error || 'Error al cambiar PIN.');
     }
 
-    // ==========================================
-    // CAJEROS Y USUARIOS POS (CON ASTERISCOS Y OJITO)
-    // ==========================================
     async function cargarUsuarios() {
       const res = await fetch('/api/usuarios');
       const usuarios = await res.json();
-      const tabla = document.getElementById('tabla-usuarios');
-
-      tabla.innerHTML = usuarios.map(u => `
+      document.getElementById('tabla-usuarios').innerHTML = usuarios.map(u => `
         <tr class="hover:bg-neutral-800/40">
           <td class="p-3.5 font-bold text-white flex items-center gap-2">
-            <i class="fa-solid fa-user-circle text-stone-400 text-base"></i>
-            ${u.nombre}
+            <i class="fa-solid fa-user-circle text-stone-400 text-base"></i> ${u.nombre}
           </td>
           <td class="p-3.5 text-yellow-400 font-mono font-bold">${u.usuario}</td>
-          
-          <!-- CONTRASEÑA EN ASTERISCOS CON BOTÓN DE OJO -->
           <td class="p-3.5">
             <div class="flex items-center gap-2">
               <span id="pass-txt-${u.id}" class="font-mono tracking-widest text-stone-300 font-bold select-none">••••</span>
-              <button type="button" onclick="toggleVerPassword(${u.id}, '${u.clave}')" class="text-stone-400 hover:text-yellow-400 p-1 transition" title="Ver / Ocultar">
+              <button type="button" onclick="toggleVerPassword(${u.id}, '${u.clave}')" class="text-stone-400 hover:text-yellow-400 p-1 transition">
                 <i id="eye-icon-${u.id}" class="fa-solid fa-eye text-xs"></i>
               </button>
             </div>
           </td>
-
-          <td class="p-3.5">
-            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black ${u.rol === 'ADMIN' ? 'bg-yellow-400 text-black' : 'bg-neutral-800 text-stone-300 border border-stone-700'}">
-              ${u.rol}
-            </span>
-          </td>
-          
-          <td class="p-3.5 text-center">
-            ${u.rol !== 'ADMIN' ? `
-              <button onclick="eliminarUsuario(${u.id}, '${u.nombre}')" class="bg-red-950 hover:bg-red-900 border border-red-800 text-red-400 px-3 py-1 rounded-lg text-xs font-bold transition">
-                <i class="fa-solid fa-trash-can"></i> Quitar
-              </button>
-            ` : '<span class="text-stone-500 text-[10px] italic">Principal</span>'}
-          </td>
+          <td class="p-3.5"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-black ${u.rol === 'ADMIN' ? 'bg-yellow-400 text-black' : 'bg-neutral-800 text-stone-300 border border-stone-700'}">${u.rol}</span></td>
+          <td class="p-3.5 text-center">${u.rol !== 'ADMIN' ? `<button onclick="eliminarUsuario(${u.id}, '${u.nombre}')" class="bg-red-950 hover:bg-red-900 border border-red-800 text-red-400 px-3 py-1 rounded-lg text-xs font-bold transition"><i class="fa-solid fa-trash-can"></i> Quitar</button>` : '<span class="text-stone-500 text-[10px] italic">Principal</span>'}</td>
         </tr>
       `).join('');
     }
@@ -748,31 +826,18 @@
       document.getElementById('nueva-clave').value = '';
       document.getElementById('modal-crear-usuario').classList.remove('hidden');
     }
-
-    function cerrarModalCrearUsuario() {
-      document.getElementById('modal-crear-usuario').classList.add('hidden');
-    }
+    function cerrarModalCrearUsuario() { document.getElementById('modal-crear-usuario').classList.add('hidden'); }
 
     async function guardarNuevoUsuario() {
       const nombre = document.getElementById('nuevo-nombre').value.trim();
       const usuario = document.getElementById('nuevo-usuario').value.trim();
       const clave = document.getElementById('nueva-clave').value.trim();
+      if (!nombre || !usuario || !clave) return alert('Completa los campos.');
 
-      if (!nombre || !usuario || !clave) return alert('Por favor llena todos los campos.');
-
-      const res = await fetch('/api/usuarios', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre, usuario, clave })
-      });
+      const res = await fetch('/api/usuarios', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, usuario, clave }) });
       const data = await res.json();
-      if (data.ok) {
-        alert(`¡Cajero ${nombre} creado con éxito!`);
-        cerrarModalCrearUsuario();
-        cargarUsuarios();
-      } else {
-        alert(data.error || 'Error al crear el cajero.');
-      }
+      if (data.ok) { alert(`Cajero creado con éxito.`); cerrarModalCrearUsuario(); cargarUsuarios(); }
+      else alert(data.error || 'Error al crear.');
     }
 
     async function eliminarUsuario(id, nombre) {
@@ -782,17 +847,13 @@
       if (data.ok) cargarUsuarios();
     }
 
-    // ==========================================
-    // INVENTARIO CON PORCIONES Y GRAMOS
-    // ==========================================
     function renderInventarioAdmin() {
       const tabla = document.getElementById('tabla-inventario');
       let criticos = [];
 
-      tabla.innerHTML = DB_LOCAL.inventario.map((item, idx) => {
+      tabla.innerHTML = (DB_LOCAL.inventario || []).map((item, idx) => {
         const bajo = item.stockActual <= item.stockMinimo;
         if (bajo) criticos.push(item.nombre);
-
         const porcion = item.porcionTamano || 1;
         const porcionesDisponibles = Math.floor(item.stockActual / porcion);
 
@@ -826,7 +887,6 @@
       actualizarLabelsUnidad();
       document.getElementById('modal-nuevo-insumo').classList.remove('hidden');
     }
-
     function cerrarModalNuevoInsumo() { document.getElementById('modal-nuevo-insumo').classList.add('hidden'); }
     function actualizarLabelsUnidad() {
       const u = document.getElementById('ins-unidad').value;
@@ -860,53 +920,6 @@
       if (notificar) alert('¡Inventario guardado con éxito!');
     }
 
-    // CUPONES & RANKING
-    function renderCuponesYClientes() {
-      document.getElementById('lista-cupones-box').innerHTML = DB_LOCAL.cupones.map((c, idx) => `
-        <div class="bg-neutral-800/70 border border-stone-700 p-3 rounded-2xl flex justify-between items-center">
-          <div>
-            <div class="font-black text-yellow-400 text-sm tracking-wider">${c.codigo}</div>
-            <div class="text-[11px] text-stone-400">${c.tipo === 'PORCENTAJE' ? `${c.valor}% de descuento` : `-$${c.valor.toLocaleString()} fijos`}</div>
-          </div>
-          <button onclick="eliminarCupon(${idx})" class="text-red-400 hover:text-red-300 font-bold text-xs p-2 bg-red-950/40 rounded-xl"><i class="fa-solid fa-trash-can"></i></button>
-        </div>
-      `).join('');
-
-      const clientesOrdenados = [...(DB_LOCAL.clientesFrecuentes || [])].sort((a,b) => (b.puntos||0) - (a.puntos||0));
-      document.getElementById('tabla-clientes-vip').innerHTML = clientesOrdenados.map(cli => `
-        <tr class="hover:bg-neutral-800/40">
-          <td class="p-2.5 font-bold text-white">${cli.nombre}</td>
-          <td class="p-2.5 text-stone-400">${cli.celular}</td>
-          <td class="p-2.5 text-stone-300">${cli.pedidos} órdenes</td>
-          <td class="p-2.5 font-black text-yellow-400 text-sm">⭐ ${cli.puntos || 0} pts</td>
-        </tr>
-      `).join('');
-    }
-
-    function agregarCupon() {
-      const codigo = document.getElementById('nuevo-cupon-codigo').value.trim();
-      const tipo = document.getElementById('nuevo-cupon-tipo').value;
-      const valor = parseInt(document.getElementById('nuevo-cupon-valor').value);
-      if (!codigo || isNaN(valor)) return alert('Completa los campos.');
-      DB_LOCAL.cupones.push({ id: Date.now(), codigo, tipo, valor, activo: true, usos: 0 });
-      document.getElementById('nuevo-cupon-codigo').value = '';
-      document.getElementById('nuevo-cupon-valor').value = '';
-      renderCuponesYClientes();
-      guardarCuponesAdmin();
-    }
-
-    function eliminarCupon(idx) {
-      DB_LOCAL.cupones.splice(idx, 1);
-      renderCuponesYClientes();
-      guardarCuponesAdmin();
-    }
-
-    async function guardarCuponesAdmin() {
-      await fetch('/api/admin/cupones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cupones: DB_LOCAL.cupones }) });
-      alert('¡Cupones actualizados!');
-    }
-
-    // QR MESAS
     function generarQRsMesas() {
       const box = document.getElementById('zona-impresion-qr');
       box.innerHTML = '';
@@ -936,7 +949,6 @@
       }
     }
 
-    // BARRIOS & DOMICILIOS
     function renderBarriosAdmin() {
       document.getElementById('tabla-barrios-admin').innerHTML = DB_LOCAL.barrios.map((b, idx) => `
         <tr class="hover:bg-neutral-800/40">
@@ -970,7 +982,6 @@
       alert('Tarifas guardadas');
     }
 
-    // EDITOR DE MENÚ
     function mostrarSubMenu(tipo) {
       subMenuActual = tipo;
       document.getElementById('box-editor-arepas').classList.toggle('hidden', tipo !== 'arepas');
@@ -1024,7 +1035,7 @@
     }
 
     function renderMenuEditor() {
-      document.getElementById('box-editor-arepas').innerHTML = DB_LOCAL.productos.map((p, idx) => `
+      document.getElementById('box-editor-arepas').innerHTML = (DB_LOCAL.productos || []).map((p, idx) => `
         <div class="bg-neutral-800/60 border border-stone-700/60 p-3.5 rounded-2xl flex flex-wrap gap-4 items-center justify-between">
           <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
             <img id="img-arepa-${idx}" src="${p.img || '/img/mascota.png'}" onerror="cargarMascotaSegura(this)" class="w-16 h-16 rounded-full object-cover border-2 border-yellow-400 shadow-md">
@@ -1049,7 +1060,7 @@
         </div>
       `).join('');
 
-      document.getElementById('box-editor-extras').innerHTML = DB_LOCAL.extras.map((ex, idx) => `
+      document.getElementById('box-editor-extras').innerHTML = (DB_LOCAL.extras || []).map((ex, idx) => `
         <div class="bg-neutral-800/60 border border-stone-700/60 p-3 rounded-2xl flex justify-between items-center gap-4">
           <input type="text" value="${ex.nombre}" onchange="DB_LOCAL.extras[${idx}].nombre = this.value" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-stone-200 font-bold text-xs flex-1">
           <div class="flex items-center gap-1.5 w-36">
@@ -1060,7 +1071,7 @@
         </div>
       `).join('');
 
-      document.getElementById('box-editor-bebidas').innerHTML = DB_LOCAL.bebidas.map((b, idx) => `
+      document.getElementById('box-editor-bebidas').innerHTML = (DB_LOCAL.bebidas || []).map((b, idx) => `
         <div class="bg-neutral-800/60 border border-stone-700/60 p-3 rounded-2xl flex justify-between items-center gap-4">
           <input type="text" value="${b.nombre}" onchange="DB_LOCAL.bebidas[${idx}].nombre = this.value" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-white font-bold text-xs flex-1">
           <div class="flex items-center gap-1.5 w-36">
@@ -1137,7 +1148,6 @@
       if (mostrarMensaje) alert('¡Menú y fotos guardados con éxito!');
     }
 
-    // REPORTES Y MÉTRICAS
     async function cargarReportesEstadisticas() {
       const res = await fetch('/api/pedidos');
       todosLosPedidos = await res.json();
@@ -1167,6 +1177,7 @@
 
       renderKPIs();
       renderGraficas();
+      renderTablaReportes();
     }
 
     function renderKPIs() {
@@ -1219,6 +1230,29 @@
         data: { labels: ['4 PM','5 PM','6 PM','7 PM','8 PM','9 PM','10 PM'], datasets: [{ data: horasData, backgroundColor: '#fbbf24' }] },
         options: { responsive: true, maintainAspectRatio: false }
       });
+    }
+
+    function renderTablaReportes() {
+      const tabla = document.getElementById('tabla-reporte-pedidos');
+      if (pedidosFiltrados.length === 0) {
+        tabla.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-stone-500 italic">No hay comandas en este período.</td></tr>`;
+        return;
+      }
+      tabla.innerHTML = pedidosFiltrados.map(p => {
+        const resumenItems = (p.items || []).map(i => `1x ${i.nombre}${i.extras && i.extras.length ? ` (+${i.extras.map(e => e.nombre).join(', ')})` : ''}`).join(' | ');
+        return `
+          <tr class="hover:bg-neutral-800/40">
+            <td class="p-3 font-black text-yellow-400">${p.numero}</td>
+            <td class="p-3 text-stone-400 whitespace-nowrap">${p.fecha || '--'} <br><span class="text-[10px] text-stone-500">${p.hora || ''}</span></td>
+            <td class="p-3 font-bold text-white">${p.cliente ? p.cliente.nombre : 'Cliente'}<br><span class="text-[10px] text-stone-400">${p.cliente ? p.cliente.celular : ''}</span></td>
+            <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-neutral-800">${p.modalidad}</span><br><span class="text-[10px] text-stone-400">${p.cliente ? p.cliente.barrio : ''}</span></td>
+            <td class="p-3 text-[11px] text-stone-300 max-w-xs truncate" title="${resumenItems}">${resumenItems}</td>
+            <td class="p-3 text-stone-300">${p.metodoPago || 'Efectivo'}</td>
+            <td class="p-3 font-black text-right text-yellow-400">$${(p.total || 0).toLocaleString()}</td>
+            <td class="p-3 text-center"><span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-stone-800 text-stone-300">${p.estado}</span></td>
+          </tr>
+        `;
+      }).join('');
     }
 
     function exportarExcel() {
