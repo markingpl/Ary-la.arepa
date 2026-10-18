@@ -57,7 +57,7 @@
         <button onclick="pressPin('0')" class="h-14 bg-neutral-900 border border-stone-800 rounded-2xl font-bold text-lg hover:bg-neutral-800">0</button>
         <button onclick="checkPin()" class="h-14 bg-yellow-400 text-black rounded-2xl font-black text-lg hover:bg-yellow-300">✓</button>
       </div>
-      <p id="pin-error" class="text-xs text-red-500 font-bold hidden">PIN incorrecto (Usa: 1234)</p>
+      <p id="pin-error" class="text-xs text-red-500 font-bold hidden">PIN incorrecto. Intenta de nuevo.</p>
     </div>
   </div>
 
@@ -116,12 +116,19 @@
         </nav>
       </div>
 
-      <button onclick="location.reload()" class="p-2.5 bg-neutral-800 text-stone-400 hover:text-white rounded-xl text-xs font-bold flex items-center gap-2">
-        <i class="fa-solid fa-lock"></i> Bloquear panel
-      </button>
+      <div class="space-y-1.5 pt-3 border-t border-stone-800">
+        <!-- BOTÓN CAMBIAR PIN MAESTRO -->
+        <button onclick="abrirModalCambiarPin()" class="w-full p-2.5 bg-neutral-800 hover:bg-neutral-700 text-yellow-400 rounded-xl text-xs font-bold flex items-center gap-2 transition">
+          <i class="fa-solid fa-key"></i> Cambiar Clave de Ingreso
+        </button>
+
+        <button onclick="location.reload()" class="w-full p-2.5 bg-neutral-800 hover:bg-red-950 text-stone-400 hover:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2 transition">
+          <i class="fa-solid fa-lock"></i> Bloquear panel
+        </button>
+      </div>
     </aside>
 
-    <!-- Área de Trabajo -->
+    <!-- Área Principal -->
     <main class="flex-1 overflow-y-auto p-6">
       
       <!-- 1. DASHBOARD & EXCEL -->
@@ -341,7 +348,7 @@
           </div>
           
           <div class="flex flex-wrap items-center gap-2">
-            <button onclick="abrirModalNuevoProducto()" class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2.5 rounded-xl text-xs font-black shadow-lg flex items-center gap-2">
+            <button onclick="abrirModalNuevoProducto()" class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2.5 rounded-xl text-xs font-black shadow-lg shadow-yellow-500/20 flex items-center gap-2">
               <i class="fa-solid fa-plus"></i> + Agregar Producto al Menú
             </button>
             <button onclick="guardarTodoElMenu(true)" class="bg-neutral-800 hover:bg-neutral-700 border border-stone-700 text-stone-200 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2">
@@ -361,12 +368,12 @@
         <div id="box-editor-bebidas" class="bg-neutral-900 border border-stone-800 rounded-2xl p-4 space-y-3 hidden"></div>
       </section>
 
-      <!-- 7. CAJEROS & USUARIOS POS (RESTAURADO COMPLETO) -->
+      <!-- 7. CAJEROS & USUARIOS POS (CON CLAVES EN ASTERISCOS Y OJITO) -->
       <section id="vista-usuarios" class="hidden space-y-6">
         <div class="flex flex-wrap justify-between items-center gap-4">
           <div>
             <h1 class="text-2xl font-black text-yellow-400">Cajeros y Personal POS</h1>
-            <p class="text-xs text-stone-400">Crea nuevos usuarios, define contraseñas y asigna permisos a la caja registradora.</p>
+            <p class="text-xs text-stone-400">Las contraseñas están protegidas por asteriscos. Haz clic en el ojo (👁️) para verlas.</p>
           </div>
           <button onclick="abrirModalCrearUsuario()" class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2.5 rounded-xl text-xs font-black shadow-lg flex items-center gap-2">
             <i class="fa-solid fa-user-plus"></i> + Crear Nuevo Cajero
@@ -390,6 +397,39 @@
       </section>
 
     </main>
+  </div>
+
+  <!-- Modal Cambiar PIN Maestro de Ingreso (NUEVO) -->
+  <div id="modal-cambiar-pin" class="fixed inset-0 z-50 bg-black/90 hidden flex items-center justify-center p-4">
+    <div class="bg-neutral-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-stone-800 pb-2">
+        <h3 class="font-black text-yellow-400 text-base flex items-center gap-2">
+          <i class="fa-solid fa-key"></i> Cambiar Clave de Ingreso
+        </h3>
+        <button onclick="cerrarModalCambiarPin()" class="text-stone-400 hover:text-white font-bold text-lg">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-stone-300 mb-1">PIN Actual *</label>
+          <input type="password" id="pin-actual-input" placeholder="••••" maxlength="6" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-mono text-center text-lg tracking-widest">
+        </div>
+        <div>
+          <label class="block font-bold text-stone-300 mb-1">Nuevo PIN (Mínimo 4 dígitos) *</label>
+          <input type="password" id="pin-nuevo-input" placeholder="••••" maxlength="6" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-yellow-400 font-mono text-center text-lg tracking-widest">
+        </div>
+        <div>
+          <label class="block font-bold text-stone-300 mb-1">Confirmar Nuevo PIN *</label>
+          <input type="password" id="pin-confirm-input" placeholder="••••" maxlength="6" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-yellow-400 font-mono text-center text-lg tracking-widest">
+        </div>
+      </div>
+
+      <div class="pt-2">
+        <button onclick="guardarNuevoPinAdmin()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-3 rounded-xl font-black text-xs uppercase shadow-lg shadow-yellow-500/20">
+          Guardar Nuevo PIN
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Modal Crear Producto -->
@@ -489,7 +529,7 @@
     </div>
   </div>
 
-  <!-- Modal Crear Cajero POS (RESTAURADO COMPLETO) -->
+  <!-- Modal Crear Cajero POS -->
   <div id="modal-crear-usuario" class="fixed inset-0 z-50 bg-black/90 hidden flex items-center justify-center p-4">
     <div class="bg-neutral-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
       <div class="flex justify-between items-center border-b border-stone-800 pb-2">
@@ -522,7 +562,6 @@
 
   <script>
     let currentPin = '';
-    const CORRECT_PIN = '1234';
     let DB_LOCAL = null;
     let todosLosPedidos = [];
     let pedidosFiltrados = [];
@@ -539,7 +578,7 @@
 
     function pressPin(val) {
       if (val === 'C') currentPin = currentPin.slice(0, -1);
-      else if (currentPin.length < 4) currentPin += val;
+      else if (currentPin.length < 6) currentPin += val;
       updateDots();
       if (currentPin.length === 4) checkPin();
     }
@@ -551,16 +590,37 @@
       });
     }
 
+    // VERIFICACIÓN DINÁMICA DEL PIN DIRECTO EN EL SERVIDOR
     async function checkPin() {
-      if (currentPin === CORRECT_PIN) {
-        document.getElementById('pin-screen').classList.add('hidden');
-        await cargarDatosBase();
-        cargarReportesEstadisticas();
-        generarQRsMesas();
-      } else {
-        document.getElementById('pin-error').classList.remove('hidden');
-        currentPin = '';
-        updateDots();
+      try {
+        const res = await fetch('/api/admin/verificar-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: currentPin })
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          document.getElementById('pin-screen').classList.add('hidden');
+          await cargarDatosBase();
+          cargarReportesEstadisticas();
+          generarQRsMesas();
+        } else {
+          document.getElementById('pin-error').classList.remove('hidden');
+          currentPin = '';
+          updateDots();
+        }
+      } catch (err) {
+        // Respaldo de emergencia si no hay red
+        if (currentPin === '1234') {
+          document.getElementById('pin-screen').classList.add('hidden');
+          await cargarDatosBase();
+          cargarReportesEstadisticas();
+        } else {
+          document.getElementById('pin-error').classList.remove('hidden');
+          currentPin = '';
+          updateDots();
+        }
       }
     }
 
@@ -588,7 +648,45 @@
     }
 
     // ==========================================
-    // CAJEROS Y USUARIOS POS (RESTAURADO COMPLETO)
+    // MODAL CAMBIAR PIN MAESTRO DE ACCESO
+    // ==========================================
+    function abrirModalCambiarPin() {
+      document.getElementById('pin-actual-input').value = '';
+      document.getElementById('pin-nuevo-input').value = '';
+      document.getElementById('pin-confirm-input').value = '';
+      document.getElementById('modal-cambiar-pin').classList.remove('hidden');
+    }
+
+    function cerrarModalCambiarPin() {
+      document.getElementById('modal-cambiar-pin').classList.add('hidden');
+    }
+
+    async function guardarNuevoPinAdmin() {
+      const pinActual = document.getElementById('pin-actual-input').value.trim();
+      const nuevoPin = document.getElementById('pin-nuevo-input').value.trim();
+      const confirmPin = document.getElementById('pin-confirm-input').value.trim();
+
+      if (!pinActual || !nuevoPin) return alert('Completa los campos.');
+      if (nuevoPin.length < 4) return alert('El nuevo PIN debe tener mínimo 4 números.');
+      if (nuevoPin !== confirmPin) return alert('El nuevo PIN no coincide con la confirmación.');
+
+      const res = await fetch('/api/admin/cambiar-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pinActual, nuevoPin })
+      });
+
+      const data = await res.json();
+      if (data.ok) {
+        alert('✓ ¡Clave de ingreso actualizada con éxito! Ahora usa tu nuevo PIN.');
+        cerrarModalCambiarPin();
+      } else {
+        alert(data.error || 'Error al cambiar PIN.');
+      }
+    }
+
+    // ==========================================
+    // CAJEROS Y USUARIOS POS (CON ASTERISCOS Y OJITO)
     // ==========================================
     async function cargarUsuarios() {
       const res = await fetch('/api/usuarios');
@@ -602,12 +700,23 @@
             ${u.nombre}
           </td>
           <td class="p-3.5 text-yellow-400 font-mono font-bold">${u.usuario}</td>
-          <td class="p-3.5 text-stone-300 font-mono tracking-widest">${u.clave}</td>
+          
+          <!-- CONTRASEÑA EN ASTERISCOS CON BOTÓN DE OJO -->
+          <td class="p-3.5">
+            <div class="flex items-center gap-2">
+              <span id="pass-txt-${u.id}" class="font-mono tracking-widest text-stone-300 font-bold select-none">••••</span>
+              <button type="button" onclick="toggleVerPassword(${u.id}, '${u.clave}')" class="text-stone-400 hover:text-yellow-400 p-1 transition" title="Ver / Ocultar">
+                <i id="eye-icon-${u.id}" class="fa-solid fa-eye text-xs"></i>
+              </button>
+            </div>
+          </td>
+
           <td class="p-3.5">
             <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black ${u.rol === 'ADMIN' ? 'bg-yellow-400 text-black' : 'bg-neutral-800 text-stone-300 border border-stone-700'}">
               ${u.rol}
             </span>
           </td>
+          
           <td class="p-3.5 text-center">
             ${u.rol !== 'ADMIN' ? `
               <button onclick="eliminarUsuario(${u.id}, '${u.nombre}')" class="bg-red-950 hover:bg-red-900 border border-red-800 text-red-400 px-3 py-1 rounded-lg text-xs font-bold transition">
@@ -617,6 +726,20 @@
           </td>
         </tr>
       `).join('');
+    }
+
+    function toggleVerPassword(id, claveReal) {
+      const span = document.getElementById(`pass-txt-${id}`);
+      const icon = document.getElementById(`eye-icon-${id}`);
+      if (span.innerText === '••••') {
+        span.innerText = claveReal;
+        span.className = 'font-mono tracking-normal text-yellow-300 font-bold';
+        icon.className = 'fa-solid fa-eye-slash text-xs text-yellow-400';
+      } else {
+        span.innerText = '••••';
+        span.className = 'font-mono tracking-widest text-stone-300 font-bold select-none';
+        icon.className = 'fa-solid fa-eye text-xs text-stone-400';
+      }
     }
 
     function abrirModalCrearUsuario() {
@@ -644,7 +767,7 @@
       });
       const data = await res.json();
       if (data.ok) {
-        alert(`¡Cajero ${nombre} creado exitosamente! Ya puede iniciar sesión en la caja POS.`);
+        alert(`¡Cajero ${nombre} creado con éxito!`);
         cerrarModalCrearUsuario();
         cargarUsuarios();
       } else {
