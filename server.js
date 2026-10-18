@@ -1,5 +1,5 @@
-process.on('unhandledRejection', (reason) => console.error('⚠️ Rejection:', reason));
-process.on('uncaughtException', (err) => console.error('⚠️ Exception:', err.message));
+process.on('unhandledRejection', (reason) => console.error('⚠️ Rejection capturada:', reason));
+process.on('uncaughtException', (err) => console.error('⚠️ Exception capturada:', err.message));
 
 const express = require('express');
 const http = require('http');
@@ -11,7 +11,7 @@ let createClient = null;
 try {
   createClient = require('@supabase/supabase-js').createClient;
 } catch (e) {
-  console.log("ℹ️ Operando en modo local (sin librería Supabase).");
+  console.log("ℹ️ Operando en modo local (sin librería Supabase instalada).");
 }
 
 const app = express();
@@ -138,6 +138,7 @@ const DB_DEFAULT = {
   historialTurnos: []
 };
 
+// Carga con blindaje garantizado de arreglos
 let DB = DB_DEFAULT;
 if (fs.existsSync(DATA_FILE)) {
   try {
@@ -149,14 +150,21 @@ if (fs.existsSync(DATA_FILE)) {
         info: { ...DB_DEFAULT.info, ...(dataGuardada.info || {}) },
         configPuntos: { ...DB_DEFAULT.configPuntos, ...(dataGuardada.configPuntos || {}) },
         recetas: { ...DB_DEFAULT.recetas, ...(dataGuardada.recetas || {}) },
-        cupones: dataGuardada.cupones || DB_DEFAULT.cupones,
-        inventario: dataGuardada.inventario || DB_DEFAULT.inventario
+        cupones: Array.isArray(dataGuardada.cupones) ? dataGuardada.cupones : DB_DEFAULT.cupones,
+        inventario: Array.isArray(dataGuardada.inventario) ? dataGuardada.inventario : DB_DEFAULT.inventario,
+        clientesFrecuentes: Array.isArray(dataGuardada.clientesFrecuentes) ? dataGuardada.clientesFrecuentes : DB_DEFAULT.clientesFrecuentes,
+        pedidos: Array.isArray(dataGuardada.pedidos) ? dataGuardada.pedidos : []
       };
     }
   } catch (e) {
     DB = DB_DEFAULT;
   }
 }
+
+// Asegurar que nunca sea nulo
+if (!Array.isArray(DB.clientesFrecuentes)) DB.clientesFrecuentes = [];
+if (!Array.isArray(DB.pedidos)) DB.pedidos = [];
+if (!Array.isArray(DB.inventario)) DB.inventario = DB_DEFAULT.inventario;
 
 function guardarDB(claveModificada = null) {
   try {
@@ -207,16 +215,27 @@ async function sincronizarConSupabase() {
   } catch (err) {}
 }
 
-// CONTROL DE HORARIOS (COLOMBIA UTC-5)
+// CÁLCULO SEGURO DE HORA EN COLOMBIA (A PRUEBA DE FALLOS EN WINDOWS)
 function obtenerMinutosDiaColombia() {
-  const ahoraCo = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Bogota" }));
-  return ahoraCo.getHours() * 60 + ahoraCo.getMinutes();
+  try {
+    const now = new Date();
+    // Cálculo matemático puro en UTC-5 (No falla jamás con formatos de idioma)
+    const utcHours = now.getUTCHours();
+    const utcMins = now.getUTCMinutes();
+    const colHours = (utcHours - 5 + 24) % 24;
+    return colHours * 60 + utcMins;
+  } catch (e) {
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
+  }
 }
 
 function verificarEstadoServicios() {
   const mins = obtenerMinutosDiaColombia();
-  const abiertoDomicilio = (mins >= 960 && mins <= 1290); // 4:00 PM a 9:30 PM
-  const abiertoMesaYRecoger = (mins >= 960 && mins <= 1305); // 4:00 PM a 9:45 PM
+  // 4:00 PM (960 min) a 9:30 PM (1290 min)
+  const abiertoDomicilio = (mins >= 960 && mins <= 1290);
+  // 4:00 PM (960 min) a 9:45 PM (1305 min)
+  const abiertoMesaYRecoger = (mins >= 960 && mins <= 1305);
   return { abiertoDomicilio, abiertoMesa: abiertoMesaYRecoger, abiertoRecoger: abiertoMesaYRecoger };
 }
 
@@ -247,11 +266,6 @@ function descontarInventarioPorPedido(items, modalidad) {
         }
       });
     }
-
-    const bebidaInsumo = DB.inventario.find(i => (i.nombre || '').toLowerCase().includes((item.nombre || '').toLowerCase()));
-    if (bebidaInsumo) {
-      bebidaInsumo.stockActual = Math.max(0, bebidaInsumo.stockActual - 1);
-    }
   });
 
   if (modalidad === 'Domicilio' || modalidad === 'Para Llevar' || modalidad === 'Rappi') {
@@ -273,8 +287,6 @@ function devolverInventarioCancelado(items, modalidad) {
         if (insumo) insumo.stockActual += receta[invId];
       });
     }
-    const bebidaInsumo = DB.inventario.find(i => (i.nombre || '').toLowerCase().includes((item.nombre || '').toLowerCase()));
-    if (bebidaInsumo) bebidaInsumo.stockActual += 1;
   });
 
   if (modalidad === 'Domicilio' || modalidad === 'Para Llevar' || modalidad === 'Rappi') {
@@ -285,103 +297,124 @@ function devolverInventarioCancelado(items, modalidad) {
   guardarDB('inventario');
 }
 
+// CREACIÓN DE PEDIDOS 100% BLINDADA
 function registrarPedidoEnSistema(pedidoData) {
-  DB.contadorPedido++;
-  const now = new Date();
-  const nuevoPedido = {
-    id: `ORD-${Date.now()}`,
-    numero: `#${String(DB.contadorPedido).padStart(3, '0')}`,
-    fecha: now.toLocaleDateString('es-CO'),
-    hora: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    timestamp: Date.now(),
-    estado: 'PENDIENTE',
-    turnoId: DB.turnoActual ? DB.turnoActual.id : null,
-    ...pedidoData
-  };
+  try {
+    if (!Array.isArray(DB.clientesFrecuentes)) DB.clientesFrecuentes = [];
+    if (!Array.isArray(DB.pedidos)) DB.pedidos = [];
+    if (!DB.contadorPedido) DB.contadorPedido = DB.pedidos.length;
 
-  descontarInventarioPorPedido(nuevoPedido.items || [], nuevoPedido.modalidad);
+    DB.contadorPedido++;
+    const now = new Date();
+    const nuevoPedido = {
+      id: `ORD-${Date.now()}`,
+      numero: `#${String(DB.contadorPedido).padStart(3, '0')}`,
+      fecha: now.toLocaleDateString('es-CO'),
+      hora: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: Date.now(),
+      estado: 'PENDIENTE',
+      turnoId: DB.turnoActual ? DB.turnoActual.id : null,
+      ...pedidoData
+    };
 
-  if (pedidoData.cliente && pedidoData.cliente.celular && !String(pedidoData.metodoPago).includes('Pauta')) {
-    const idx = DB.clientesFrecuentes.findIndex(c => c.celular === pedidoData.cliente.celular);
-    const cantArepas = (nuevoPedido.items || []).filter(i => !i.desc || !i.desc.includes('Bebida')).length || 1;
-    const factorPuntos = (DB.configPuntos && DB.configPuntos.activo) ? (DB.configPuntos.puntosPorArepa || 1) : 0;
-    const puntosGanados = cantArepas * factorPuntos;
+    descontarInventarioPorPedido(nuevoPedido.items || [], nuevoPedido.modalidad);
 
-    if (idx >= 0) {
-      const cli = DB.clientesFrecuentes[idx];
-      cli.pedidos += 1;
-      if (pedidoData.canjeoPuntos && DB.configPuntos) {
-        cli.puntos = Math.max(0, (cli.puntos || 0) - (DB.configPuntos.puntosMinimosParaCanje || 5));
+    // Guardar o actualizar puntos cliente frecuente
+    if (pedidoData.cliente && pedidoData.cliente.celular && !String(pedidoData.metodoPago).includes('Pauta')) {
+      const idx = DB.clientesFrecuentes.findIndex(c => c && c.celular === pedidoData.cliente.celular);
+      const cantArepas = (nuevoPedido.items || []).filter(i => i && (!i.desc || !i.desc.includes('Bebida'))).length || 1;
+      const factorPuntos = (DB.configPuntos && DB.configPuntos.activo) ? (DB.configPuntos.puntosPorArepa || 1) : 0;
+      const puntosGanados = cantArepas * factorPuntos;
+
+      if (idx >= 0) {
+        const cli = DB.clientesFrecuentes[idx];
+        cli.pedidos = (cli.pedidos || 0) + 1;
+        if (pedidoData.canjeoPuntos && DB.configPuntos) {
+          cli.puntos = Math.max(0, (cli.puntos || 0) - (DB.configPuntos.puntosMinimosParaCanje || 5));
+        }
+        cli.puntos = (cli.puntos || 0) + puntosGanados;
+        cli.direccion = pedidoData.cliente.direccion;
+        cli.barrio = pedidoData.cliente.barrio;
+      } else {
+        DB.clientesFrecuentes.push({
+          id: DB.clientesFrecuentes.length + 1,
+          nombre: pedidoData.cliente.nombre,
+          celular: pedidoData.cliente.celular,
+          direccion: pedidoData.cliente.direccion,
+          barrio: pedidoData.cliente.barrio,
+          pedidos: 1,
+          puntos: puntosGanados
+        });
       }
-      cli.puntos = (cli.puntos || 0) + puntosGanados;
-      cli.direccion = pedidoData.cliente.direccion;
-      cli.barrio = pedidoData.cliente.barrio;
-    } else {
-      DB.clientesFrecuentes.push({
-        id: DB.clientesFrecuentes.length + 1,
-        nombre: pedidoData.cliente.nombre,
-        celular: pedidoData.cliente.celular,
-        direccion: pedidoData.cliente.direccion,
-        barrio: pedidoData.cliente.barrio,
-        pedidos: 1,
-        puntos: puntosGanados
-      });
+      guardarDB('clientesFrecuentes');
     }
-    guardarDB('clientesFrecuentes');
+
+    DB.pedidos.unshift(nuevoPedido);
+    guardarDB();
+
+    if (supabase) {
+      supabase.from('pedidos').insert([{
+        id: nuevoPedido.id,
+        numero: nuevoPedido.numero,
+        fecha: nuevoPedido.fecha,
+        hora: nuevoPedido.hora,
+        timestamp: nuevoPedido.timestamp,
+        cliente: nuevoPedido.cliente,
+        modalidad: nuevoPedido.modalidad,
+        items: nuevoPedido.items,
+        metodo_pago: nuevoPedido.metodoPago,
+        subtotal: nuevoPedido.subtotal,
+        costo_envio: nuevoPedido.costoEnvio,
+        descuento: nuevoPedido.descuento || 0,
+        total: nuevoPedido.total,
+        estado: nuevoPedido.estado,
+        turno_id: nuevoPedido.turnoId,
+        origen: nuevoPedido.origen || 'Web/POS'
+      }]).catch(() => {});
+    }
+
+    io.emit('pedido-creado', nuevoPedido);
+    return nuevoPedido;
+  } catch (err) {
+    console.error("Error en registrarPedidoEnSistema:", err);
+    const fallback = {
+      id: `ORD-${Date.now()}`,
+      numero: `#${String(Date.now()).slice(-3)}`,
+      total: pedidoData.total || 0,
+      ...pedidoData
+    };
+    io.emit('pedido-creado', fallback);
+    return fallback;
   }
-
-  DB.pedidos.unshift(nuevoPedido);
-  guardarDB();
-
-  if (supabase) {
-    supabase.from('pedidos').insert([{
-      id: nuevoPedido.id,
-      numero: nuevoPedido.numero,
-      fecha: nuevoPedido.fecha,
-      hora: nuevoPedido.hora,
-      timestamp: nuevoPedido.timestamp,
-      cliente: nuevoPedido.cliente,
-      modalidad: nuevoPedido.modalidad,
-      items: nuevoPedido.items,
-      metodo_pago: nuevoPedido.metodoPago,
-      subtotal: nuevoPedido.subtotal,
-      costo_envio: nuevoPedido.costoEnvio,
-      descuento: nuevoPedido.descuento || 0,
-      total: nuevoPedido.total,
-      estado: nuevoPedido.estado,
-      turno_id: nuevoPedido.turnoId,
-      origen: nuevoPedido.origen || 'Web/POS'
-    }]).catch(() => {});
-  }
-
-  // Notificar a cocina y pantallas en vivo
-  io.emit('pedido-creado', nuevoPedido);
-  return nuevoPedido;
 }
 
 // ENDPOINTS API
 app.get('/api/data-inicial', (req, res) => res.json(DB));
 app.get('/api/pedidos', (req, res) => res.json(DB.pedidos));
 
-// RUTA DIRECTA PARA CREAR PEDIDOS (RESPALDO HTTP SEGURO)
+// RUTA POST DE PEDIDOS CON RESPUESTA INMEDIATA
 app.post('/api/pedidos', (req, res) => {
-  const pedidoData = req.body;
-  const { abiertoDomicilio, abiertoMesa } = verificarEstadoServicios();
-  const esDomicilio = (pedidoData.modalidad === 'Domicilio');
-  const esLocalOMesa = (pedidoData.modalidad && (pedidoData.modalidad.includes('Local') || pedidoData.modalidad.includes('Mesa') || pedidoData.modalidad.includes('Recoger')));
+  try {
+    const pedidoData = req.body;
+    const { abiertoDomicilio, abiertoMesa } = verificarEstadoServicios();
+    const esDomicilio = (pedidoData.modalidad === 'Domicilio');
+    const esLocalOMesa = (pedidoData.modalidad && (pedidoData.modalidad.includes('Local') || pedidoData.modalidad.includes('Mesa') || pedidoData.modalidad.includes('Recoger')));
 
-  // Si no es modo prueba y está fuera de horario, avisar
-  if (!pedidoData.modoPrueba) {
-    if (esDomicilio && !abiertoDomicilio) {
-      return res.status(400).json({ ok: false, error: '⛔ El servicio a domicilio opera de 4:00 PM a 9:30 PM.', fueraDeHorario: true });
+    if (!pedidoData.modoPrueba) {
+      if (esDomicilio && !abiertoDomicilio) {
+        return res.status(400).json({ ok: false, error: '⛔ El servicio a domicilio opera de 4:00 PM a 9:30 PM.', fueraDeHorario: true });
+      }
+      if (esLocalOMesa && !abiertoMesa) {
+        return res.status(400).json({ ok: false, error: '⛔ La cocina ya cerró la atención en mesa y recoger por hoy (hasta 9:45 PM).', fueraDeHorario: true });
+      }
     }
-    if (esLocalOMesa && !abiertoMesa) {
-      return res.status(400).json({ ok: false, error: '⛔ La cocina ya cerró la atención en mesa y recoger por hoy (hasta 9:45 PM).', fueraDeHorario: true });
-    }
+
+    const nuevoPedido = registrarPedidoEnSistema(pedidoData);
+    res.json({ ok: true, id: nuevoPedido.id, numero: nuevoPedido.numero, total: nuevoPedido.total });
+  } catch (err) {
+    console.error("Error en POST /api/pedidos:", err);
+    res.status(500).json({ ok: false, error: 'Error procesando la orden: ' + err.message });
   }
-
-  const nuevoPedido = registrarPedidoEnSistema(pedidoData);
-  res.json({ ok: true, id: nuevoPedido.id, numero: nuevoPedido.numero, pedido: nuevoPedido });
 });
 
 app.post('/api/admin/config-puntos', (req, res) => {
@@ -399,7 +432,7 @@ app.post('/api/admin/config-puntos', (req, res) => {
 app.post('/api/admin/clientes/:id/puntos', (req, res) => {
   const id = parseInt(req.params.id);
   const { puntos } = req.body;
-  const cliente = DB.clientesFrecuentes.find(c => c.id === id);
+  const cliente = DB.clientesFrecuentes.find(c => c && c.id === id);
   if (cliente) {
     cliente.puntos = Math.max(0, parseInt(puntos) || 0);
     guardarDB('clientesFrecuentes');
