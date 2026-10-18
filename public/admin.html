@@ -56,13 +56,31 @@
             <span class="text-[10px] text-stone-400 uppercase">Popayán, Cauca</span>
           </div>
         </div>
-        <nav class="space-y-1 text-xs">
-          <a href="#" class="flex items-center gap-3 p-3 bg-yellow-400/10 text-yellow-400 font-bold rounded-xl"><i class="fa-solid fa-chart-pie"></i> Ventas & Dashboard</a>
-          <a href="/cocina.html" target="_blank" class="flex items-center gap-3 p-3 text-stone-400 hover:bg-neutral-800 rounded-xl transition"><i class="fa-solid fa-fire text-amber-500"></i> Pantalla Cocina</a>
-          <a href="/pos.html" target="_blank" class="flex items-center gap-3 p-3 text-stone-400 hover:bg-neutral-800 rounded-xl transition"><i class="fa-solid fa-cash-register text-green-500"></i> Caja POS (Tickets)</a>
-          <a href="/" target="_blank" class="flex items-center gap-3 p-3 text-stone-400 hover:bg-neutral-800 rounded-xl transition"><i class="fa-solid fa-mobile-screen text-blue-400"></i> Menú Clientes</a>
+        
+        <!-- Pestañas de Navegación -->
+        <nav class="space-y-1.5 text-xs">
+          <button onclick="mostrarVista('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-3 p-3 bg-yellow-400 text-black font-black rounded-xl text-left transition">
+            <i class="fa-solid fa-chart-pie"></i> Ventas & Dashboard
+          </button>
+          
+          <button onclick="mostrarVista('usuarios')" id="nav-usuarios" class="w-full flex items-center gap-3 p-3 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl text-left transition">
+            <i class="fa-solid fa-users text-yellow-400"></i> Cajeros & Usuarios POS
+          </button>
+          
+          <a href="/cocina.html" target="_blank" class="flex items-center gap-3 p-3 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl transition">
+            <i class="fa-solid fa-fire text-amber-500"></i> Pantalla Cocina KDS
+          </a>
+          
+          <a href="/pos.html" target="_blank" class="flex items-center gap-3 p-3 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl transition">
+            <i class="fa-solid fa-cash-register text-green-500"></i> Caja POS (Tickets 80mm)
+          </a>
+          
+          <a href="/" target="_blank" class="flex items-center gap-3 p-3 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl transition">
+            <i class="fa-solid fa-mobile-screen text-blue-400"></i> Menú de Clientes
+          </a>
         </nav>
       </div>
+
       <button onclick="location.reload()" class="p-3 bg-neutral-800 text-stone-400 hover:text-white rounded-xl text-xs font-bold flex items-center gap-2">
         <i class="fa-solid fa-lock"></i> Bloquear panel
       </button>
@@ -70,57 +88,123 @@
 
     <!-- Contenido -->
     <main class="flex-1 overflow-y-auto p-6">
-      <div class="flex justify-between items-center mb-6">
-        <div>
-          <h1 class="text-2xl font-black text-yellow-400">Resumen del Negocio</h1>
-          <p class="text-xs text-stone-400" id="fecha-hoy"></p>
+      
+      <!-- SECCIÓN 1: DASHBOARD DE VENTAS -->
+      <section id="vista-dashboard">
+        <div class="flex justify-between items-center mb-6">
+          <div>
+            <h1 class="text-2xl font-black text-yellow-400">Resumen del Negocio</h1>
+            <p class="text-xs text-stone-400" id="fecha-hoy"></p>
+          </div>
+          <button onclick="cargarDashboard()" class="bg-neutral-800 hover:bg-neutral-700 px-3 py-1.5 rounded-xl text-xs font-bold border border-stone-700 text-stone-300">
+            <i class="fa-solid fa-rotate-right"></i> Actualizar
+          </button>
         </div>
-        <button onclick="cargarDashboard()" class="bg-neutral-800 hover:bg-neutral-700 px-3 py-1.5 rounded-xl text-xs font-bold border border-stone-700 text-stone-300">
-          <i class="fa-solid fa-rotate-right"></i> Actualizar
-        </button>
-      </div>
 
-      <!-- Métricas -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <div class="bg-neutral-900 border border-stone-800 p-5 rounded-2xl">
-          <div class="text-xs text-stone-400 font-bold uppercase">Ventas Totales</div>
-          <div class="text-3xl font-black text-green-400 mt-2" id="dash-ventas">$0</div>
+        <!-- Métricas -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <div class="bg-neutral-900 border border-stone-800 p-5 rounded-2xl">
+            <div class="text-xs text-stone-400 font-bold uppercase">Ventas Totales</div>
+            <div class="text-3xl font-black text-green-400 mt-2" id="dash-ventas">$0</div>
+          </div>
+          <div class="bg-neutral-900 border border-stone-800 p-5 rounded-2xl">
+            <div class="text-xs text-stone-400 font-bold uppercase">Pedidos Recibidos</div>
+            <div class="text-3xl font-black text-yellow-400 mt-2" id="dash-pedidos">0</div>
+          </div>
+          <div class="bg-neutral-900 border border-stone-800 p-5 rounded-2xl">
+            <div class="text-xs text-stone-400 font-bold uppercase">Domicilios Popayán</div>
+            <div class="text-3xl font-black text-blue-400 mt-2" id="dash-domicilios">0</div>
+          </div>
         </div>
-        <div class="bg-neutral-900 border border-stone-800 p-5 rounded-2xl">
-          <div class="text-xs text-stone-400 font-bold uppercase">Pedidos Recibidos</div>
-          <div class="text-3xl font-black text-yellow-400 mt-2" id="dash-pedidos">0</div>
-        </div>
-        <div class="bg-neutral-900 border border-stone-800 p-5 rounded-2xl">
-          <div class="text-xs text-stone-400 font-bold uppercase">Domicilios Popayán</div>
-          <div class="text-3xl font-black text-blue-400 mt-2" id="dash-domicilios">0</div>
-        </div>
-      </div>
 
-      <!-- Tabla Pedidos -->
-      <div class="bg-neutral-900 border border-stone-800 rounded-2xl overflow-hidden shadow-lg">
-        <div class="p-4 border-b border-stone-800 font-black text-sm text-yellow-400 uppercase tracking-wider">
-          Historial de Pedidos en Vivo
+        <!-- Tabla Pedidos -->
+        <div class="bg-neutral-900 border border-stone-800 rounded-2xl overflow-hidden shadow-lg">
+          <div class="p-4 border-b border-stone-800 font-black text-sm text-yellow-400 uppercase tracking-wider">
+            Historial de Pedidos en Vivo
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-neutral-800/60 text-stone-400 uppercase text-[10px]">
+                <tr>
+                  <th class="p-3"># Orden</th>
+                  <th class="p-3">Hora</th>
+                  <th class="p-3">Cliente</th>
+                  <th class="p-3">Modalidad</th>
+                  <th class="p-3">Método Pago</th>
+                  <th class="p-3">Total</th>
+                  <th class="p-3">Estado</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-pedidos" class="divide-y divide-stone-800">
+                <tr><td colspan="7" class="p-4 text-center text-stone-500">Cargando registros...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div class="overflow-x-auto">
+      </section>
+
+      <!-- SECCIÓN 2: GESTIÓN DE CAJEROS Y USUARIOS POS -->
+      <section id="vista-usuarios" class="hidden">
+        <div class="flex justify-between items-center mb-6">
+          <div>
+            <h1 class="text-2xl font-black text-yellow-400">Cajeros y Personal de Caja</h1>
+            <p class="text-xs text-stone-400">Gestiona los usuarios que tienen acceso al punto de venta (POS)</p>
+          </div>
+          <button onclick="abrirModalCrearUsuario()" class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2 rounded-xl text-xs font-black shadow-lg shadow-yellow-500/20 flex items-center gap-2">
+            <i class="fa-solid fa-user-plus"></i> + Crear Nuevo Cajero
+          </button>
+        </div>
+
+        <div class="bg-neutral-900 border border-stone-800 rounded-2xl overflow-hidden shadow-lg">
           <table class="w-full text-left text-xs">
             <thead class="bg-neutral-800/60 text-stone-400 uppercase text-[10px]">
               <tr>
-                <th class="p-3"># Orden</th>
-                <th class="p-3">Hora</th>
-                <th class="p-3">Cliente</th>
-                <th class="p-3">Modalidad</th>
-                <th class="p-3">Método Pago</th>
-                <th class="p-3">Total</th>
-                <th class="p-3">Estado</th>
+                <th class="p-3.5">Nombre del Empleado</th>
+                <th class="p-3.5">Usuario de Acceso</th>
+                <th class="p-3.5">Contraseña / PIN</th>
+                <th class="p-3.5">Rol</th>
+                <th class="p-3.5 text-center">Acciones</th>
               </tr>
             </thead>
-            <tbody id="tabla-pedidos" class="divide-y divide-stone-800">
-              <tr><td colspan="7" class="p-4 text-center text-stone-500">Cargando registros...</td></tr>
+            <tbody id="tabla-usuarios" class="divide-y divide-stone-800">
+              <tr><td colspan="5" class="p-4 text-center text-stone-500">Cargando cajeros...</td></tr>
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
+
     </main>
+  </div>
+
+  <!-- Modal Crear Usuario / Cajero -->
+  <div id="modal-crear-usuario" class="fixed inset-0 z-50 bg-black/90 hidden flex items-center justify-center p-4">
+    <div class="bg-neutral-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-stone-800 pb-2">
+        <h3 class="font-black text-yellow-400 text-base">Crear Nuevo Cajero</h3>
+        <button onclick="cerrarModalCrearUsuario()" class="text-stone-400 hover:text-white font-bold text-lg">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-stone-300 mb-1">Nombre completo de la persona *</label>
+          <input type="text" id="nuevo-nombre" placeholder="Ej: Laura Gómez" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white">
+        </div>
+        <div>
+          <label class="block font-bold text-stone-300 mb-1">Nombre de usuario (Login) *</label>
+          <input type="text" id="nuevo-usuario" placeholder="Ej: laura2024" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white">
+        </div>
+        <div>
+          <label class="block font-bold text-stone-300 mb-1">Contraseña / PIN de acceso *</label>
+          <input type="password" id="nueva-clave" placeholder="Ej: 1234" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white">
+        </div>
+      </div>
+
+      <div class="pt-2">
+        <button onclick="guardarNuevoUsuario()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-3 rounded-xl font-black text-xs uppercase shadow-lg shadow-yellow-500/20">
+          Guardar y Habilitar Cajero
+        </button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -152,6 +236,22 @@
         currentPin = '';
         updateDots();
       }
+    }
+
+    function mostrarVista(vista) {
+      document.getElementById('vista-dashboard').classList.toggle('hidden', vista !== 'dashboard');
+      document.getElementById('vista-usuarios').classList.toggle('hidden', vista !== 'usuarios');
+
+      document.getElementById('nav-dashboard').className = vista === 'dashboard' 
+        ? 'w-full flex items-center gap-3 p-3 bg-yellow-400 text-black font-black rounded-xl text-left transition' 
+        : 'w-full flex items-center gap-3 p-3 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl text-left transition';
+
+      document.getElementById('nav-usuarios').className = vista === 'usuarios' 
+        ? 'w-full flex items-center gap-3 p-3 bg-yellow-400 text-black font-black rounded-xl text-left transition' 
+        : 'w-full flex items-center gap-3 p-3 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl text-left transition';
+
+      if (vista === 'usuarios') cargarUsuarios();
+      else cargarDashboard();
     }
 
     async function cargarDashboard() {
@@ -192,6 +292,85 @@
           </td>
         </tr>
       `).join('');
+    }
+
+    // Funciones de gestión de usuarios
+    async function cargarUsuarios() {
+      const res = await fetch('/api/usuarios');
+      const usuarios = await res.json();
+      const tabla = document.getElementById('tabla-usuarios');
+
+      tabla.innerHTML = usuarios.map(u => `
+        <tr class="hover:bg-neutral-800/40">
+          <td class="p-3.5 font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-user-circle text-stone-400 text-base"></i>
+            ${u.nombre}
+          </td>
+          <td class="p-3.5 text-yellow-400 font-mono font-bold">${u.usuario}</td>
+          <td class="p-3.5 text-stone-300 font-mono tracking-widest">${u.clave}</td>
+          <td class="p-3.5">
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black ${u.rol === 'ADMIN' ? 'bg-yellow-400 text-black' : 'bg-neutral-800 text-stone-300 border border-stone-700'}">
+              ${u.rol}
+            </span>
+          </td>
+          <td class="p-3.5 text-center">
+            ${u.rol !== 'ADMIN' ? `
+              <button onclick="eliminarUsuario(${u.id}, '${u.nombre}')" class="bg-red-950 hover:bg-red-900 border border-red-800 text-red-400 px-3 py-1 rounded-lg text-xs font-bold transition">
+                <i class="fa-solid fa-trash-can"></i> Quitar
+              </button>
+            ` : '<span class="text-stone-500 text-[10px] italic">Principal</span>'}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function abrirModalCrearUsuario() {
+      document.getElementById('nuevo-nombre').value = '';
+      document.getElementById('nuevo-usuario').value = '';
+      document.getElementById('nueva-clave').value = '';
+      document.getElementById('modal-crear-usuario').classList.remove('hidden');
+    }
+
+    function cerrarModalCrearUsuario() {
+      document.getElementById('modal-crear-usuario').classList.add('hidden');
+    }
+
+    async function guardarNuevoUsuario() {
+      const nombre = document.getElementById('nuevo-nombre').value.trim();
+      const usuario = document.getElementById('nuevo-usuario').value.trim();
+      const clave = document.getElementById('nueva-clave').value.trim();
+
+      if (!nombre || !usuario || !clave) {
+        alert('Por favor completa todos los campos.');
+        return;
+      }
+
+      const res = await fetch('/api/usuarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, usuario, clave })
+      });
+
+      const data = await res.json();
+      if (data.ok) {
+        alert(`¡Cajero ${nombre} creado exitosamente! Ya puede iniciar sesión en la caja POS.`);
+        cerrarModalCrearUsuario();
+        cargarUsuarios();
+      } else {
+        alert(data.error || 'Hubo un error al crear el cajero.');
+      }
+    }
+
+    async function eliminarUsuario(id, nombre) {
+      if (!confirm(`¿Estás seguro de eliminar el acceso para "${nombre}"?`)) return;
+
+      const res = await fetch(`/api/usuarios/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.ok) {
+        cargarUsuarios();
+      } else {
+        alert(data.error || 'Error al eliminar usuario.');
+      }
     }
   </script>
 </body>
