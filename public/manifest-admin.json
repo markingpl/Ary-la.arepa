@@ -1,0 +1,20 @@
+{
+  "name": "Ary Admin - Control",
+  "short_name": "Ary Admin",
+  "start_url": "/admin.html",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#facc15",
+  "icons": [
+    {
+      "src": "/img/mascota.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/img/mascota.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
