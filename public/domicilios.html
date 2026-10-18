@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Repartidores - Ary la arepa</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-neutral-950 text-white min-h-screen pb-28 font-sans select-none">
+
+  <!-- Header Repartidor -->
+  <header class="sticky top-0 z-30 bg-neutral-900/95 backdrop-blur border-b border-stone-800 p-3.5 flex justify-between items-center shadow-lg">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-2xl bg-yellow-400 text-black flex items-center justify-center font-black text-xl shadow">
+        <i class="fa-solid fa-motorcycle"></i>
+      </div>
+      <div>
+        <h1 class="text-sm font-black text-yellow-400 leading-tight">DOMICILIOS POPAYÁN</h1>
+        <p class="text-[10px] text-stone-400">Ary la arepa • Envíos en calle</p>
+      </div>
+    </div>
+    
+    <button onclick="cargarPedidosDomicilio()" class="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-xl text-yellow-400 text-xs font-bold border border-stone-700">
+      <i class="fa-solid fa-rotate-right"></i>
+    </button>
+  </header>
+
+  <!-- Pestañas de Reparto -->
+  <div class="p-3 flex gap-2 border-b border-stone-800 bg-neutral-900/40">
+    <button onclick="setTabDomi('pendientes')" id="tab-btn-pendientes" class="flex-1 py-2 rounded-xl text-xs font-black bg-yellow-400 text-black shadow">
+      Por Entregar (<span id="count-por-entregar">0</span>)
+    </button>
+    <button onclick="setTabDomi('entregados')" id="tab-btn-entregados" class="flex-1 py-2 rounded-xl text-xs font-bold bg-neutral-800 text-stone-300 border border-stone-700">
+      Entregados Hoy (<span id="count-entregados-hoy">0</span>)
+    </button>
+  </div>
+
+  <!-- Lista de Pedidos en Reparto -->
+  <main class="max-w-md mx-auto p-3 space-y-3" id="lista-domicilios">
+    <div class="text-center py-16 text-stone-500 text-xs italic">Cargando rutas de entrega...</div>
+  </main>
+
+  <!-- Barra Flotante de Liquidación de Efectivo (Lo que debe entregar al cajero) -->
+  <div class="fixed bottom-0 left-0 right-0 bg-neutral-900/95 backdrop-blur border-t-2 border-yellow-500 p-3 z-30 shadow-2xl">
+    <div class="max-w-md mx-auto flex justify-between items-center text-xs">
+      <div>
+        <span class="text-[10px] text-stone-400 font-bold uppercase block">Efectivo a liquidar en caja:</span>
+        <span id="txt-liquidacion-efectivo" class="text-xl font-black text-green-400">$0</span>
+      </div>
+      <div class="text-right">
+        <span class="text-[10px] text-stone-400 font-bold block">Entregas completadas:</span>
+        <span id="txt-total-entregas-count" class="font-black text-yellow-400 text-sm">0 pedidos</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    let pedidosDomi = [];
+    let tabActual = 'pendientes';
+
+    window.onload = () => {
+      cargarPedidosDomicilio();
+    };
+
+    async function cargarPedidosDomicilio() {
+      try {
+        const res = await fetch('/api/pedidos');
+        const todos = await res.json();
+        // Solo nos interesan los pedidos de modalidad Domicilio
+        pedidosDomi = todos.filter(p => p.modalidad === 'Domicilio' && p.estado !== 'CANCELADO');
+        renderListaDomicilios();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function setTabDomi(tab) {
+      tabActual = tab;
+      document.getElementById('tab-btn-pendientes').className = tab === 'pendientes'
+        ? 'flex-1 py-2 rounded-xl text-xs font-black bg-yellow-400 text-black shadow'
+        : 'flex-1 py-2 rounded-xl text-xs font-bold bg-neutral-800 text-stone-300 border border-stone-700';
+
+      document.getElementById('tab-btn-entregados').className = tab === 'entregados'
+        ? 'flex-1 py-2 rounded-xl text-xs font-black bg-yellow-400 text-black shadow'
+        : 'flex-1 py-2 rounded-xl text-xs font-bold bg-neutral-800 text-stone-300 border border-stone-700';
+
+      renderListaDomicilios();
+    }
+
+    function renderListaDomicilios() {
+      const box = document.getElementById('lista-domicilios');
+      
+      const porEntregar = pedidosDomi.filter(p => p.estado === 'PENDIENTE' || p.estado === 'PREPARANDO' || p.estado === 'LISTO');
+      const entregados = pedidosDomi.filter(p => p.estado === 'ENTREGADO');
+
+      document.getElementById('count-por-entregar').innerText = porEntregar.length;
+      document.getElementById('count-entregados-hoy').innerText = entregados.length;
+
+      // Calcular Efectivo recaudado para liquidación
+      const efectivoRecaudado = entregados
+        .filter(p => p.metodoPago === 'Efectivo')
+        .reduce((acc, p) => acc + (p.total || 0), 0);
+
+      document.getElementById('txt-liquidacion-efectivo').innerText = `$${efectivoRecaudado.toLocaleString()}`;
+      document.getElementById('txt-total-entregas-count').innerText = `${entregados.length} pedidos`;
+
+      const listaAMostrar = tabActual === 'pendientes' ? porEntregar : entregados;
+
+      if (listaAMostrar.length === 0) {
+        box.innerHTML = `<div class="text-center py-16 text-stone-500 text-xs italic">No hay pedidos en esta sección.</div>`;
+        return;
+      }
+
+      box.innerHTML = listaAMostrar.map(p => {
+        const cliente = p.cliente || {};
+        const esEfectivo = p.metodoPago === 'Efectivo';
+        
+        // Consulta para Maps y Waze
+        const queryDireccion = encodeURIComponent(`${cliente.direccion || ''}, ${cliente.barrio || ''}, Popayán, Cauca`);
+        const urlGoogleMaps = `https://www.google.com/maps/search/?api=1&query=${queryDireccion}`;
+        const urlWaze = `https://waze.com/ul?q=${queryDireccion}&navigate=yes`;
+        const urlWhatsApp = `https://wa.me/57${cliente.celular || ''}?text=${encodeURIComponent(`¡Hola ${cliente.nombre || ''}! Te habla el domiciliario de Ary la arepa con tu pedido ${p.numero}. Ya estoy afuera de tu dirección.`)}`;
+
+        return `
+          <div class="bg-neutral-900 border-2 ${p.estado === 'LISTO' ? 'border-green-500' : 'border-stone-800'} rounded-3xl p-4 space-y-3 shadow-xl">
+            
+            <!-- Encabezado Tarjeta -->
+            <div class="flex justify-between items-start border-b border-stone-800 pb-2.5">
+              <div>
+                <span class="text-2xl font-black text-yellow-400">${p.numero}</span>
+                <div class="text-[11px] font-bold text-stone-200 mt-0.5">${cliente.nombre || 'Cliente'}</div>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] font-black px-2.5 py-1 rounded-full uppercase ${p.estado === 'LISTO' ? 'bg-green-500 text-black animate-pulse' : 'bg-neutral-800 text-stone-300'}">
+                  ${p.estado}
+                </span>
+                <span class="text-[10px] text-stone-500 block mt-1">${p.hora || ''}</span>
+              </div>
+            </div>
+
+            <!-- Dirección y Barrio -->
+            <div class="bg-neutral-950 p-3 rounded-2xl border border-stone-800/80 space-y-1">
+              <div class="text-xs font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-location-dot text-red-500 text-sm"></i>
+                <span>${cliente.direccion || 'Sin dirección'}</span>
+              </div>
+              <div class="text-[11px] text-yellow-400 font-semibold pl-5">
+                Barrio: ${cliente.barrio || 'Popayán'}
+              </div>
+            </div>
+
+            <!-- Valor a Cobrar -->
+            <div class="p-2.5 rounded-2xl ${esEfectivo ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-blue-500/10 border border-blue-500/30'} flex justify-between items-center text-xs">
+              <span class="text-stone-300 font-bold">
+                ${esEfectivo ? '💵 COBRAR EN EFECTIVO:' : '📲 YA PAGADO (TRANSFERENCIA):'}
+              </span>
+              <span class="text-base font-black ${esEfectivo ? 'text-yellow-400' : 'text-blue-400'}">
+                $${(p.total || 0).toLocaleString()}
+              </span>
+            </div>
+
+            <!-- Botones de Acción para el Repartidor -->
+            <div class="grid grid-cols-3 gap-2 pt-1 text-xs font-bold">
+              <a href="${urlWaze}" target="_blank" class="bg-sky-600 hover:bg-sky-500 text-white p-2.5 rounded-xl flex items-center justify-center gap-1.5 transition">
+                <i class="fa-brands fa-waze text-base"></i> Waze
+              </a>
+              <a href="${urlGoogleMaps}" target="_blank" class="bg-neutral-800 hover:bg-neutral-700 text-stone-200 border border-stone-700 p-2.5 rounded-xl flex items-center justify-center gap-1.5 transition">
+                <i class="fa-solid fa-map-location-dot text-emerald-400"></i> Maps
+              </a>
+              <a href="${urlWhatsApp}" target="_blank" class="bg-green-600 hover:bg-green-500 text-white p-2.5 rounded-xl flex items-center justify-center gap-1.5 transition">
+                <i class="fa-brands fa-whatsapp text-base"></i> Avisar
+              </a>
+            </div>
+
+            ${p.estado !== 'ENTREGADO' ? `
+              <button onclick="marcarPedidoEntregado('${p.id}', '${p.numero}', ${p.total || 0}, '${p.metodoPago}')" class="w-full bg-green-500 hover:bg-green-400 text-black py-3 rounded-2xl font-black text-xs uppercase flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 transition">
+                <i class="fa-solid fa-circle-check text-sm"></i> Marcar como Entregado
+              </button>
+            ` : `
+              <div class="text-center py-1 text-[11px] font-bold text-stone-500">
+                ✓ Entregado con éxito
+              </div>
+            `}
+
+          </div>
+        `;
+      }).join('');
+    }
+
+    function marcarPedidoEntregado(id, numero, total, metodo) {
+      const mensajeConfirmacion = metodo === 'Efectivo' 
+        ? `¿Confirmas que entregaste la orden ${numero} y recibiste $${total.toLocaleString()} en efectivo?`
+        : `¿Confirmas que entregaste la orden ${numero}?`;
+
+      if (!confirm(mensajeConfirmacion)) return;
+
+      socket.emit('cambiar-estado', { id, nuevoEstado: 'ENTREGADO' });
+    }
+
+    // Sockets en Vivo
+    socket.on('pedido-creado', () => cargarPedidosDomicilio());
+    socket.on('estado-actualizado', ({ id, nuevoEstado }) => {
+      const p = pedidosDomi.find(x => x.id === id);
+      if (p) p.estado = nuevoEstado;
+      renderListaDomicilios();
+    });
+  </script>
+</body>
+</html>
