@@ -15,7 +15,6 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- Generador de QR dinámico -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
   <style>
@@ -80,7 +79,7 @@
           </button>
 
           <button onclick="mostrarVista('inventario')" id="nav-inventario" class="w-full flex items-center gap-3 p-2.5 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl text-left transition">
-            <i class="fa-solid fa-boxes-stacked text-yellow-400"></i> Inventario & Stock
+            <i class="fa-solid fa-boxes-stacked text-yellow-400"></i> Inventario & Porciones
           </button>
 
           <button onclick="mostrarVista('cupones')" id="nav-cupones" class="w-full flex items-center gap-3 p-2.5 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl text-left transition">
@@ -125,7 +124,7 @@
     <!-- Área Principal -->
     <main class="flex-1 overflow-y-auto p-6">
       
-      <!-- 1. DASHBOARD -->
+      <!-- 1. DASHBOARD & EXCEL -->
       <section id="vista-reportes" class="space-y-6">
         <div class="flex flex-wrap justify-between items-center gap-4 bg-neutral-900 border border-stone-800 p-4 rounded-2xl">
           <div>
@@ -176,20 +175,26 @@
         </div>
       </section>
 
-      <!-- 2. INVENTARIO & STOCK (FEATURE C) -->
+      <!-- 2. INVENTARIO & STOCK CON GRAMOS, UNIDADES Y PORCIONES -->
       <section id="vista-inventario" class="hidden space-y-6">
         <div class="flex flex-wrap justify-between items-center gap-4">
           <div>
-            <h1 class="text-2xl font-black text-yellow-400">Control de Inventario & Escandallo</h1>
-            <p class="text-xs text-stone-400">El stock se descuenta automáticamente con cada pedido vendido.</p>
+            <h1 class="text-2xl font-black text-yellow-400">Control de Insumos & Porciones</h1>
+            <p class="text-xs text-stone-400">Define gramos o unidades por porción y mira cuántas arepas puedes armar en tiempo real.</p>
           </div>
-          <button onclick="guardarInventarioAdmin()" class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2.5 rounded-xl text-xs font-black shadow-lg">
-            <i class="fa-solid fa-floppy-disk"></i> Guardar Ajustes de Stock
-          </button>
+          
+          <div class="flex gap-2">
+            <button onclick="abrirModalNuevoInsumo()" class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2.5 rounded-xl text-xs font-black shadow-lg flex items-center gap-2">
+              <i class="fa-solid fa-plus"></i> + Agregar Insumo
+            </button>
+            <button onclick="guardarInventarioAdmin(true)" class="bg-neutral-800 hover:bg-neutral-700 border border-stone-700 text-stone-200 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2">
+              <i class="fa-solid fa-floppy-disk"></i> Guardar Existencias
+            </button>
+          </div>
         </div>
 
         <!-- Alerta de Stock Bajo -->
-        <div id="alerta-stock-critico" class="hidden bg-red-950/60 border-2 border-red-600 p-4 rounded-2xl flex items-center gap-3">
+        <div id="alerta-stock-critico" class="hidden bg-red-950/60 border-2 border-red-600 p-4 rounded-2xl flex items-center gap-3 shadow-xl">
           <i class="fa-solid fa-triangle-exclamation text-red-400 text-2xl animate-pulse"></i>
           <div>
             <h4 class="font-black text-red-400 text-sm">¡ALERTA DE INSUMOS CRÍTICOS!</h4>
@@ -203,10 +208,13 @@
             <thead class="bg-neutral-800/60 text-stone-400 uppercase text-[10px]">
               <tr>
                 <th class="p-3.5">Insumo / Ingrediente</th>
-                <th class="p-3.5">Stock Actual</th>
-                <th class="p-3.5">Stock Mínimo</th>
                 <th class="p-3.5">Unidad</th>
+                <th class="p-3.5">Tamaño Porción</th>
+                <th class="p-3.5">Stock Total Actual</th>
+                <th class="p-3.5 font-black text-yellow-400">Porciones Disponibles</th>
+                <th class="p-3.5">Stock Mínimo</th>
                 <th class="p-3.5">Estado</th>
+                <th class="p-3.5 text-center">Acciones</th>
               </tr>
             </thead>
             <tbody id="tabla-inventario" class="divide-y divide-stone-800"></tbody>
@@ -214,19 +222,18 @@
         </div>
       </section>
 
-      <!-- 3. CUPONES & CLIENTES VIP (FEATURE D) -->
+      <!-- 3. CUPONES & CLIENTES VIP -->
       <section id="vista-cupones" class="hidden space-y-6">
         <div class="flex flex-wrap justify-between items-center gap-4">
           <div>
             <h1 class="text-2xl font-black text-yellow-400">Cupones de Descuento & Fidelización</h1>
-            <p class="text-xs text-stone-400">Crea códigos promocionales y premia a los clientes que más te compran.</p>
+            <p class="text-xs text-stone-400">Crea códigos promocionales y premia a los clientes frecuentes.</p>
           </div>
           <button onclick="guardarCuponesAdmin()" class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2.5 rounded-xl text-xs font-black shadow-lg">
             <i class="fa-solid fa-floppy-disk"></i> Guardar Cupones
           </button>
         </div>
 
-        <!-- Formulario Crear Cupón -->
         <div class="bg-neutral-900 border border-stone-800 p-4 rounded-2xl flex flex-wrap gap-3 items-end">
           <div class="flex-1 min-w-[150px]">
             <label class="block text-xs font-bold text-stone-400 mb-1">Código Promocional</label>
@@ -249,13 +256,11 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <!-- Lista Cupones -->
           <div class="bg-neutral-900 border border-stone-800 rounded-2xl p-4">
             <h3 class="font-black text-yellow-400 text-sm mb-3">Cupones Activos</h3>
             <div id="lista-cupones-box" class="space-y-2"></div>
           </div>
 
-          <!-- Ranking Clientes VIP -->
           <div class="bg-neutral-900 border border-stone-800 rounded-2xl p-4">
             <h3 class="font-black text-yellow-400 text-sm mb-3">Ranking Clientes VIP (Puntos)</h3>
             <div class="overflow-y-auto max-h-72">
@@ -275,7 +280,7 @@
         </div>
       </section>
 
-      <!-- 4. GENERADOR DE QR PARA MESAS (FEATURE B) -->
+      <!-- 4. GENERADOR DE QR PARA MESAS (WOKHOUSE) -->
       <section id="vista-qr-mesas" class="space-y-6 hidden">
         <div class="flex flex-wrap justify-between items-center gap-4">
           <div>
@@ -328,6 +333,54 @@
       </section>
 
     </main>
+  </div>
+
+  <!-- Modal Crear Insumo / Ingrediente Nuevo -->
+  <div id="modal-nuevo-insumo" class="fixed inset-0 z-50 bg-black/90 hidden flex items-center justify-center p-4">
+    <div class="bg-neutral-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-stone-800 pb-2">
+        <h3 class="font-black text-yellow-400 text-base">Nuevo Insumo al Inventario</h3>
+        <button onclick="cerrarModalNuevoInsumo()" class="text-stone-400 hover:text-white font-bold text-lg">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-stone-300 mb-1">Nombre del Insumo / Ingrediente *</label>
+          <input type="text" id="ins-nombre" placeholder="Ej: Maíz Dulce Desgranado" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-bold text-stone-300 mb-1">Unidad de medida *</label>
+            <select id="ins-unidad" onchange="actualizarLabelsUnidad()" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold">
+              <option value="gramos">Gramos (g)</option>
+              <option value="unidades">Unidades (u)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block font-bold text-stone-300 mb-1" id="lbl-ins-porcion">Gramos por Porción *</label>
+            <input type="number" id="ins-porcion" placeholder="Ej: 80" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold text-center">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-bold text-stone-300 mb-1">Stock Actual Inicial *</label>
+            <input type="number" id="ins-stock-actual" placeholder="Ej: 5000" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold text-center">
+          </div>
+
+          <div>
+            <label class="block font-bold text-stone-300 mb-1">Alerta Stock Mínimo *</label>
+            <input type="number" id="ins-stock-minimo" placeholder="Ej: 1000" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold text-center">
+          </div>
+        </div>
+      </div>
+
+      <button onclick="guardarNuevoInsumo()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-3 rounded-xl font-black text-xs uppercase shadow-lg shadow-yellow-500/20">
+        Agregar al Inventario
+      </button>
+    </div>
   </div>
 
   <script>
@@ -396,7 +449,7 @@
     }
 
     // ==========================================
-    // FEATURE C: CONTROL DE INVENTARIO
+    // INVENTARIO CON PORCIONES, GRAMOS Y UNIDADES
     // ==========================================
     function renderInventarioAdmin() {
       const tabla = document.getElementById('tabla-inventario');
@@ -406,18 +459,49 @@
         const bajo = item.stockActual <= item.stockMinimo;
         if (bajo) criticos.push(item.nombre);
 
+        // Cálculo de Porciones Restantes
+        const porcion = item.porcionTamano || 1;
+        const porcionesDisponibles = Math.floor(item.stockActual / porcion);
+
         return `
           <tr class="hover:bg-neutral-800/40">
             <td class="p-3.5 font-bold text-white">${item.nombre}</td>
+            
             <td class="p-3.5">
-              <input type="number" value="${item.stockActual}" onchange="DB_LOCAL.inventario[${idx}].stockActual = parseFloat(this.value) || 0; renderInventarioAdmin();" class="bg-neutral-800 border border-stone-700 p-2 rounded-xl text-white font-black w-28 text-xs text-center">
+              <span class="px-2 py-0.5 rounded-lg text-[10px] font-black ${item.unidad === 'gramos' ? 'bg-blue-950 text-blue-400 border border-blue-800' : 'bg-purple-950 text-purple-400 border border-purple-800'}">
+                ${item.unidad.toUpperCase()}
+              </span>
             </td>
-            <td class="p-3.5 text-stone-400 font-semibold">${item.stockMinimo} ${item.unidad}</td>
-            <td class="p-3.5 text-stone-400">${item.unidad}</td>
+
+            <td class="p-3.5 text-stone-300 font-semibold">
+              ${porcion} ${item.unidad === 'gramos' ? 'g' : 'u'} / porción
+            </td>
+
+            <td class="p-3.5">
+              <div class="flex items-center gap-1.5">
+                <input type="number" value="${item.stockActual}" onchange="DB_LOCAL.inventario[${idx}].stockActual = parseFloat(this.value) || 0; renderInventarioAdmin();" class="bg-neutral-800 border border-stone-700 p-2 rounded-xl text-white font-black w-28 text-xs text-center">
+                <span class="text-stone-400 text-[11px]">${item.unidad === 'gramos' ? 'g' : 'u'}</span>
+              </div>
+            </td>
+
+            <td class="p-3.5 font-black text-yellow-400 text-sm">
+              ${porcionesDisponibles} porciones
+            </td>
+
+            <td class="p-3.5 text-stone-400 font-semibold">
+              ${item.stockMinimo} ${item.unidad === 'gramos' ? 'g' : 'u'}
+            </td>
+
             <td class="p-3.5">
               <span class="px-2.5 py-1 rounded-full text-[10px] font-black ${bajo ? 'bg-red-950 text-red-400 border border-red-700 animate-pulse' : 'bg-green-950 text-green-400 border border-green-800'}">
                 ${bajo ? '⚠️ STOCK BAJO' : '✓ ÓPTIMO'}
               </span>
+            </td>
+
+            <td class="p-3.5 text-center">
+              <button onclick="eliminarInsumo(${idx})" class="text-red-400 hover:text-red-300 p-2 bg-red-950/40 border border-red-800/60 rounded-xl text-xs font-bold transition">
+                <i class="fa-solid fa-trash-can"></i> Quitar
+              </button>
             </td>
           </tr>
         `;
@@ -432,20 +516,68 @@
       }
     }
 
-    async function guardarInventarioAdmin() {
+    function abrirModalNuevoInsumo() {
+      document.getElementById('ins-nombre').value = '';
+      document.getElementById('ins-unidad').value = 'gramos';
+      document.getElementById('ins-porcion').value = '100';
+      document.getElementById('ins-stock-actual').value = '5000';
+      document.getElementById('ins-stock-minimo').value = '1000';
+      actualizarLabelsUnidad();
+      document.getElementById('modal-nuevo-insumo').classList.remove('hidden');
+    }
+
+    function cerrarModalNuevoInsumo() {
+      document.getElementById('modal-nuevo-insumo').classList.add('hidden');
+    }
+
+    function actualizarLabelsUnidad() {
+      const u = document.getElementById('ins-unidad').value;
+      document.getElementById('lbl-ins-porcion').innerText = u === 'gramos' ? 'Gramos por Porción *' : 'Unidades por Porción *';
+    }
+
+    function guardarNuevoInsumo() {
+      const nombre = document.getElementById('ins-nombre').value.trim();
+      const unidad = document.getElementById('ins-unidad').value;
+      const porcionTamano = parseFloat(document.getElementById('ins-porcion').value);
+      const stockActual = parseFloat(document.getElementById('ins-stock-actual').value);
+      const stockMinimo = parseFloat(document.getElementById('ins-stock-minimo').value);
+
+      if (!nombre || isNaN(porcionTamano) || isNaN(stockActual) || isNaN(stockMinimo)) {
+        return alert('Por favor llena todos los datos del insumo.');
+      }
+
+      DB_LOCAL.inventario.push({
+        id: `inv-${Date.now()}`,
+        nombre,
+        unidad,
+        porcionTamano,
+        stockActual,
+        stockMinimo
+      });
+
+      cerrarModalNuevoInsumo();
+      renderInventarioAdmin();
+      guardarInventarioAdmin(false);
+    }
+
+    function eliminarInsumo(idx) {
+      if (!confirm(`¿Eliminar el insumo "${DB_LOCAL.inventario[idx].nombre}" del inventario?`)) return;
+      DB_LOCAL.inventario.splice(idx, 1);
+      renderInventarioAdmin();
+      guardarInventarioAdmin(false);
+    }
+
+    async function guardarInventarioAdmin(notificar = true) {
       await fetch('/api/admin/inventario', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ inventario: DB_LOCAL.inventario })
       });
-      alert('¡Inventario y existencias guardadas con éxito!');
+      if (notificar) alert('¡Inventario y existencias guardadas con éxito!');
     }
 
-    // ==========================================
-    // FEATURE D: CUPONES & FIDELIZACIÓN VIP
-    // ==========================================
+    // CUPONES & RANKING
     function renderCuponesYClientes() {
-      // 1. Cupones
       document.getElementById('lista-cupones-box').innerHTML = DB_LOCAL.cupones.map((c, idx) => `
         <div class="bg-neutral-800/70 border border-stone-700 p-3 rounded-2xl flex justify-between items-center">
           <div>
@@ -458,7 +590,6 @@
         </div>
       `).join('');
 
-      // 2. Ranking Clientes VIP
       const clientesOrdenados = [...(DB_LOCAL.clientesFrecuentes || [])].sort((a,b) => (b.puntos||0) - (a.puntos||0));
       document.getElementById('tabla-clientes-vip').innerHTML = clientesOrdenados.map(cli => `
         <tr class="hover:bg-neutral-800/40">
@@ -498,9 +629,7 @@
       alert('¡Cupones actualizados con éxito!');
     }
 
-    // ==========================================
-    // FEATURE B: GENERADOR DE QR MESAS (WOKHOUSE)
-    // ==========================================
+    // QR MESAS
     function generarQRsMesas() {
       const box = document.getElementById('zona-impresion-qr');
       box.innerHTML = '';
