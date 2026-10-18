@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ary Admin - Control</title>
   
-  <!-- Configuración App para iPhone -->
   <link rel="manifest" href="/manifest-admin.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -75,7 +74,7 @@
           </button>
 
           <button onclick="mostrarVista('menu')" id="nav-menu" class="w-full flex items-center gap-3 p-3 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl text-left transition">
-            <i class="fa-solid fa-utensils text-yellow-400"></i> Editor de Menú
+            <i class="fa-solid fa-utensils text-yellow-400"></i> Editor de Menú & Fotos
           </button>
 
           <button onclick="mostrarVista('usuarios')" id="nav-usuarios" class="w-full flex items-center gap-3 p-3 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl text-left transition">
@@ -104,7 +103,7 @@
     <!-- Área de Trabajo -->
     <main class="flex-1 overflow-y-auto p-6">
       
-      <!-- SECCIÓN 1: ESTADÍSTICAS, GRÁFICAS Y EXCEL -->
+      <!-- 1. DASHBOARD & EXCEL -->
       <section id="vista-reportes" class="space-y-6">
         <div class="flex flex-wrap justify-between items-center gap-4 bg-neutral-900 border border-stone-800 p-4 rounded-2xl">
           <div>
@@ -126,7 +125,6 @@
           </div>
         </div>
 
-        <!-- Tarjetas Resumen -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div class="bg-neutral-900 border border-stone-800 p-5 rounded-2xl">
             <div class="text-xs text-stone-400 font-bold uppercase">Facturación del Período</div>
@@ -150,7 +148,6 @@
           </div>
         </div>
 
-        <!-- Gráficas Fila 1 -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div class="bg-neutral-900 border border-stone-800 p-5 rounded-2xl">
             <h3 class="font-black text-yellow-400 text-sm mb-4 flex items-center gap-2">
@@ -171,7 +168,6 @@
           </div>
         </div>
 
-        <!-- Gráficas Fila 2 -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div class="lg:col-span-2 bg-neutral-900 border border-stone-800 p-5 rounded-2xl">
             <h3 class="font-black text-yellow-400 text-sm mb-4 flex items-center gap-2">
@@ -192,7 +188,6 @@
           </div>
         </div>
 
-        <!-- Tabla -->
         <div class="bg-neutral-900 border border-stone-800 rounded-2xl overflow-hidden shadow-lg">
           <div class="p-4 border-b border-stone-800 flex justify-between items-center">
             <div class="font-black text-sm text-yellow-400 uppercase tracking-wider">
@@ -220,7 +215,7 @@
         </div>
       </section>
 
-      <!-- SECCIÓN 2: TARIFAS DE DOMICILIOS -->
+      <!-- 2. TARIFAS DE DOMICILIOS -->
       <section id="vista-barrios" class="hidden space-y-6">
         <div class="flex justify-between items-center">
           <div>
@@ -260,12 +255,12 @@
         </div>
       </section>
 
-      <!-- SECCIÓN 3: EDITOR DE MENÚ (CON AGREGAR Y ELIMINAR) -->
+      <!-- 3. EDITOR DE MENÚ (CON MODIFICADOR DE FOTOS DIRECTO) -->
       <section id="vista-menu" class="hidden space-y-6">
         <div class="flex flex-wrap justify-between items-center gap-4">
           <div>
-            <h1 class="text-2xl font-black text-yellow-400">Editor de Menú & Precios</h1>
-            <p class="text-xs text-stone-400">Agrega nuevos productos, elimina los que no uses y actualiza precios al instante.</p>
+            <h1 class="text-2xl font-black text-yellow-400">Editor de Menú & Fotos de Arepas</h1>
+            <p class="text-xs text-stone-400">Cambia fotos desde tu celular/PC, actualiza precios y administra productos.</p>
           </div>
           
           <div class="flex flex-wrap items-center gap-2">
@@ -289,7 +284,7 @@
         <div id="box-editor-bebidas" class="bg-neutral-900 border border-stone-800 rounded-2xl p-4 space-y-3 hidden"></div>
       </section>
 
-      <!-- SECCIÓN 4: CAJEROS & USUARIOS -->
+      <!-- 4. CAJEROS & USUARIOS -->
       <section id="vista-usuarios" class="hidden space-y-6">
         <div class="flex justify-between items-center">
           <div>
@@ -320,7 +315,7 @@
     </main>
   </div>
 
-  <!-- Modal Crear Producto (Arepa, Extra o Bebida) -->
+  <!-- Modal Crear Producto (Con selector de imagen) -->
   <div id="modal-nuevo-producto" class="fixed inset-0 z-50 bg-black/90 hidden flex items-center justify-center p-4">
     <div class="bg-neutral-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
       <div class="flex justify-between items-center border-b border-stone-800 pb-2">
@@ -353,10 +348,15 @@
           <textarea id="prod-desc" rows="2" placeholder="Ej: Costilla bbq • queso fundido • papas al hilo" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white text-xs"></textarea>
         </div>
 
-        <div id="campo-prod-img">
-          <label class="block font-bold text-stone-300 mb-1">Ruta de imagen (opcional)</label>
-          <input type="text" id="prod-img" value="/img/mascota.png" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white text-xs">
-          <span class="text-[10px] text-stone-500">Puedes guardar la foto en la carpeta `img/`</span>
+        <div id="campo-prod-img" class="space-y-2">
+          <label class="block font-bold text-stone-300 mb-1">Foto del producto (opcional)</label>
+          <div class="flex items-center gap-3">
+            <img id="preview-nuevo-prod" src="/img/mascota.png" class="w-14 h-14 rounded-full object-cover border-2 border-yellow-400">
+            <label class="flex-1 bg-neutral-800 hover:bg-neutral-700 border border-stone-700 text-stone-200 py-2.5 px-3 rounded-xl font-bold text-center cursor-pointer transition">
+              <i class="fa-solid fa-camera text-yellow-400 mr-1"></i> Subir foto
+              <input type="file" accept="image/*" onchange="procesarFotoNuevoProducto(event)" class="hidden">
+            </label>
+          </div>
         </div>
       </div>
 
@@ -403,6 +403,7 @@
     let pedidosFiltrados = [];
     let periodoSeleccionado = 'hoy';
     let subMenuActual = 'arepas';
+    let fotoNuevoProductoTemp = '/img/mascota.png';
 
     const variantesMascota = [
       '/img/mascota.png',
@@ -473,6 +474,240 @@
       else cargarReportesEstadisticas();
     }
 
+    // ==========================================
+    // COMPRESOR Y MANEJO DE IMÁGENES
+    // ==========================================
+    function comprimirFoto(file, callback) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const MAX_SIZE = 400; // 400x400 maximo para ultraligero
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height *= MAX_SIZE / width;
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width *= MAX_SIZE / height;
+              height = MAX_SIZE;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Salida comprimida en formato JPEG al 80% de calidad
+          const base64Comprimido = canvas.toDataURL('image/jpeg', 0.82);
+          callback(base64Comprimido);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function cambiarFotoProducto(event, idx) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      comprimirFoto(file, (base64) => {
+        DB_LOCAL.productos[idx].img = base64;
+        document.getElementById(`img-arepa-${idx}`).src = base64;
+        guardarTodoElMenu(false);
+      });
+    }
+
+    function procesarFotoNuevoProducto(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      comprimirFoto(file, (base64) => {
+        fotoNuevoProductoTemp = base64;
+        document.getElementById('preview-nuevo-prod').src = base64;
+      });
+    }
+
+    // ==========================================
+    // EDITOR DE MENÚ
+    // ==========================================
+    function mostrarSubMenu(tipo) {
+      subMenuActual = tipo;
+      document.getElementById('box-editor-arepas').classList.toggle('hidden', tipo !== 'arepas');
+      document.getElementById('box-editor-extras').classList.toggle('hidden', tipo !== 'extras');
+      document.getElementById('box-editor-bebidas').classList.toggle('hidden', tipo !== 'bebidas');
+
+      ['arepas', 'extras', 'bebidas'].forEach(t => {
+        document.getElementById(`tab-m-${t}`).className = t === tipo
+          ? 'px-4 py-2 rounded-xl text-xs font-black bg-yellow-400 text-black'
+          : 'px-4 py-2 rounded-xl text-xs font-bold bg-neutral-900 border border-stone-800 text-stone-300';
+      });
+    }
+
+    function renderMenuEditor() {
+      // 1. Arepas Principales con previsualizador y botón de subir foto
+      document.getElementById('box-editor-arepas').innerHTML = DB_LOCAL.productos.map((p, idx) => `
+        <div class="bg-neutral-800/60 border border-stone-700/60 p-3.5 rounded-2xl flex flex-wrap gap-4 items-center justify-between">
+          
+          <!-- Foto Circular con botón cambiar foto -->
+          <div class="flex flex-col items-center gap-1.5 flex-shrink-0">
+            <img id="img-arepa-${idx}" src="${p.img || '/img/mascota.png'}" onerror="cargarMascotaSegura(this)" class="w-16 h-16 rounded-full object-cover border-2 border-yellow-400 shadow-md">
+            <label class="bg-neutral-700 hover:bg-neutral-600 text-[10px] text-yellow-300 font-bold px-2.5 py-1 rounded-lg cursor-pointer transition shadow">
+              <i class="fa-solid fa-camera"></i> Cambiar
+              <input type="file" accept="image/*" onchange="cambiarFotoProducto(event, ${idx})" class="hidden">
+            </label>
+          </div>
+
+          <!-- Nombre y Descripción -->
+          <div class="flex-1 min-w-[200px]">
+            <input type="text" value="${p.nombre}" onchange="DB_LOCAL.productos[${idx}].nombre = this.value" class="bg-neutral-900 border border-stone-700 p-1.5 rounded-lg text-yellow-400 font-black text-sm w-full mb-1">
+            <textarea onchange="DB_LOCAL.productos[${idx}].desc = this.value" class="w-full bg-neutral-900 border border-stone-700 p-1.5 rounded-lg text-stone-300 text-xs">${p.desc}</textarea>
+          </div>
+
+          <!-- Precio -->
+          <div class="w-32">
+            <label class="text-[10px] text-stone-400 uppercase font-bold block mb-1">Precio Arepa ($)</label>
+            <input type="number" value="${p.precio}" onchange="DB_LOCAL.productos[${idx}].precio = parseInt(this.value) || 0" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-white font-black text-sm w-full">
+          </div>
+
+          <!-- Eliminar -->
+          <div>
+            <button onclick="eliminarProducto(${idx})" class="p-2.5 bg-red-950/40 hover:bg-red-900/60 border border-red-800/60 text-red-400 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+              <i class="fa-solid fa-trash-can"></i> Quitar
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      // 2. Extras
+      document.getElementById('box-editor-extras').innerHTML = DB_LOCAL.extras.map((ex, idx) => `
+        <div class="bg-neutral-800/60 border border-stone-700/60 p-3 rounded-2xl flex justify-between items-center gap-4">
+          <input type="text" value="${ex.nombre}" onchange="DB_LOCAL.extras[${idx}].nombre = this.value" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-stone-200 font-bold text-xs flex-1">
+          <div class="flex items-center gap-1.5 w-36">
+            <span class="text-stone-400 font-bold">$</span>
+            <input type="number" value="${ex.precio}" onchange="DB_LOCAL.extras[${idx}].precio = parseInt(this.value) || 0" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-yellow-400 font-black text-xs w-full">
+          </div>
+          <button onclick="eliminarExtra(${idx})" class="text-red-400 hover:text-red-300 text-xs font-bold p-2 bg-red-950/40 border border-red-800/60 rounded-xl">
+            <i class="fa-solid fa-trash-can"></i> Quitar
+          </button>
+        </div>
+      `).join('');
+
+      // 3. Bebidas
+      document.getElementById('box-editor-bebidas').innerHTML = DB_LOCAL.bebidas.map((b, idx) => `
+        <div class="bg-neutral-800/60 border border-stone-700/60 p-3 rounded-2xl flex justify-between items-center gap-4">
+          <input type="text" value="${b.nombre}" onchange="DB_LOCAL.bebidas[${idx}].nombre = this.value" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-white font-bold text-xs flex-1">
+          <div class="flex items-center gap-1.5 w-36">
+            <span class="text-stone-400 font-bold">$</span>
+            <input type="number" value="${b.precio}" onchange="DB_LOCAL.bebidas[${idx}].precio = parseInt(this.value) || 0" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-yellow-400 font-black text-xs w-full">
+          </div>
+          <button onclick="eliminarBebida(${idx})" class="text-red-400 hover:text-red-300 text-xs font-bold p-2 bg-red-950/40 border border-red-800/60 rounded-xl">
+            <i class="fa-solid fa-trash-can"></i> Quitar
+          </button>
+        </div>
+      `).join('');
+    }
+
+    function eliminarProducto(idx) {
+      if (!confirm(`¿Eliminar la arepa "${DB_LOCAL.productos[idx].nombre}"?`)) return;
+      DB_LOCAL.productos.splice(idx, 1);
+      renderMenuEditor();
+      guardarTodoElMenu(false);
+    }
+
+    function eliminarExtra(idx) {
+      if (!confirm(`¿Eliminar la adición "${DB_LOCAL.extras[idx].nombre}"?`)) return;
+      DB_LOCAL.extras.splice(idx, 1);
+      renderMenuEditor();
+      guardarTodoElMenu(false);
+    }
+
+    function eliminarBebida(idx) {
+      if (!confirm(`¿Eliminar la bebida "${DB_LOCAL.bebidas[idx].nombre}"?`)) return;
+      DB_LOCAL.bebidas.splice(idx, 1);
+      renderMenuEditor();
+      guardarTodoElMenu(false);
+    }
+
+    function abrirModalNuevoProducto() {
+      document.getElementById('prod-categoria').value = subMenuActual;
+      toggleCamposProducto();
+      document.getElementById('prod-nombre').value = '';
+      document.getElementById('prod-precio').value = '';
+      document.getElementById('prod-desc').value = '';
+      fotoNuevoProductoTemp = '/img/mascota.png';
+      document.getElementById('preview-nuevo-prod').src = fotoNuevoProductoTemp;
+      document.getElementById('modal-nuevo-producto').classList.remove('hidden');
+    }
+
+    function cerrarModalNuevoProducto() {
+      document.getElementById('modal-nuevo-producto').classList.add('hidden');
+    }
+
+    function toggleCamposProducto() {
+      const cat = document.getElementById('prod-categoria').value;
+      const esArepa = (cat === 'arepas');
+      document.getElementById('campo-prod-desc').classList.toggle('hidden', !esArepa);
+      document.getElementById('campo-prod-img').classList.toggle('hidden', !esArepa);
+    }
+
+    function guardarProductoEnMenu() {
+      const cat = document.getElementById('prod-categoria').value;
+      const nombre = document.getElementById('prod-nombre').value.trim();
+      const precio = parseInt(document.getElementById('prod-precio').value);
+
+      if (!nombre || isNaN(precio) || precio <= 0) {
+        return alert('Por favor escribe un nombre y precio válidos.');
+      }
+
+      if (cat === 'arepas') {
+        const desc = document.getElementById('prod-desc').value.trim() || 'Deliciosa arepa con queso fundido.';
+        DB_LOCAL.productos.push({
+          id: Date.now(),
+          cat: 'arepas',
+          nombre,
+          desc,
+          precio,
+          img: fotoNuevoProductoTemp
+        });
+        mostrarSubMenu('arepas');
+      } else if (cat === 'extras') {
+        DB_LOCAL.extras.push({
+          id: `ex-${Date.now()}`,
+          nombre,
+          precio
+        });
+        mostrarSubMenu('extras');
+      } else if (cat === 'bebidas') {
+        DB_LOCAL.bebidas.push({
+          id: Date.now(),
+          nombre,
+          precio
+        });
+        mostrarSubMenu('bebidas');
+      }
+
+      cerrarModalNuevoProducto();
+      renderMenuEditor();
+      guardarTodoElMenu(true);
+    }
+
+    async function guardarTodoElMenu(mostrarMensaje = true) {
+      await fetch('/api/admin/productos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productos: DB_LOCAL.productos }) });
+      await fetch('/api/admin/extras', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ extras: DB_LOCAL.extras }) });
+      await fetch('/api/admin/bebidas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bebidas: DB_LOCAL.bebidas }) });
+      if (mostrarMensaje) alert('¡Menú y fotos guardados con éxito!');
+    }
+
+    // ==========================================
+    // RESTO DE FUNCIONES (DASHBOARD, BARRIOS, EXCEL)
+    // ==========================================
     async function cargarReportesEstadisticas() {
       const res = await fetch('/api/pedidos');
       todosLosPedidos = await res.json();
@@ -483,9 +718,7 @@
       periodoSeleccionado = periodo;
       ['hoy', '7dias', 'mes', 'todo'].forEach(p => {
         const btn = document.getElementById(`btn-p-${p}`);
-        btn.className = p === periodo 
-          ? 'px-3 py-1.5 rounded-lg bg-yellow-400 text-black font-black'
-          : 'px-3 py-1.5 rounded-lg text-stone-300';
+        btn.className = p === periodo ? 'px-3 py-1.5 rounded-lg bg-yellow-400 text-black font-black' : 'px-3 py-1.5 rounded-lg text-stone-300';
       });
       aplicarFiltroPeriodo();
     }
@@ -516,7 +749,7 @@
       const promedio = totalPedidos > 0 ? Math.round(totalFacturado / totalPedidos) : 0;
 
       document.getElementById('kpi-total').innerText = `$${totalFacturado.toLocaleString()}`;
-      document.getElementById('kpi-pedidos-count').innerText = `${totalPedidos} comandas realizadas`;
+      document.getElementById('kpi-pedidos-count').innerText = `${totalPedidos} comandas`;
       document.getElementById('kpi-promedio').innerText = `$${promedio.toLocaleString()}`;
 
       const conteoHoras = {};
@@ -531,8 +764,7 @@
         if (conteoHoras[h] > maxPedidosHora) {
           maxPedidosHora = conteoHoras[h];
           const hNum = parseInt(h);
-          const formato12 = hNum > 12 ? `${hNum - 12}:00 PM` : (hNum === 12 ? '12:00 PM' : `${hNum}:00 AM`);
-          horaPico = formato12;
+          horaPico = hNum > 12 ? `${hNum - 12}:00 PM` : `${hNum}:00 AM`;
         }
       });
       document.getElementById('kpi-hora-pico').innerText = horaPico;
@@ -553,7 +785,7 @@
         }
       });
       document.getElementById('kpi-top-arepa').innerText = topProd;
-      document.getElementById('kpi-top-arepa-count').innerText = `${maxProdCount} unidades vendidas`;
+      document.getElementById('kpi-top-arepa-count').innerText = `${maxProdCount} unidades`;
     }
 
     function renderGraficas() {
@@ -566,18 +798,15 @@
         ventasPorDia[fechaStr] = (ventasPorDia[fechaStr] || 0) + (p.total || 0);
       });
 
-      const diasLabels = Object.keys(ventasPorDia);
-      const diasData = Object.values(ventasPorDia);
-
       if (chartVentasDiasInstance) chartVentasDiasInstance.destroy();
       const ctxVentas = document.getElementById('chart-ventas-dias').getContext('2d');
       chartVentasDiasInstance = new Chart(ctxVentas, {
         type: 'line',
         data: {
-          labels: diasLabels.length ? diasLabels : ['Sin datos'],
+          labels: Object.keys(ventasPorDia).length ? Object.keys(ventasPorDia) : ['Sin datos'],
           datasets: [{
             label: 'Ventas ($)',
-            data: diasData.length ? diasData : [0],
+            data: Object.values(ventasPorDia).length ? Object.values(ventasPorDia) : [0],
             borderColor: '#facc15',
             backgroundColor: 'rgba(250, 204, 21, 0.15)',
             fill: true,
@@ -585,15 +814,7 @@
             borderWidth: 3
           }]
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            y: { grid: { color: 'rgba(255,255,255,0.05)' } },
-            x: { grid: { display: false } }
-          }
-        }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } }
       });
 
       const horasRango = [16, 17, 18, 19, 20, 21, 22];
@@ -610,89 +831,36 @@
       const ctxHoras = document.getElementById('chart-horas-pico').getContext('2d');
       chartHorasPicoInstance = new Chart(ctxHoras, {
         type: 'bar',
-        data: {
-          labels: horasLabels,
-          datasets: [{
-            label: 'Pedidos',
-            data: horasData,
-            backgroundColor: '#fbbf24',
-            borderRadius: 8
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { stepSize: 1 } },
-            x: { grid: { display: false } }
-          }
-        }
+        data: { labels: horasLabels, datasets: [{ label: 'Pedidos', data: horasData, backgroundColor: '#fbbf24', borderRadius: 8 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { stepSize: 1 } }, x: { grid: { display: false } } } }
       });
 
       const conteoProductos = {};
       pedidosFiltrados.forEach(p => {
-        (p.items || []).forEach(it => {
-          conteoProductos[it.nombre] = (conteoProductos[it.nombre] || 0) + 1;
-        });
+        (p.items || []).forEach(it => { conteoProductos[it.nombre] = (conteoProductos[it.nombre] || 0) + 1; });
       });
-
       const ordenados = Object.entries(conteoProductos).sort((a, b) => b[1] - a[1]).slice(0, 6);
-      const prodLabels = ordenados.map(o => o[0]);
-      const prodData = ordenados.map(o => o[1]);
 
       if (chartTopProductosInstance) chartTopProductosInstance.destroy();
       const ctxProd = document.getElementById('chart-top-productos').getContext('2d');
       chartTopProductosInstance = new Chart(ctxProd, {
         type: 'bar',
-        data: {
-          labels: prodLabels.length ? prodLabels : ['Sin ventas'],
-          datasets: [{
-            label: 'Unidades',
-            data: prodData.length ? prodData : [0],
-            backgroundColor: '#38bdf8',
-            borderRadius: 8
-          }]
-        },
-        options: {
-          indexAxis: 'y',
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { stepSize: 1 } },
-            y: { grid: { display: false } }
-          }
-        }
+        data: { labels: ordenados.map(o => o[0]).length ? ordenados.map(o => o[0]) : ['Sin ventas'], datasets: [{ label: 'Unidades', data: ordenados.map(o => o[1]).length ? ordenados.map(o => o[1]) : [0], backgroundColor: '#38bdf8', borderRadius: 8 }] },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { stepSize: 1 } }, y: { grid: { display: false } } } }
       });
 
-      let cantNequi = 0;
-      let cantEfectivo = 0;
+      let cantNequi = 0, cantEfectivo = 0;
       pedidosFiltrados.forEach(p => {
-        if ((p.metodoPago || '').includes('Nequi') || (p.metodoPago || '').includes('Bre-B') || (p.metodoPago || '').includes('Transferencia')) {
-          cantNequi++;
-        } else {
-          cantEfectivo++;
-        }
+        if ((p.metodoPago || '').includes('Nequi') || (p.metodoPago || '').includes('Bre-B') || (p.metodoPago || '').includes('Transferencia')) cantNequi++;
+        else cantEfectivo++;
       });
 
       if (chartPagosInstance) chartPagosInstance.destroy();
       const ctxPagos = document.getElementById('chart-pagos').getContext('2d');
       chartPagosInstance = new Chart(ctxPagos, {
         type: 'doughnut',
-        data: {
-          labels: ['Nequi / Bre-B', 'Efectivo'],
-          datasets: [{
-            data: (cantNequi === 0 && cantEfectivo === 0) ? [1, 1] : [cantNequi, cantEfectivo],
-            backgroundColor: ['#c026d3', '#22c55e'],
-            borderWidth: 0
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }
-        }
+        data: { labels: ['Nequi / Bre-B', 'Efectivo'], datasets: [{ data: (cantNequi === 0 && cantEfectivo === 0) ? [1, 1] : [cantNequi, cantEfectivo], backgroundColor: ['#c026d3', '#22c55e'], borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } }
       });
     }
 
@@ -706,11 +874,7 @@
       }
 
       tabla.innerHTML = pedidosFiltrados.map(p => {
-        const resumenItems = (p.items || []).map(i => {
-          const ex = i.extras && i.extras.length ? ` (+${i.extras.map(e => e.nombre).join(', ')})` : '';
-          return `1x ${i.nombre}${ex}`;
-        }).join(' | ');
-
+        const resumenItems = (p.items || []).map(i => `1x ${i.nombre}${i.extras && i.extras.length ? ` (+${i.extras.map(e => e.nombre).join(', ')})` : ''}`).join(' | ');
         return `
           <tr class="hover:bg-neutral-800/40">
             <td class="p-3 font-black text-yellow-400">${p.numero}</td>
@@ -728,74 +892,36 @@
 
     function exportarExcel() {
       if (pedidosFiltrados.length === 0) return alert('No hay pedidos para exportar.');
-
-      const filasExcel = pedidosFiltrados.map(p => {
-        const prods = (p.items || []).map(i => {
-          const ex = i.extras && i.extras.length ? ` (+${i.extras.map(e => e.nombre).join(', ')})` : '';
-          return `1x ${i.nombre}${ex}`;
-        }).join(' // ');
-
-        return {
-          "Número": p.numero,
-          "Fecha": p.fecha || '',
-          "Hora": p.hora || '',
-          "Cliente": p.cliente ? p.cliente.nombre : '',
-          "Teléfono": p.cliente ? p.cliente.celular : '',
-          "Dirección": p.cliente ? p.cliente.direccion : '',
-          "Barrio": p.cliente ? p.cliente.barrio : '',
-          "Modalidad": p.modalidad || '',
-          "Método de Pago": p.metodoPago || '',
-          "Detalle de Productos": prods,
-          "Subtotal ($)": p.subtotal || 0,
-          "Costo Envío ($)": p.costoEnvio || 0,
-          "Descuento ($)": p.descuento || 0,
-          "TOTAL ($)": p.total || 0,
-          "Estado": p.estado || ''
-        };
-      });
-
-      const conteoProductos = {};
-      pedidosFiltrados.forEach(p => {
-        (p.items || []).forEach(it => {
-          conteoProductos[it.nombre] = (conteoProductos[it.nombre] || 0) + 1;
-        });
-      });
-
-      const filasResumenProductos = Object.entries(conteoProductos).map(([producto, unidades]) => ({
-        "Producto / Arepa": producto,
-        "Unidades Vendidas": unidades
-      })).sort((a, b) => b["Unidades Vendidas"] - a["Unidades Vendidas"]);
+      const filasExcel = pedidosFiltrados.map(p => ({
+        "Número": p.numero,
+        "Fecha": p.fecha || '',
+        "Hora": p.hora || '',
+        "Cliente": p.cliente ? p.cliente.nombre : '',
+        "Teléfono": p.cliente ? p.cliente.celular : '',
+        "Dirección": p.cliente ? p.cliente.direccion : '',
+        "Barrio": p.cliente ? p.cliente.barrio : '',
+        "Modalidad": p.modalidad || '',
+        "Método de Pago": p.metodoPago || '',
+        "Detalle de Productos": (p.items || []).map(i => `1x ${i.nombre}${i.extras && i.extras.length ? ` (+${i.extras.map(e => e.nombre).join(', ')})` : ''}`).join(' // '),
+        "Subtotal ($)": p.subtotal || 0,
+        "Costo Envío ($)": p.costoEnvio || 0,
+        "Descuento ($)": p.descuento || 0,
+        "TOTAL ($)": p.total || 0,
+        "Estado": p.estado || ''
+      }));
 
       const wb = XLSX.utils.book_new();
-      const wsDetalle = XLSX.utils.json_to_sheet(filasExcel);
-      const wsResumen = XLSX.utils.json_to_sheet(filasResumenProductos);
-
-      XLSX.utils.book_append_sheet(wb, wsDetalle, "Ventas Detalladas");
-      XLSX.utils.book_append_sheet(wb, wsResumen, "Top Productos");
-
-      const fechaNombre = new Date().toISOString().split('T')[0];
-      XLSX.writeFile(wb, `Reporte_Ventas_Ary_La_Arepa_${fechaNombre}.xlsx`);
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filasExcel), "Ventas Detalladas");
+      XLSX.writeFile(wb, `Reporte_Ventas_Ary_La_Arepa_${new Date().toISOString().split('T')[0]}.xlsx`);
     }
 
-    // --- BARRIOS Y TARIFAS ---
     function renderBarriosAdmin() {
       const tabla = document.getElementById('tabla-barrios-admin');
       tabla.innerHTML = DB_LOCAL.barrios.map((b, idx) => `
         <tr class="hover:bg-neutral-800/40">
-          <td class="p-3.5">
-            <input type="text" value="${b.nombre}" onchange="DB_LOCAL.barrios[${idx}].nombre = this.value" class="bg-neutral-800 border border-stone-700 p-2 rounded-xl text-white font-bold w-full max-w-sm text-xs">
-          </td>
-          <td class="p-3.5">
-            <div class="flex items-center gap-1.5">
-              <span class="text-stone-400 font-bold text-sm">$</span>
-              <input type="number" value="${b.costo}" onchange="DB_LOCAL.barrios[${idx}].costo = parseInt(this.value) || 0" class="bg-neutral-800 border border-stone-700 p-2 rounded-xl text-yellow-400 font-black w-36 text-xs">
-            </div>
-          </td>
-          <td class="p-3.5 text-center">
-            <button onclick="eliminarBarrio(${idx})" class="text-red-400 hover:text-red-300 text-xs font-bold p-2 bg-red-950/40 border border-red-800/60 rounded-xl">
-              <i class="fa-solid fa-trash-can"></i> Quitar
-            </button>
-          </td>
+          <td class="p-3.5"><input type="text" value="${b.nombre}" onchange="DB_LOCAL.barrios[${idx}].nombre = this.value" class="bg-neutral-800 border border-stone-700 p-2 rounded-xl text-white font-bold w-full max-w-sm text-xs"></td>
+          <td class="p-3.5"><div class="flex items-center gap-1.5"><span class="text-stone-400 font-bold text-sm">$</span><input type="number" value="${b.costo}" onchange="DB_LOCAL.barrios[${idx}].costo = parseInt(this.value) || 0" class="bg-neutral-800 border border-stone-700 p-2 rounded-xl text-yellow-400 font-black w-36 text-xs"></div></td>
+          <td class="p-3.5 text-center"><button onclick="eliminarBarrio(${idx})" class="text-red-400 hover:text-red-300 text-xs font-bold p-2 bg-red-950/40 border border-red-800/60 rounded-xl"><i class="fa-solid fa-trash-can"></i> Quitar</button></td>
         </tr>
       `).join('');
     }
@@ -819,193 +945,20 @@
     }
 
     async function guardarTodosLosBarrios() {
-      const res = await fetch('/api/admin/barrios', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ barrios: DB_LOCAL.barrios })
-      });
-      const data = await res.json();
-      if (data.ok) alert('¡Tarifas de domicilios guardadas con éxito!');
+      await fetch('/api/admin/barrios', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ barrios: DB_LOCAL.barrios }) });
+      alert('¡Tarifas de domicilios guardadas con éxito!');
     }
 
-    // --- EDITOR DE MENÚ (CON AGREGAR Y ELIMINAR) ---
-    function mostrarSubMenu(tipo) {
-      subMenuActual = tipo;
-      document.getElementById('box-editor-arepas').classList.toggle('hidden', tipo !== 'arepas');
-      document.getElementById('box-editor-extras').classList.toggle('hidden', tipo !== 'extras');
-      document.getElementById('box-editor-bebidas').classList.toggle('hidden', tipo !== 'bebidas');
-
-      ['arepas', 'extras', 'bebidas'].forEach(t => {
-        document.getElementById(`tab-m-${t}`).className = t === tipo
-          ? 'px-4 py-2 rounded-xl text-xs font-black bg-yellow-400 text-black'
-          : 'px-4 py-2 rounded-xl text-xs font-bold bg-neutral-900 border border-stone-800 text-stone-300';
-      });
-    }
-
-    function renderMenuEditor() {
-      // 1. Arepas Principales con botón de Eliminar
-      document.getElementById('box-editor-arepas').innerHTML = DB_LOCAL.productos.map((p, idx) => `
-        <div class="bg-neutral-800/60 border border-stone-700/60 p-3.5 rounded-2xl flex flex-wrap gap-4 items-center justify-between">
-          <div class="flex-1 min-w-[240px]">
-            <input type="text" value="${p.nombre}" onchange="DB_LOCAL.productos[${idx}].nombre = this.value" class="bg-neutral-900 border border-stone-700 p-1.5 rounded-lg text-yellow-400 font-black text-sm w-full mb-1">
-            <textarea onchange="DB_LOCAL.productos[${idx}].desc = this.value" class="w-full bg-neutral-900 border border-stone-700 p-1.5 rounded-lg text-stone-300 text-xs">${p.desc}</textarea>
-          </div>
-          <div class="w-36">
-            <label class="text-[10px] text-stone-400 uppercase font-bold block mb-1">Precio Arepa ($)</label>
-            <input type="number" value="${p.precio}" onchange="DB_LOCAL.productos[${idx}].precio = parseInt(this.value) || 0" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-white font-black text-sm w-full">
-          </div>
-          <div>
-            <button onclick="eliminarProducto(${idx})" class="p-2.5 bg-red-950/40 hover:bg-red-900/60 border border-red-800/60 text-red-400 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
-              <i class="fa-solid fa-trash-can"></i> Quitar
-            </button>
-          </div>
-        </div>
-      `).join('');
-
-      // 2. Extras / Adiciones con botón de Eliminar
-      document.getElementById('box-editor-extras').innerHTML = DB_LOCAL.extras.map((ex, idx) => `
-        <div class="bg-neutral-800/60 border border-stone-700/60 p-3 rounded-2xl flex justify-between items-center gap-4">
-          <input type="text" value="${ex.nombre}" onchange="DB_LOCAL.extras[${idx}].nombre = this.value" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-stone-200 font-bold text-xs flex-1">
-          <div class="flex items-center gap-1.5 w-36">
-            <span class="text-stone-400 font-bold">$</span>
-            <input type="number" value="${ex.precio}" onchange="DB_LOCAL.extras[${idx}].precio = parseInt(this.value) || 0" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-yellow-400 font-black text-xs w-full">
-          </div>
-          <button onclick="eliminarExtra(${idx})" class="text-red-400 hover:text-red-300 text-xs font-bold p-2 bg-red-950/40 border border-red-800/60 rounded-xl">
-            <i class="fa-solid fa-trash-can"></i> Quitar
-          </button>
-        </div>
-      `).join('');
-
-      // 3. Bebidas con botón de Eliminar
-      document.getElementById('box-editor-bebidas').innerHTML = DB_LOCAL.bebidas.map((b, idx) => `
-        <div class="bg-neutral-800/60 border border-stone-700/60 p-3 rounded-2xl flex justify-between items-center gap-4">
-          <input type="text" value="${b.nombre}" onchange="DB_LOCAL.bebidas[${idx}].nombre = this.value" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-white font-bold text-xs flex-1">
-          <div class="flex items-center gap-1.5 w-36">
-            <span class="text-stone-400 font-bold">$</span>
-            <input type="number" value="${b.precio}" onchange="DB_LOCAL.bebidas[${idx}].precio = parseInt(this.value) || 0" class="bg-neutral-900 border border-stone-700 p-2 rounded-xl text-yellow-400 font-black text-xs w-full">
-          </div>
-          <button onclick="eliminarBebida(${idx})" class="text-red-400 hover:text-red-300 text-xs font-bold p-2 bg-red-950/40 border border-red-800/60 rounded-xl">
-            <i class="fa-solid fa-trash-can"></i> Quitar
-          </button>
-        </div>
-      `).join('');
-    }
-
-    // Funciones para Quitar
-    function eliminarProducto(idx) {
-      if (!confirm(`¿Estás seguro de eliminar la arepa "${DB_LOCAL.productos[idx].nombre}" del menú?`)) return;
-      DB_LOCAL.productos.splice(idx, 1);
-      renderMenuEditor();
-      guardarTodoElMenu(false);
-    }
-
-    function eliminarExtra(idx) {
-      if (!confirm(`¿Eliminar la adición "${DB_LOCAL.extras[idx].nombre}"?`)) return;
-      DB_LOCAL.extras.splice(idx, 1);
-      renderMenuEditor();
-      guardarTodoElMenu(false);
-    }
-
-    function eliminarBebida(idx) {
-      if (!confirm(`¿Eliminar la bebida "${DB_LOCAL.bebidas[idx].nombre}"?`)) return;
-      DB_LOCAL.bebidas.splice(idx, 1);
-      renderMenuEditor();
-      guardarTodoElMenu(false);
-    }
-
-    // Modal para Agregar Nuevos Productos
-    function abrirModalNuevoProducto() {
-      document.getElementById('prod-categoria').value = subMenuActual;
-      toggleCamposProducto();
-      document.getElementById('prod-nombre').value = '';
-      document.getElementById('prod-precio').value = '';
-      document.getElementById('prod-desc').value = '';
-      document.getElementById('prod-img').value = '/img/mascota.png';
-      document.getElementById('modal-nuevo-producto').classList.remove('hidden');
-    }
-
-    function cerrarModalNuevoProducto() {
-      document.getElementById('modal-nuevo-producto').classList.add('hidden');
-    }
-
-    function toggleCamposProducto() {
-      const cat = document.getElementById('prod-categoria').value;
-      const esArepa = (cat === 'arepas');
-      document.getElementById('campo-prod-desc').classList.toggle('hidden', !esArepa);
-      document.getElementById('campo-prod-img').classList.toggle('hidden', !esArepa);
-    }
-
-    function guardarProductoEnMenu() {
-      const cat = document.getElementById('prod-categoria').value;
-      const nombre = document.getElementById('prod-nombre').value.trim();
-      const precio = parseInt(document.getElementById('prod-precio').value);
-
-      if (!nombre || isNaN(precio) || precio <= 0) {
-        return alert('Por favor escribe un nombre y precio válidos.');
-      }
-
-      if (cat === 'arepas') {
-        const desc = document.getElementById('prod-desc').value.trim() || 'Deliciosa arepa con queso fundido.';
-        const img = document.getElementById('prod-img').value.trim() || '/img/mascota.png';
-        DB_LOCAL.productos.push({
-          id: Date.now(),
-          cat: 'arepas',
-          nombre,
-          desc,
-          precio,
-          img
-        });
-        mostrarSubMenu('arepas');
-      } else if (cat === 'extras') {
-        DB_LOCAL.extras.push({
-          id: `ex-${Date.now()}`,
-          nombre,
-          precio
-        });
-        mostrarSubMenu('extras');
-      } else if (cat === 'bebidas') {
-        DB_LOCAL.bebidas.push({
-          id: Date.now(),
-          nombre,
-          precio
-        });
-        mostrarSubMenu('bebidas');
-      }
-
-      cerrarModalNuevoProducto();
-      renderMenuEditor();
-      guardarTodoElMenu(true);
-    }
-
-    async function guardarTodoElMenu(mostrarMensaje = true) {
-      await fetch('/api/admin/productos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productos: DB_LOCAL.productos }) });
-      await fetch('/api/admin/extras', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ extras: DB_LOCAL.extras }) });
-      await fetch('/api/admin/bebidas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bebidas: DB_LOCAL.bebidas }) });
-      if (mostrarMensaje) alert('¡Menú y precios guardados con éxito!');
-    }
-
-    // --- USUARIOS POS ---
     async function cargarUsuarios() {
       const res = await fetch('/api/usuarios');
       const usuarios = await res.json();
-      const tabla = document.getElementById('tabla-usuarios');
-
-      tabla.innerHTML = usuarios.map(u => `
+      document.getElementById('tabla-usuarios').innerHTML = usuarios.map(u => `
         <tr class="hover:bg-neutral-800/40">
-          <td class="p-3.5 font-bold text-white flex items-center gap-2">
-            <i class="fa-solid fa-user-circle text-stone-400 text-base"></i>
-            ${u.nombre}
-          </td>
+          <td class="p-3.5 font-bold text-white flex items-center gap-2"><i class="fa-solid fa-user-circle text-stone-400 text-base"></i> ${u.nombre}</td>
           <td class="p-3.5 text-yellow-400 font-mono font-bold">${u.usuario}</td>
           <td class="p-3.5 text-stone-300 font-mono tracking-widest">${u.clave}</td>
           <td class="p-3.5"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-black ${u.rol === 'ADMIN' ? 'bg-yellow-400 text-black' : 'bg-neutral-800 text-stone-300 border border-stone-700'}">${u.rol}</span></td>
-          <td class="p-3.5 text-center">
-            ${u.rol !== 'ADMIN' ? `
-              <button onclick="eliminarUsuario(${u.id}, '${u.nombre}')" class="bg-red-950 hover:bg-red-900 border border-red-800 text-red-400 px-3 py-1 rounded-lg text-xs font-bold transition">
-                <i class="fa-solid fa-trash-can"></i> Quitar
-              </button>
-            ` : '<span class="text-stone-500 text-[10px] italic">Principal</span>'}
-          </td>
+          <td class="p-3.5 text-center">${u.rol !== 'ADMIN' ? `<button onclick="eliminarUsuario(${u.id}, '${u.nombre}')" class="bg-red-950 hover:bg-red-900 border border-red-800 text-red-400 px-3 py-1 rounded-lg text-xs font-bold transition"><i class="fa-solid fa-trash-can"></i> Quitar</button>` : '<span class="text-stone-500 text-[10px] italic">Principal</span>'}</td>
         </tr>
       `).join('');
     }
@@ -1028,19 +981,13 @@
 
       if (!nombre || !usuario || !clave) return alert('Por favor llena todos los campos.');
 
-      const res = await fetch('/api/usuarios', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre, usuario, clave })
-      });
+      const res = await fetch('/api/usuarios', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, usuario, clave }) });
       const data = await res.json();
       if (data.ok) {
         alert('Cajero creado con éxito.');
         cerrarModalCrearUsuario();
         cargarUsuarios();
-      } else {
-        alert(data.error || 'Error al crear.');
-      }
+      } else alert(data.error || 'Error al crear.');
     }
 
     async function eliminarUsuario(id, nombre) {
