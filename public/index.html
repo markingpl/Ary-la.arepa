@@ -21,7 +21,6 @@
     body { font-family: 'Montserrat', sans-serif; }
     .font-script { font-family: 'Caveat', cursive; }
 
-    /* Regla para evitar zoom en iPhones y celulares */
     @media screen and (max-width: 768px) {
       input, select, textarea { font-size: 16px !important; }
     }
@@ -40,7 +39,6 @@
       <h1 class="text-3xl font-black uppercase text-yellow-400 tracking-wider">ARY LA AREPA</h1>
       <p class="font-script text-xl text-stone-200 mt-0.5">De Popayán para el mundo.</p>
       
-      <!-- Horarios Oficiales -->
       <div class="my-3 py-2 px-3 rounded-2xl bg-neutral-950 border border-stone-800 text-[11px] space-y-1 text-left">
         <div class="flex justify-between items-center">
           <span class="text-stone-400">🛵 Domicilios:</span>
@@ -119,23 +117,19 @@
     </div>
   </header>
 
-  <!-- Contenedor Principal Adaptable (PC: Centrado y Amplio | Celular: Fluido) -->
   <div class="max-w-6xl mx-auto px-4 pt-4 space-y-4">
-    
-    <!-- Banner Promocional -->
     <div class="bg-gradient-to-r from-yellow-500/10 via-neutral-800 to-neutral-800 border-l-4 border-yellow-400 p-4 rounded-r-3xl shadow">
       <p class="text-xs sm:text-sm font-bold text-stone-200">
         🧀 <span class="text-yellow-400 font-black">Base de Arepa agridulce:</span> Rellena con abundante queso y bañada en queso fundido artesanal calientito.
       </p>
     </div>
 
-    <!-- Filtros de Categoría -->
     <div class="flex gap-2 pb-2 overflow-x-auto">
       <button class="px-5 py-2 rounded-full bg-yellow-400 text-black text-xs font-black shadow-md shadow-yellow-400/20">Arepas Principales</button>
       <button onclick="abrirUpsell()" class="px-5 py-2 rounded-full bg-neutral-800 hover:bg-neutral-700 text-stone-300 text-xs font-bold border border-stone-700">Bebidas Frías</button>
     </div>
 
-    <!-- CUADRÍCULA DE AREPAS (PC: 3 o 4 Columnas | Celular: 1 o 2 Columnas) -->
+    <!-- Catálogo Adaptable -->
     <main class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="catalogo-arepas"></main>
   </div>
 
@@ -197,21 +191,17 @@
     </div>
   </div>
 
-  <!-- Vista Checkout Adaptable (Modal centrado tanto en PC como en Móvil) -->
+  <!-- Vista Checkout Adaptable -->
   <div id="vista-checkout" class="fixed inset-0 z-50 bg-black/95 hidden overflow-y-auto p-4 flex items-center justify-center">
     <div class="bg-stone-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl my-auto">
       
       <div class="flex items-center justify-between border-b border-stone-800 pb-3">
-        <div class="flex items-center gap-2">
-          <span class="text-yellow-400 font-black text-lg uppercase"><i class="fa-solid fa-receipt"></i> Confirmar Pedido</span>
-        </div>
+        <span class="text-yellow-400 font-black text-lg uppercase"><i class="fa-solid fa-receipt"></i> Confirmar Pedido</span>
         <button onclick="cerrarCheckout()" class="w-8 h-8 bg-neutral-800 hover:bg-neutral-700 rounded-full flex items-center justify-center text-stone-300 font-bold">✕</button>
       </div>
 
-      <!-- Resumen de Platos Seleccionados -->
       <div class="bg-neutral-950 border border-stone-800 rounded-2xl p-3.5 space-y-2.5 max-h-48 overflow-y-auto" id="checkout-items"></div>
 
-      <!-- Formulario Inteligente de Entrega -->
       <div class="bg-neutral-950 border border-stone-800 rounded-2xl p-4 space-y-3 text-xs">
         <div>
           <label class="block font-bold mb-1 text-stone-300">Tu Nombre *</label>
@@ -223,7 +213,6 @@
           <input type="tel" id="cli-celular" required oninput="consultarPuntosCliente()" class="w-full bg-neutral-900 border border-stone-700 rounded-xl p-3 text-white font-bold" placeholder="Ej: 321 000 0000">
         </div>
 
-        <!-- Alerta VIP dinámica -->
         <div id="alerta-puntos-vip" class="hidden bg-yellow-400/10 border border-yellow-400/40 p-3 rounded-2xl text-yellow-300 text-[11px] flex justify-between items-center">
           <div>
             <span class="font-black text-white block">⭐ Eres Cliente Frecuente</span>
@@ -244,7 +233,6 @@
           <select id="cli-barrio" onchange="calcularTotales()" class="w-full bg-neutral-900 border border-stone-700 rounded-xl p-3 text-white font-bold"></select>
         </div>
 
-        <!-- Cupón -->
         <div class="border-t border-stone-800 pt-2">
           <label class="block font-bold mb-1 text-stone-300">¿Tienes un cupón de descuento?</label>
           <div class="flex gap-2">
@@ -256,17 +244,21 @@
           <p id="msg-cupon" class="text-[11px] mt-1 font-bold hidden"></p>
         </div>
 
-        <!-- Método de Pago -->
+        <!-- MÉTODOS DE PAGO CLAROS -->
         <div>
-          <label class="block font-bold mb-1 text-stone-300">Método de pago *</label>
+          <label class="block font-bold mb-1 text-stone-300">Selecciona cómo deseas pagar *</label>
           <div class="grid grid-cols-2 gap-2">
-            <button type="button" onclick="setPago('Nequi / Bre-B')" id="btn-transf" class="p-3 bg-yellow-400 font-black text-black rounded-xl">QR Bre-B / Nequi</button>
-            <button type="button" onclick="setPago('Efectivo')" id="btn-efectivo" class="p-3 bg-neutral-800 font-bold rounded-xl border border-stone-700">Efectivo</button>
+            <button type="button" onclick="setPago('Nequi / Bre-B')" id="btn-transf" class="p-3 bg-yellow-400 font-black text-black rounded-xl text-center shadow transition flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-qrcode text-base"></i> QR Bre-B / Nequi
+            </button>
+            <button type="button" onclick="setPago('Efectivo')" id="btn-efectivo" class="p-3 bg-neutral-800 font-bold rounded-xl border border-stone-700 text-stone-300 text-center transition flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-money-bill-wave text-base"></i> Efectivo
+            </button>
           </div>
         </div>
       </div>
 
-      <!-- Resumen Totales -->
+      <!-- Resumen -->
       <div class="bg-neutral-950 border border-stone-800 rounded-2xl p-3.5 space-y-1.5 text-xs">
         <div class="flex justify-between text-stone-400"><span>Subtotal arepas:</span><span id="res-subtotal">$0</span></div>
         <div class="flex justify-between text-stone-400" id="row-envio"><span>Costo Domicilio:</span><span id="res-envio">$0</span></div>
@@ -278,9 +270,9 @@
         </div>
       </div>
 
-      <!-- Botón Confirmar -->
+      <!-- BOTÓN PRINCIPAL DE PAGO -->
       <button onclick="enviarPedidoFinal()" id="btn-confirmar-pedido-final" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-4 rounded-2xl font-black text-sm shadow-xl shadow-yellow-500/20 uppercase tracking-wider flex items-center justify-center gap-2">
-        <span>Enviar Pedido a Cocina</span>
+        <span id="txt-btn-accion">Continuar y Pagar con QR Bre-B</span>
         <i class="fa-solid fa-arrow-right"></i>
       </button>
     </div>
@@ -296,7 +288,7 @@
 
       <div>
         <h3 class="text-xl font-black text-white uppercase tracking-tight">Paga al Instante</h3>
-        <p class="text-[11px] text-stone-400">Escanea desde cualquier app bancaria o Nequi:</p>
+        <p class="text-[11px] text-stone-400">Escanea desde tu app de Nequi o banco:</p>
       </div>
 
       <div class="bg-neutral-950 border border-stone-800 p-2.5 rounded-2xl flex justify-between items-center px-4">
@@ -383,7 +375,6 @@
         const r = await fetch('/api/estado-horarios');
         estadoHorarios = await r.json();
 
-        // 1. Domicilio (4:00 PM a 9:30 PM)
         const tagDomi = document.getElementById('tag-domi-estado');
         const btnDomi = document.getElementById('btn-modalidad-domi');
         if (estadoHorarios.domicilio) {
@@ -396,7 +387,6 @@
           btnDomi.classList.add('opacity-40');
         }
 
-        // 2. Mesa (4:00 PM a 9:45 PM)
         const tagMesa = document.getElementById('tag-mesa-estado');
         const btnMesa = document.getElementById('btn-modalidad-mesa');
         if (estadoHorarios.mesa) {
@@ -409,7 +399,6 @@
           btnMesa.classList.add('opacity-40');
         }
 
-        // 3. Recoger en Local (4:00 PM a 9:45 PM)
         const tagRecoger = document.getElementById('tag-recoger-estado');
         const btnRecoger = document.getElementById('btn-modalidad-recoger');
         if (estadoHorarios.recoger) {
@@ -425,19 +414,6 @@
     }
 
     function seleccionarModalidad(m) {
-      if (m === 'Domicilio' && !estadoHorarios.domicilio) {
-        alert('⛔ El servicio de domicilios opera de 4:00 PM a 9:30 PM. En este momento los envíos a domicilio se encuentran cerrados.');
-        return;
-      }
-      if (m === 'Local' && !estadoHorarios.mesa) {
-        alert('⛔ La recepción de pedidos en mesa opera de 4:00 PM a 9:45 PM. En este momento el servicio en mesa se encuentra cerrado.');
-        return;
-      }
-      if (m === 'Recoger' && !estadoHorarios.recoger) {
-        alert('⛔ La recepción de pedidos para recoger en el local opera de 4:00 PM a 9:45 PM. En este momento se encuentra cerrada.');
-        return;
-      }
-
       modalidadActual = m;
       document.getElementById('modal-modalidad').classList.add('hidden');
       
@@ -460,7 +436,7 @@
         inputDir.readOnly = false;
       } else if (m === 'Recoger') {
         campoBarrio.classList.add('hidden');
-        campoDir.classList.add('hidden'); // No pide dirección si pasa a recoger
+        campoDir.classList.add('hidden');
       }
 
       calcularTotales();
@@ -470,7 +446,6 @@
       const urlParams = new URLSearchParams(window.location.search);
       const m = urlParams.get('mesa');
       if (m) {
-        if (!estadoHorarios.mesa) alert('⛔ La cocina cerró la recepción de pedidos en mesa a las 9:45 PM.');
         mesaDetectada = m.includes('Mesa') ? m : `Mesa ${m}`;
         modalidadActual = 'Local';
         document.getElementById('modal-modalidad').classList.add('hidden');
@@ -483,16 +458,13 @@
       }
     }
 
-    // RENDERIZADO ADAPTABLE (PC: 4 COLUMNAS | MÓVIL: RESPONSIVE)
     function renderArepas() {
       const grid = document.getElementById('catalogo-arepas');
       grid.innerHTML = DATA.productos.map(p => `
         <div class="bg-neutral-800/80 border-2 border-yellow-500/40 rounded-3xl p-4 flex sm:flex-col items-center gap-3.5 shadow-lg relative overflow-hidden transition hover:border-yellow-400">
-          
           <div class="relative w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0">
             <img src="${p.img}" onerror="intentarCargarImagen(this, '${p.img}')" class="w-full h-full rounded-full object-cover border-2 border-yellow-400 shadow-md">
           </div>
-
           <div class="flex-1 w-full min-w-0 sm:text-center flex flex-col justify-between">
             <div>
               <div class="flex sm:flex-col justify-between items-start sm:items-center gap-1 mb-1">
@@ -501,7 +473,6 @@
               </div>
               <p class="text-[11px] text-stone-300 leading-snug line-clamp-2 mt-0.5">${p.desc}</p>
             </div>
-            
             <button onclick="abrirModalArepa(${p.id})" class="mt-3 w-full bg-neutral-700 hover:bg-yellow-400 hover:text-black py-2 px-3 rounded-xl font-black text-xs transition flex items-center justify-center gap-1.5">
               <span>Personalizar y pedir</span>
               <i class="fa-solid fa-plus text-[10px]"></i>
@@ -590,8 +561,7 @@
 
     function actualizarBarraCarrito() {
       const b = document.getElementById('barra-pedido');
-      const pcCounter = document.getElementById('pc-cart-count');
-      pcCounter.innerText = carrito.length;
+      document.getElementById('pc-cart-count').innerText = carrito.length;
 
       if (carrito.length === 0) {
         b.classList.add('hidden');
@@ -632,10 +602,22 @@
 
     function cerrarCheckout() { document.getElementById('vista-checkout').classList.add('hidden'); }
 
+    // SELECCIÓN CLARA DEL MÉTODO DE PAGO
     function setPago(tipo) {
       metodoPago = tipo;
-      document.getElementById('btn-transf').className = tipo.includes('Bre-B') || tipo.includes('Nequi') ? 'p-3 bg-yellow-400 font-black text-black rounded-xl' : 'p-3 bg-neutral-800 font-bold rounded-xl border border-stone-700';
-      document.getElementById('btn-efectivo').className = tipo === 'Efectivo' ? 'p-3 bg-yellow-400 font-black text-black rounded-xl' : 'p-3 bg-neutral-800 font-bold rounded-xl border border-stone-700';
+      const btnTransf = document.getElementById('btn-transf');
+      const btnEfec = document.getElementById('btn-efectivo');
+      const txtBtn = document.getElementById('txt-btn-accion');
+
+      if (tipo.includes('Nequi') || tipo.includes('Bre-B')) {
+        btnTransf.className = 'p-3 bg-yellow-400 font-black text-black rounded-xl text-center shadow transition flex items-center justify-center gap-1.5';
+        btnEfec.className = 'p-3 bg-neutral-800 font-bold rounded-xl border border-stone-700 text-stone-300 text-center transition flex items-center justify-center gap-1.5';
+        txtBtn.innerText = 'Continuar y Pagar con QR Bre-B';
+      } else {
+        btnEfec.className = 'p-3 bg-yellow-400 font-black text-black rounded-xl text-center shadow transition flex items-center justify-center gap-1.5';
+        btnTransf.className = 'p-3 bg-neutral-800 font-bold rounded-xl border border-stone-700 text-stone-300 text-center transition flex items-center justify-center gap-1.5';
+        txtBtn.innerText = 'Confirmar Pedido en Efectivo';
+      }
     }
 
     async function aplicarCuponDescuento() {
@@ -721,28 +703,15 @@
     }
 
     // ==========================================
-    // FUNCIÓN DE ENVIAR PEDIDO CORREGIDA AL 100%
+    // ENVÍO DE PEDIDO GARANTIZADO POR HTTP Y SOCKETS
     // ==========================================
-    function enviarPedidoFinal() {
+    async function enviarPedidoFinal(forzarModoPrueba = false) {
       const btnEnviar = document.getElementById('btn-confirmar-pedido-final');
 
-      // 1. Validaciones de Horario
       const esDomicilio = (modalidadActual === 'Domicilio' && !mesaDetectada);
-      if (esDomicilio && !estadoHorarios.domicilio) {
-        return alert('⛔ Lo sentimos: el servicio a domicilio cerró a las 9:30 PM.');
-      }
-
       const esMesa = (mesaDetectada || modalidadActual === 'Local');
-      if (esMesa && !estadoHorarios.mesa) {
-        return alert('⛔ Lo sentimos: los pedidos en mesa cerraron a las 9:45 PM.');
-      }
-
       const esRecoger = (modalidadActual === 'Recoger');
-      if (esRecoger && !estadoHorarios.recoger) {
-        return alert('⛔ Lo sentimos: la recepción de pedidos para recoger en el local cerró a las 9:45 PM.');
-      }
 
-      // 2. Validación de Campos (Dirección solo es obligatoria para Domicilio)
       const nombre = document.getElementById('cli-nombre').value.trim();
       const celular = document.getElementById('cli-celular').value.trim();
       let direccion = document.getElementById('cli-direccion').value.trim();
@@ -751,10 +720,9 @@
       if (!celular) return alert('Por favor ingresa tu número de celular o WhatsApp.');
 
       if (esDomicilio && !direccion) {
-        return alert('Por favor ingresa la dirección de entrega de tu domicilio.');
+        return alert('Por favor escribe tu dirección exacta de entrega.');
       }
 
-      // Autoasignar si es mesa o recoger
       if (esRecoger && !direccion) direccion = 'Recoge en el local';
       if (esMesa && !direccion) direccion = mesaDetectada || 'Consumo en mesa';
 
@@ -763,9 +731,8 @@
       const envio = esDomicilio ? parseInt(selBarrio.value || 0) : 0;
       const total = Math.max(0, subtotal + envio - descuentoTotal);
 
-      // 3. Feedback visual en el botón
       btnEnviar.disabled = true;
-      btnEnviar.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> <span>Enviando comanda a cocina...</span>`;
+      btnEnviar.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> <span>Procesando orden...</span>`;
 
       const payload = {
         cliente: {
@@ -781,27 +748,50 @@
         costoEnvio: envio,
         descuento: descuentoTotal,
         canjeoPuntos: canjeoPuntosActivo,
-        total
+        total,
+        modoPrueba: forzarModoPrueba
       };
 
-      // 4. Emitir comanda por Sockets
-      socket.emit('nuevo-pedido', payload);
+      try {
+        // Enviar por HTTP para respuesta 100% garantizada
+        const res = await fetch('/api/pedidos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
 
-      // Respaldo de seguridad si el socket tarda
-      setTimeout(() => {
-        if (!pedidoCreadoId) {
+        const data = await res.json();
+
+        if (data.ok) {
+          pedidoCreadoId = data.id;
+
+          // Si es Nequi / Bre-B, abre el modal del QR
+          if (metodoPago.includes('Bre-B') || metodoPago.includes('Nequi')) {
+            document.getElementById('nequi-monto-total').innerText = `$${total.toLocaleString()}`;
+            const mensajeWA = encodeURIComponent(`¡Hola Ary la arepa! Acabo de hacer el pedido ${data.numero} por $${total.toLocaleString()}. Aquí adjunto el comprobante.`);
+            document.getElementById('btn-whatsapp-comprobante').href = `https://wa.me/573215035691?text=${mensajeWA}`;
+            document.getElementById('modal-pago-nequi').classList.remove('hidden');
+          } else {
+            // Si es Efectivo, va directo al seguimiento
+            window.location.href = `/seguimiento.html?id=${data.id}`;
+          }
+        } else {
           btnEnviar.disabled = false;
-          btnEnviar.innerHTML = `<span>Enviar Pedido a Cocina</span> <i class="fa-solid fa-arrow-right"></i>`;
-        }
-      }, 5000);
-    }
+          setPago(metodoPago);
 
-    socket.on('error-horario', ({ mensaje }) => {
-      const btnEnviar = document.getElementById('btn-confirmar-pedido-final');
-      btnEnviar.disabled = false;
-      btnEnviar.innerHTML = `<span>Enviar Pedido a Cocina</span> <i class="fa-solid fa-arrow-right"></i>`;
-      alert(mensaje);
-    });
+          // Si está fuera de horario, ofrece enviar en Modo Prueba
+          if (data.fueraDeHorario) {
+            const probar = confirm(`${data.error}\n\n¿Deseas enviar el pedido en MODO PRUEBA para ensayar el sistema?`);
+            if (probar) enviarPedidoFinal(true);
+          } else {
+            alert(data.error || 'No se pudo procesar la orden.');
+          }
+        }
+      } catch (err) {
+        // Respaldo por Socket.io si no hay red REST
+        socket.emit('nuevo-pedido', payload);
+      }
+    }
 
     socket.on('confirmacion-pedido', ({ id, numero }) => {
       pedidoCreadoId = id;
@@ -811,15 +801,13 @@
 
       if (metodoPago.includes('Bre-B') || metodoPago.includes('Nequi')) {
         document.getElementById('nequi-monto-total').innerText = `$${total.toLocaleString()}`;
-        const mensajeWA = encodeURIComponent(`¡Hola Ary la arepa! Acabo de hacer el pedido ${numero} por $${total.toLocaleString()}. Aquí adjunto el comprobante.`);
-        document.getElementById('btn-whatsapp-comprobante').href = `https://wa.me/573215035691?text=${mensajeWA}`;
         document.getElementById('modal-pago-nequi').classList.remove('hidden');
       } else {
         window.location.href = `/seguimiento.html?id=${id}`;
       }
     });
 
-    function copiarNequi() { navigator.clipboard.writeText("3215035691").then(() => alert("¡Número Nequi copiado: 3215035691!")); }
+    function copiarNequi() { navigator.clipboard.writeText("3215035691").then(() => alert("¡Número Nequi copiado!")); }
     function irASeguimiento() { if (pedidoCreadoId) window.location.href = `/seguimiento.html?id=${pedidoCreadoId}`; }
   </script>
 </body>
