@@ -1,13 +1,19 @@
 {
-  "name": "sistema-restaurante",
+  "name": "ary-la-arepa",
   "version": "1.0.0",
-  "description": "Sistema completo de autoservicio y KDS para restaurantes",
-  "main": "server.js",
+  "description": "Sistema de Gestión y POS para Ary la arepa",
+  "main": "main.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dist": "electron-builder --win"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
     "express": "^4.19.2",
     "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "electron": "^28.2.0",
+    "electron-builder": "^24.9.1"
   }
 }
