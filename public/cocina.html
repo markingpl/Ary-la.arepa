@@ -15,7 +15,7 @@
       <img src="/img/mascota.png" onerror="this.src='https://placehold.co/40x40/facc15/000?text=Ary'" class="w-10 h-10 object-contain">
       <div>
         <h1 class="text-base font-black text-yellow-400 leading-tight">ARY LA AREPA • COCINA KDS</h1>
-        <p class="text-[10px] text-stone-400">Control de comandas en vivo</p>
+        <p class="text-[10px] text-stone-400">Control de comandas en tiempo real</p>
       </div>
       <span id="contador-pendientes" class="ml-2 bg-red-600 text-white text-xs px-3 py-1 rounded-full font-black animate-pulse">
         0 Pendientes
@@ -144,7 +144,6 @@
               </div>
             </div>
 
-            <!-- BOTONES DE ACCIÓN DE COCINA (CON OPCIÓN DE RECHAZAR / CANCELAR) -->
             <div class="p-3 border-t border-stone-800 bg-neutral-950">
               ${p.estado === 'PENDIENTE' ? `
                 <div class="flex gap-2">
@@ -176,7 +175,6 @@
       socket.emit('cambiar-estado', { id, nuevoEstado });
     }
 
-    // FUNCIÓN PARA RECHAZAR/CANCELAR ANTES DE ACEPTAR
     function cancelarComanda(id, numero) {
       const motivo = prompt(
         `¿Por qué motivo rechazas la orden ${numero}?\n(Ej: Insumos agotados, cliente canceló, fuera de cobertura):`, 
@@ -186,7 +184,7 @@
       if (motivo !== null) {
         socket.emit('cancelar-comanda-cocina', { 
           id, 
-          motivo: motivo.trim() || 'Cancelado por el equipo de cocina' 
+          motivo: motivo.trim() || 'Cancelado por cocina' 
         });
       }
     }
@@ -206,8 +204,9 @@
       renderComandas();
     });
 
+    // Carga inicial y auto-consulta cada 5 segundos para que nunca falte una comanda
     cargarPedidos();
-    setInterval(renderComandas, 30000);
+    setInterval(cargarPedidos, 5000);
   </script>
 </body>
 </html>
