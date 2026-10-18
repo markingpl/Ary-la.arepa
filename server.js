@@ -8,10 +8,8 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Permite subir fotos en base64 de hasta 10MB sin errores
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
-
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/img', express.static(path.join(__dirname, 'public', 'img')));
 
@@ -32,8 +30,35 @@ const DB_DEFAULT = {
     { id: 2, usuario: 'cajero1', clave: '2024', nombre: 'Cajero Principal', rol: 'CAJERO' }
   ],
   clientesFrecuentes: [
-    { id: 1, nombre: 'Juan Camilo', celular: '3110000000', direccion: 'Cra 9 # 12N-45', barrio: 'Ciudad Jardín', pedidos: 4 }
+    { id: 1, nombre: 'Juan Camilo', celular: '3110000000', direccion: 'Cra 9 # 12N-45', barrio: 'Ciudad Jardín', pedidos: 4, puntos: 4 }
   ],
+  // CUPONES DE DESCUENTO (FEATURE D)
+  cupones: [
+    { id: 1, codigo: 'POPAYAN10', tipo: 'PORCENTAJE', valor: 10, activo: true, usos: 0 },
+    { id: 2, codigo: 'ARY5K', tipo: 'FIJO', valor: 5000, activo: true, usos: 0 }
+  ],
+  // CONTROL DE INVENTARIO Y STOCK (FEATURE C)
+  inventario: [
+    { id: 'inv-1', nombre: 'Arepa Base Agridulce', stockActual: 100, stockMinimo: 20, unidad: 'unidades', costo: 1500 },
+    { id: 'inv-2', nombre: 'Queso Fundido Artesanal', stockActual: 10000, stockMinimo: 2000, unidad: 'gramos', costo: 18 },
+    { id: 'inv-3', nombre: 'Carne Desmechada', stockActual: 5000, stockMinimo: 1000, unidad: 'gramos', costo: 25 },
+    { id: 'inv-4', nombre: 'Pollo Desmechado', stockActual: 5000, stockMinimo: 1000, unidad: 'gramos', costo: 18 },
+    { id: 'inv-5', nombre: 'Chorizo Ahumado', stockActual: 60, stockMinimo: 15, unidad: 'unidades', costo: 1200 },
+    { id: 'inv-6', nombre: 'Tocineta Ahumada', stockActual: 3000, stockMinimo: 600, unidad: 'gramos', costo: 28 },
+    { id: 'inv-7', nombre: 'Doritos / Totopos', stockActual: 50, stockMinimo: 10, unidad: 'bolsas', costo: 1000 },
+    { id: 'inv-8', nombre: 'Bowls Térmicos Domicilio', stockActual: 150, stockMinimo: 30, unidad: 'unidades', costo: 400 },
+    { id: 'inv-9', nombre: 'Coca-Cola Cero 250ml', stockActual: 48, stockMinimo: 12, unidad: 'unidades', costo: 1800 }
+  ],
+  // ESCANDALLO / RECETAS (Lo que se descuenta por arepa)
+  recetas: {
+    'Campesina': { 'inv-1': 1, 'inv-2': 80, 'inv-3': 100, 'inv-5': 1 },
+    'Doriloca': { 'inv-1': 1, 'inv-2': 80, 'inv-3': 100, 'inv-7': 1 },
+    'Ranchera': { 'inv-1': 1, 'inv-2': 80, 'inv-4': 100 },
+    'Tocineta': { 'inv-1': 1, 'inv-2': 80, 'inv-4': 80, 'inv-6': 60 },
+    'Mexicana': { 'inv-1': 1, 'inv-2': 80, 'inv-3': 100, 'inv-7': 1 },
+    'Hawaiana': { 'inv-1': 1, 'inv-2': 80 },
+    'Quipitos': { 'inv-1': 1, 'inv-2': 60 }
+  },
   barrios: [
     { nombre: 'Prados del Norte (Local)', costo: 2000 },
     { nombre: 'Bello Horizonte', costo: 4000 },
@@ -89,6 +114,9 @@ let DB = DB_DEFAULT;
 if (fs.existsSync(DATA_FILE)) {
   try {
     DB = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+    if (!DB.inventario) DB.inventario = DB_DEFAULT.inventario;
+    if (!DB.cupones) DB.cupones = DB_DEFAULT.cupones;
+    if (!DB.recetas) DB.recetas = DB_DEFAULT.recetas;
   } catch (e) {
     DB = DB_DEFAULT;
   }
@@ -100,58 +128,147 @@ function guardarDB() {
   try {
     fs.writeFileSync(DATA_FILE, JSON.stringify(DB, null, 2));
   } catch (err) {
-    console.error("Error al guardar data.json:", err);
+    console.error("Error guardando data.json:", err);
   }
 }
 
-function verificarHorarioAbiertoColombia() {
-  const ahoraColombia = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Bogota" }));
-  const hora = ahoraColombia.getHours();
-  return hora >= 16 && hora < 22;
+// DESCARGO AUTOMÁTICO DE INVENTARIO
+function descontarInventarioPorPedido(items, modalidad) {
+  items.forEach(item => {
+    // 1. Descontar según receta de la arepa
+    const receta = DB.recetas[item.nombre];
+    if (receta) {
+      Object.keys(receta).forEach(invId => {
+        const insumo = DB.inventario.find(i => i.id === invId);
+        if (insumo) {
+          insumo.stockActual = Math.max(0, insumo.stockActual - receta[invId]);
+        }
+      });
+    }
+
+    // 2. Si es bebida
+    const bebidaInsumo = DB.inventario.find(i => i.nombre.toLowerCase().includes(item.nombre.toLowerCase()));
+    if (bebidaInsumo) {
+      bebidaInsumo.stockActual = Math.max(0, bebidaInsumo.stockActual - 1);
+    }
+  });
+
+  // 3. Descontar empaque si es domicilio o para llevar
+  if (modalidad === 'Domicilio' || modalidad === 'Para Llevar') {
+    const bowl = DB.inventario.find(i => i.id === 'inv-8');
+    if (bowl) bowl.stockActual = Math.max(0, bowl.stockActual - items.length);
+  }
+
+  guardarDB();
 }
 
+function registrarPedidoEnSistema(pedidoData) {
+  DB.contadorPedido++;
+  const now = new Date();
+  const nuevoPedido = {
+    id: `ORD-${Date.now()}`,
+    numero: `#${String(DB.contadorPedido).padStart(3, '0')}`,
+    fecha: now.toLocaleDateString('es-CO'),
+    hora: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    timestamp: Date.now(),
+    estado: 'PENDIENTE',
+    turnoId: DB.turnoActual ? DB.turnoActual.id : null,
+    ...pedidoData
+  };
+
+  // Descontar inventario en tiempo real
+  descontarInventarioPorPedido(nuevoPedido.items || [], nuevoPedido.modalidad);
+
+  // Fidelización de puntos (1 punto por comanda / arepa)
+  if (pedidoData.cliente && pedidoData.cliente.celular) {
+    const idx = DB.clientesFrecuentes.findIndex(c => c.celular === pedidoData.cliente.celular);
+    const cantArepas = (nuevoPedido.items || []).filter(i => !i.desc || !i.desc.includes('Bebida')).length || 1;
+    if (idx >= 0) {
+      DB.clientesFrecuentes[idx].pedidos += 1;
+      DB.clientesFrecuentes[idx].puntos = (DB.clientesFrecuentes[idx].puntos || 0) + cantArepas;
+      DB.clientesFrecuentes[idx].direccion = pedidoData.cliente.direccion;
+      DB.clientesFrecuentes[idx].barrio = pedidoData.cliente.barrio;
+    } else {
+      DB.clientesFrecuentes.push({
+        id: DB.clientesFrecuentes.length + 1,
+        nombre: pedidoData.cliente.nombre,
+        celular: pedidoData.cliente.celular,
+        direccion: pedidoData.cliente.direccion,
+        barrio: pedidoData.cliente.barrio,
+        pedidos: 1,
+        puntos: cantArepas
+      });
+    }
+  }
+
+  DB.pedidos.unshift(nuevoPedido);
+  guardarDB();
+  io.emit('pedido-creado', nuevoPedido);
+  return nuevoPedido;
+}
+
+// ENDPOINTS PRINCIPALES
 app.get('/api/data-inicial', (req, res) => res.json(DB));
 app.get('/api/pedidos', (req, res) => res.json(DB.pedidos));
 
-app.post('/api/admin/barrios', (req, res) => {
-  if (Array.isArray(req.body.barrios)) {
-    DB.barrios = req.body.barrios;
+// VALIDACIÓN DE CUPONES (FEATURE D)
+app.post('/api/cupones/validar', (req, res) => {
+  const { codigo, subtotal } = req.body;
+  if (!codigo) return res.status(400).json({ error: 'Ingresa un código' });
+  const cup = DB.cupones.find(c => c.codigo.toUpperCase() === codigo.trim().toUpperCase() && c.activo);
+  if (!cup) return res.status(404).json({ error: 'Cupón inválido o expirado' });
+
+  let descuento = 0;
+  if (cup.tipo === 'PORCENTAJE') descuento = Math.round((subtotal * cup.valor) / 100);
+  else descuento = cup.valor;
+
+  res.json({ ok: true, cupon: cup, descuento });
+});
+
+app.post('/api/admin/cupones', (req, res) => {
+  const { cupones } = req.body;
+  if (Array.isArray(cupones)) {
+    DB.cupones = cupones;
     guardarDB();
-    res.json({ ok: true, barrios: DB.barrios });
+    res.json({ ok: true });
   } else res.status(400).json({ error: 'Inválido' });
+});
+
+// GESTIÓN DE INVENTARIO (FEATURE C)
+app.post('/api/admin/inventario', (req, res) => {
+  const { inventario } = req.body;
+  if (Array.isArray(inventario)) {
+    DB.inventario = inventario;
+    guardarDB();
+    res.json({ ok: true });
+  } else res.status(400).json({ error: 'Inválido' });
+});
+
+// Menú, Barrios y Usuarios
+app.post('/api/admin/barrios', (req, res) => {
+  if (Array.isArray(req.body.barrios)) { DB.barrios = req.body.barrios; guardarDB(); res.json({ ok: true }); }
+  else res.status(400).json({ error: 'Inválido' });
 });
 
 app.post('/api/admin/productos', (req, res) => {
-  if (Array.isArray(req.body.productos)) {
-    DB.productos = req.body.productos;
-    guardarDB();
-    res.json({ ok: true, productos: DB.productos });
-  } else res.status(400).json({ error: 'Inválido' });
+  if (Array.isArray(req.body.productos)) { DB.productos = req.body.productos; guardarDB(); res.json({ ok: true }); }
+  else res.status(400).json({ error: 'Inválido' });
 });
 
 app.post('/api/admin/extras', (req, res) => {
-  if (Array.isArray(req.body.extras)) {
-    DB.extras = req.body.extras;
-    guardarDB();
-    res.json({ ok: true, extras: DB.extras });
-  } else res.status(400).json({ error: 'Inválido' });
+  if (Array.isArray(req.body.extras)) { DB.extras = req.body.extras; guardarDB(); res.json({ ok: true }); }
+  else res.status(400).json({ error: 'Inválido' });
 });
 
 app.post('/api/admin/bebidas', (req, res) => {
-  if (Array.isArray(req.body.bebidas)) {
-    DB.bebidas = req.body.bebidas;
-    guardarDB();
-    res.json({ ok: true, bebidas: DB.bebidas });
-  } else res.status(400).json({ error: 'Inválido' });
+  if (Array.isArray(req.body.bebidas)) { DB.bebidas = req.body.bebidas; guardarDB(); res.json({ ok: true }); }
+  else res.status(400).json({ error: 'Inválido' });
 });
 
 app.get('/api/usuarios', (req, res) => res.json(DB.usuarios));
 app.post('/api/usuarios', (req, res) => {
   const { usuario, clave, nombre } = req.body;
-  if (!usuario || !clave || !nombre) return res.status(400).json({ error: 'Campos requeridos' });
-  const existe = DB.usuarios.find(u => u.usuario.toLowerCase() === usuario.trim().toLowerCase());
-  if (existe) return res.status(400).json({ error: 'Usuario ya existe' });
-
+  if (!usuario || !clave || !nombre) return res.status(400).json({ error: 'Requeridos' });
   const nuevo = { id: Date.now(), usuario: usuario.trim().toLowerCase(), clave: clave.trim(), nombre: nombre.trim(), rol: 'CAJERO' };
   DB.usuarios.push(nuevo);
   guardarDB();
@@ -159,13 +276,12 @@ app.post('/api/usuarios', (req, res) => {
 });
 
 app.delete('/api/usuarios/:id', (req, res) => {
-  const id = parseInt(req.params.id);
-  const idx = DB.usuarios.findIndex(u => u.id === id);
-  if (idx === -1) return res.status(404).json({ error: 'No encontrado' });
-  if (DB.usuarios[idx].rol === 'ADMIN') return res.status(403).json({ error: 'No se puede borrar al administrador' });
-  DB.usuarios.splice(idx, 1);
-  guardarDB();
-  res.json({ ok: true });
+  const idx = DB.usuarios.findIndex(u => u.id === parseInt(req.params.id));
+  if (idx !== -1 && DB.usuarios[idx].rol !== 'ADMIN') {
+    DB.usuarios.splice(idx, 1);
+    guardarDB();
+    res.json({ ok: true });
+  } else res.status(403).json({ error: 'No permitido' });
 });
 
 app.post('/api/cajero/login', (req, res) => {
@@ -176,11 +292,10 @@ app.post('/api/cajero/login', (req, res) => {
 });
 
 app.post('/api/caja/abrir', (req, res) => {
-  const { cajeroNombre, baseInicial } = req.body;
   DB.turnoActual = {
     id: `TURNO-${Date.now()}`,
-    cajero: cajeroNombre,
-    baseInicial: parseFloat(baseInicial) || 0,
+    cajero: req.body.cajeroNombre,
+    baseInicial: parseFloat(req.body.baseInicial) || 0,
     horaApertura: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     fecha: new Date().toLocaleDateString('es-CO'),
     estado: 'ABIERTA'
@@ -207,7 +322,7 @@ app.get('/api/caja/resumen', (req, res) => {
 });
 
 app.post('/api/caja/cerrar', (req, res) => {
-  if (!DB.turnoActual) return res.status(400).json({ error: 'No hay turno activo' });
+  if (!DB.turnoActual) return res.status(400).json({ error: 'Sin turno' });
   const pedidosTurno = DB.pedidos.filter(p => p.turnoId === DB.turnoActual.id && p.estado !== 'CANCELADO');
   const ventasEfectivo = pedidosTurno.filter(p => p.metodoPago === 'Efectivo').reduce((a, b) => a + b.total, 0);
   const ventasDigital = pedidosTurno.filter(p => p.metodoPago.includes('Nequi') || p.metodoPago.includes('Bre-B') || p.metodoPago.includes('Transferencia')).reduce((a, b) => a + b.total, 0);
@@ -228,44 +343,6 @@ app.post('/api/caja/cerrar', (req, res) => {
   res.json({ ok: true, resumenCierre: turnoCerrado });
 });
 
-function registrarPedidoEnSistema(pedidoData) {
-  DB.contadorPedido++;
-  const now = new Date();
-  const nuevoPedido = {
-    id: `ORD-${Date.now()}`,
-    numero: `#${String(DB.contadorPedido).padStart(3, '0')}`,
-    fecha: now.toLocaleDateString('es-CO'),
-    hora: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    timestamp: Date.now(),
-    estado: 'PENDIENTE',
-    turnoId: DB.turnoActual ? DB.turnoActual.id : null,
-    ...pedidoData
-  };
-
-  if (pedidoData.cliente && pedidoData.cliente.celular) {
-    const idx = DB.clientesFrecuentes.findIndex(c => c.celular === pedidoData.cliente.celular);
-    if (idx >= 0) {
-      DB.clientesFrecuentes[idx].pedidos += 1;
-      DB.clientesFrecuentes[idx].direccion = pedidoData.cliente.direccion;
-      DB.clientesFrecuentes[idx].barrio = pedidoData.cliente.barrio;
-    } else {
-      DB.clientesFrecuentes.push({
-        id: DB.clientesFrecuentes.length + 1,
-        nombre: pedidoData.cliente.nombre,
-        celular: pedidoData.cliente.celular,
-        direccion: pedidoData.cliente.direccion,
-        barrio: pedidoData.cliente.barrio,
-        pedidos: 1
-      });
-    }
-  }
-
-  DB.pedidos.unshift(nuevoPedido);
-  guardarDB();
-  io.emit('pedido-creado', nuevoPedido);
-  return nuevoPedido;
-}
-
 // Sockets
 io.on('connection', (socket) => {
   socket.on('nuevo-pedido', (pedidoData) => {
@@ -284,6 +361,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(` Servidor activo: http://localhost:${PORT}`);
-});
+server.listen(PORT, () => console.log(`Ary la arepa activo en puerto ${PORT}`));
