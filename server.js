@@ -14,7 +14,6 @@ app.use('/img', express.static(path.join(__dirname, 'public', 'img')));
 
 const DATA_FILE = path.join(__dirname, 'data.json');
 
-// Datos iniciales por defecto
 const DB_DEFAULT = {
   info: {
     nombre: "Ary la arepa",
@@ -81,7 +80,6 @@ const DB_DEFAULT = {
   historialTurnos: []
 };
 
-// Cargar o crear data.json
 let DB = DB_DEFAULT;
 if (fs.existsSync(DATA_FILE)) {
   try {
@@ -101,63 +99,50 @@ function guardarDB() {
   }
 }
 
-// Rutas de datos
 app.get('/api/data-inicial', (req, res) => res.json(DB));
 app.get('/api/pedidos', (req, res) => res.json(DB.pedidos));
 
-// ACTUALIZACIÓN DE BARRIOS Y DOMICILIOS
+// Barrios
 app.post('/api/admin/barrios', (req, res) => {
-  const { barrios } = req.body;
-  if (Array.isArray(barrios)) {
-    DB.barrios = barrios;
+  if (Array.isArray(req.body.barrios)) {
+    DB.barrios = req.body.barrios;
     guardarDB();
     res.json({ ok: true, barrios: DB.barrios });
-  } else {
-    res.status(400).json({ error: 'Formato inválido' });
-  }
+  } else res.status(400).json({ error: 'Inválido' });
 });
 
-// ACTUALIZACIÓN DEL MENÚ (AREPAS, EXTRAS Y BEBIDAS)
+// Menú
 app.post('/api/admin/productos', (req, res) => {
-  const { productos } = req.body;
-  if (Array.isArray(productos)) {
-    DB.productos = productos;
+  if (Array.isArray(req.body.productos)) {
+    DB.productos = req.body.productos;
     guardarDB();
     res.json({ ok: true, productos: DB.productos });
-  } else {
-    res.status(400).json({ error: 'Formato inválido' });
-  }
+  } else res.status(400).json({ error: 'Inválido' });
 });
 
 app.post('/api/admin/extras', (req, res) => {
-  const { extras } = req.body;
-  if (Array.isArray(extras)) {
-    DB.extras = extras;
+  if (Array.isArray(req.body.extras)) {
+    DB.extras = req.body.extras;
     guardarDB();
     res.json({ ok: true, extras: DB.extras });
-  } else {
-    res.status(400).json({ error: 'Formato inválido' });
-  }
+  } else res.status(400).json({ error: 'Inválido' });
 });
 
 app.post('/api/admin/bebidas', (req, res) => {
-  const { bebidas } = req.body;
-  if (Array.isArray(bebidas)) {
-    DB.bebidas = bebidas;
+  if (Array.isArray(req.body.bebidas)) {
+    DB.bebidas = req.body.bebidas;
     guardarDB();
     res.json({ ok: true, bebidas: DB.bebidas });
-  } else {
-    res.status(400).json({ error: 'Formato inválido' });
-  }
+  } else res.status(400).json({ error: 'Inválido' });
 });
 
-// Gestión de Usuarios POS
+// Usuarios
 app.get('/api/usuarios', (req, res) => res.json(DB.usuarios));
 app.post('/api/usuarios', (req, res) => {
   const { usuario, clave, nombre } = req.body;
-  if (!usuario || !clave || !nombre) return res.status(400).json({ error: 'Todos los campos requeridos' });
+  if (!usuario || !clave || !nombre) return res.status(400).json({ error: 'Campos requeridos' });
   const existe = DB.usuarios.find(u => u.usuario.toLowerCase() === usuario.trim().toLowerCase());
-  if (existe) return res.status(400).json({ error: 'Ese usuario ya existe' });
+  if (existe) return res.status(400).json({ error: 'Usuario ya existe' });
 
   const nuevo = { id: Date.now(), usuario: usuario.trim().toLowerCase(), clave: clave.trim(), nombre: nombre.trim(), rol: 'CAJERO' };
   DB.usuarios.push(nuevo);
@@ -175,7 +160,6 @@ app.delete('/api/usuarios/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-// Login Cajero POS & Turnos
 app.post('/api/cajero/login', (req, res) => {
   const { usuario, clave } = req.body;
   const user = DB.usuarios.find(u => u.usuario.toLowerCase() === usuario.trim().toLowerCase() && u.clave === clave.trim());
@@ -240,10 +224,12 @@ app.post('/api/caja/cerrar', (req, res) => {
 io.on('connection', (socket) => {
   socket.on('nuevo-pedido', (pedidoData) => {
     DB.contadorPedido++;
+    const now = new Date();
     const nuevoPedido = {
       id: `ORD-${Date.now()}`,
       numero: `#${String(DB.contadorPedido).padStart(3, '0')}`,
-      fecha: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      fecha: now.toLocaleDateString('es-CO'),
+      hora: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       timestamp: Date.now(),
       estado: 'PENDIENTE',
       turnoId: DB.turnoActual ? DB.turnoActual.id : null,
