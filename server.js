@@ -1,10 +1,5 @@
-// ESCUDOS GLOBALES CONTRA CAÍDAS (Evita que el servidor se apague ante cualquier error)
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('⚠️ Advertencia (Promesa no capturada):', reason);
-});
-process.on('uncaughtException', (err) => {
-  console.error('⚠️ Advertencia (Excepción no capturada):', err.message);
-});
+process.on('unhandledRejection', (reason) => console.error('⚠️ Rejection:', reason));
+process.on('uncaughtException', (err) => console.error('⚠️ Exception:', err.message));
 
 const express = require('express');
 const http = require('http');
@@ -12,26 +7,22 @@ const { Server } = require('socket.io');
 const path = require('path');
 const fs = require('fs');
 
-// Carga segura de Supabase
 let createClient = null;
 try {
   createClient = require('@supabase/supabase-js').createClient;
 } catch (e) {
-  console.log("ℹ️ Operando en modo local (sin librería Supabase instalada).");
+  console.log("ℹ️ Operando en modo local (sin librería Supabase).");
 }
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: "*" }
-});
+const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/img', express.static(path.join(__dirname, 'public', 'img')));
 
-// Conexión segura a Supabase
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://rwoioajzmkjtaveosgyh.supabase.co').trim();
 const SUPABASE_KEY = (process.env.SUPABASE_KEY || '').trim();
 
@@ -39,9 +30,8 @@ let supabase = null;
 if (createClient && SUPABASE_URL && SUPABASE_KEY && !SUPABASE_KEY.includes('PEGA_AQUI')) {
   try {
     supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-    console.log("✓ Cliente Supabase inicializado correctamente.");
+    console.log("✓ Cliente Supabase conectado.");
   } catch (err) {
-    console.error("⚠️ No se pudo inicializar Supabase, usando respaldo local:", err.message);
     supabase = null;
   }
 }
@@ -148,7 +138,6 @@ const DB_DEFAULT = {
   historialTurnos: []
 };
 
-// Carga con fusión segura (auto-repara archivos data.json viejos)
 let DB = DB_DEFAULT;
 if (fs.existsSync(DATA_FILE)) {
   try {
@@ -172,42 +161,25 @@ if (fs.existsSync(DATA_FILE)) {
 function guardarDB(claveModificada = null) {
   try {
     fs.writeFileSync(DATA_FILE, JSON.stringify(DB, null, 2));
-  } catch (err) {
-    console.error("Error guardando data.json:", err.message);
-  }
+  } catch (err) {}
 
-  // Guardado seguro en Supabase con catch
   if (supabase && claveModificada && DB[claveModificada]) {
     supabase.from('configuracion').upsert({
       clave: claveModificada,
       datos: DB[claveModificada],
       updated_at: new Date().toISOString()
-    }).catch(err => {
-      console.error(`Error guardando ${claveModificada} en Supabase:`, err.message);
-    });
+    }).catch(() => {});
   }
 }
 
 async function sincronizarConSupabase() {
   if (!supabase) return;
-
   try {
-    const { data: configData, error: errConfig } = await supabase.from('configuracion').select('*');
-    if (errConfig) throw errConfig;
-
+    const { data: configData } = await supabase.from('configuracion').select('*');
     if (configData && configData.length > 0) {
       configData.forEach(row => {
         if (row.clave && row.datos) DB[row.clave] = row.datos;
       });
-      console.log("✓ Sincronizado con Supabase PostgreSQL.");
-    } else {
-      const claves = ['info', 'configPuntos', 'usuarios', 'clientesFrecuentes', 'cupones', 'inventario', 'recetas', 'barrios', 'productos', 'extras', 'bebidas'];
-      for (const k of claves) {
-        if (DB[k]) {
-          await supabase.from('configuracion').upsert({ clave: k, datos: DB[k] }).catch(() => {});
-        }
-      }
-      console.log("✓ Migración inicial a Supabase completada.");
     }
 
     const { data: pedidosDb } = await supabase.from('pedidos').select('*').order('timestamp', { ascending: false }).limit(200);
@@ -232,9 +204,7 @@ async function sincronizarConSupabase() {
       }));
       DB.contadorPedido = DB.pedidos.length;
     }
-  } catch (err) {
-    console.log("⚠️ Supabase temporalmente no disponible, operando con data.json local:", err.message);
-  }
+  } catch (err) {}
 }
 
 // CONTROL DE HORARIOS (COLOMBIA UTC-5)
@@ -264,7 +234,6 @@ app.get('/api/estado-horarios', (req, res) => {
   });
 });
 
-// DESCARGO Y RESTAURACIÓN DE INVENTARIO
 function descontarInventarioPorPedido(items, modalidad) {
   if (!DB.recetas || !DB.inventario) return;
 
@@ -301,16 +270,11 @@ function devolverInventarioCancelado(items, modalidad) {
     if (receta) {
       Object.keys(receta).forEach(invId => {
         const insumo = DB.inventario.find(i => i.id === invId);
-        if (insumo) {
-          insumo.stockActual += receta[invId];
-        }
+        if (insumo) insumo.stockActual += receta[invId];
       });
     }
-
     const bebidaInsumo = DB.inventario.find(i => (i.nombre || '').toLowerCase().includes((item.nombre || '').toLowerCase()));
-    if (bebidaInsumo) {
-      bebidaInsumo.stockActual += 1;
-    }
+    if (bebidaInsumo) bebidaInsumo.stockActual += 1;
   });
 
   if (modalidad === 'Domicilio' || modalidad === 'Para Llevar' || modalidad === 'Rappi') {
@@ -369,7 +333,6 @@ function registrarPedidoEnSistema(pedidoData) {
   DB.pedidos.unshift(nuevoPedido);
   guardarDB();
 
-  // Guardado seguro en Supabase con catch
   if (supabase) {
     supabase.from('pedidos').insert([{
       id: nuevoPedido.id,
@@ -388,11 +351,10 @@ function registrarPedidoEnSistema(pedidoData) {
       estado: nuevoPedido.estado,
       turno_id: nuevoPedido.turnoId,
       origen: nuevoPedido.origen || 'Web/POS'
-    }]).catch(err => {
-      console.error("Error guardando pedido en Supabase:", err.message);
-    });
+    }]).catch(() => {});
   }
 
+  // Notificar a cocina y pantallas en vivo
   io.emit('pedido-creado', nuevoPedido);
   return nuevoPedido;
 }
@@ -400,6 +362,27 @@ function registrarPedidoEnSistema(pedidoData) {
 // ENDPOINTS API
 app.get('/api/data-inicial', (req, res) => res.json(DB));
 app.get('/api/pedidos', (req, res) => res.json(DB.pedidos));
+
+// RUTA DIRECTA PARA CREAR PEDIDOS (RESPALDO HTTP SEGURO)
+app.post('/api/pedidos', (req, res) => {
+  const pedidoData = req.body;
+  const { abiertoDomicilio, abiertoMesa } = verificarEstadoServicios();
+  const esDomicilio = (pedidoData.modalidad === 'Domicilio');
+  const esLocalOMesa = (pedidoData.modalidad && (pedidoData.modalidad.includes('Local') || pedidoData.modalidad.includes('Mesa') || pedidoData.modalidad.includes('Recoger')));
+
+  // Si no es modo prueba y está fuera de horario, avisar
+  if (!pedidoData.modoPrueba) {
+    if (esDomicilio && !abiertoDomicilio) {
+      return res.status(400).json({ ok: false, error: '⛔ El servicio a domicilio opera de 4:00 PM a 9:30 PM.', fueraDeHorario: true });
+    }
+    if (esLocalOMesa && !abiertoMesa) {
+      return res.status(400).json({ ok: false, error: '⛔ La cocina ya cerró la atención en mesa y recoger por hoy (hasta 9:45 PM).', fueraDeHorario: true });
+    }
+  }
+
+  const nuevoPedido = registrarPedidoEnSistema(pedidoData);
+  res.json({ ok: true, id: nuevoPedido.id, numero: nuevoPedido.numero, pedido: nuevoPedido });
+});
 
 app.post('/api/admin/config-puntos', (req, res) => {
   const { puntosPorArepa, puntosMinimosParaCanje, valorDescuentoCanje, activo } = req.body;
@@ -422,7 +405,7 @@ app.post('/api/admin/clientes/:id/puntos', (req, res) => {
     guardarDB('clientesFrecuentes');
     res.json({ ok: true, cliente });
   } else {
-    res.status(404).json({ error: 'Cliente no encontrado' });
+    res.status(404).json({ error: 'No encontrado' });
   }
 });
 
@@ -582,137 +565,15 @@ app.post('/api/caja/cerrar', (req, res) => {
       ventas_rappi: turnoCerrado.ventasRappi,
       ventas_pauta: turnoCerrado.ventasPauta,
       total_caja_esperado: turnoCerrado.totalCajaEsperado
-    }]).catch(err => {
-      console.error("Error guardando turno en Supabase:", err.message);
-    });
+    }]).catch(() => {});
   }
 
   res.json({ ok: true, resumenCierre: turnoCerrado });
 });
 
-// BOT WHATSAPP
-const sesionesBot = {};
-
-function procesarMensajeAgente(celular, mensajeTexto) {
-  const texto = (mensajeTexto || '').trim().toLowerCase();
-  const { abiertoDomicilio, abiertoMesa } = verificarEstadoServicios();
-
-  if (!sesionesBot[celular]) {
-    sesionesBot[celular] = {
-      fase: 'INICIO',
-      modoHumano: false,
-      items: [],
-      cliente: { nombre: '', direccion: '', barrio: '', celular: celular },
-      metodoPago: 'Nequi / Bre-B'
-    };
-  }
-
-  const sesion = sesionesBot[celular];
-
-  if (sesion.modoHumano) {
-    if (texto === '#bot' || texto === 'menu' || texto === 'menú') {
-      sesion.modoHumano = false;
-      return `🤖 ¡Hola de nuevo! He reactivado el asistente virtual. ¿En qué te puedo colaborar?`;
-    }
-    return null;
-  }
-
-  if (texto.includes('asesor') || texto.includes('humano') || texto.includes('persona')) {
-    sesion.modoHumano = true;
-    return `🙋‍♂️ ¡Con gusto! Te he transferido con nuestro equipo humano en Popayán al 📞 *321 5035691*.\n\nHe pausado mis respuestas automáticas. Escribe *"#bot"* para reactivarme cuando gustes.`;
-  }
-
-  if (texto.includes('foto') || texto.includes('fotos') || texto.includes('imagen')) {
-    return `📸 Puedes ver todas las fotos reales de nuestras arepas aquí:\n👉 *https://ary-la-arepa.onrender.com*`;
-  }
-
-  if (texto.includes('puntos') || texto.includes('fidelidad') || texto.includes('vip')) {
-    const minPts = (DB.configPuntos && DB.configPuntos.puntosMinimosParaCanje) || 5;
-    const valorDesc = (DB.configPuntos && DB.configPuntos.valorDescuentoCanje) || 5000;
-    return `⭐ *PROGRAMA VIP ARY LA AREPA:*\n• Ganas puntos por cada arepa que pides con tu número.\n• Al acumular *${minPts} puntos*, ¡recibes *$${valorDesc.toLocaleString()} de descuento* inmediato en tu siguiente pedido!`;
-  }
-
-  if (texto.includes('menu') || texto.includes('menú') || texto.includes('carta') || texto.includes('precios')) {
-    let respuestaMenu = `🧀 *MENÚ ARY LA AREPA*\n\n`;
-    DB.productos.forEach((p, idx) => {
-      respuestaMenu += `*${idx + 1}. ${p.nombre}* - $${p.precio.toLocaleString()}\n_${p.desc}_\n\n`;
-    });
-    respuestaMenu += `🕒 *Horarios:*\n🛵 Domicilios: 4:00 PM a 9:30 PM\n🍽️ En mesa y recoger: 4:00 PM a 9:45 PM.`;
-    return respuestaMenu;
-  }
-
-  if (texto.includes('vegetariano') || texto.includes('vegetariana') || texto.includes('sin carne')) {
-    return `🌱 *¡Sí, tenemos opciones vegetarianas!*\nNuestra base es de *arepa agridulce con abundante queso fundido* 🧀.\nPuedes armarla con: Guacamole fresco ($2.000), Pico de gallo ($2.000), Totopos ($2.000), Piña calada ($2.000), Jalapeños ($2.000) o Huevos de codorniz ($1.000). También la dulce de *Quipitos* ($16.500) es sin carne.`;
-  }
-
-  if (texto.includes('cancelar') || texto.includes('cancelo') || texto.includes('anular')) {
-    const ultimoPedido = DB.pedidos.find(p => p.cliente && p.cliente.celular === celular && p.estado !== 'CANCELADO' && p.estado !== 'ENTREGADO');
-    if (ultimoPedido) {
-      if (ultimoPedido.estado === 'PENDIENTE') {
-        ultimoPedido.estado = 'CANCELADO';
-        devolverInventarioCancelado(ultimoPedido.items || [], ultimoPedido.modalidad);
-        guardarDB();
-        io.emit('estado-actualizado', { id: ultimoPedido.id, nuevoEstado: 'CANCELADO', pedido: ultimoPedido });
-        delete sesionesBot[celular];
-        return `❌ *¡Tu pedido ${ultimoPedido.numero} ha sido cancelado con éxito!*\nYa notificamos a la cocina para que no lo preparen.`;
-      } else {
-        return `⚠️ Tu pedido *${ultimoPedido.numero}* ya está en preparación. Comunícate urgente al *321 5035691*.`;
-      }
-    } else {
-      return `ℹ️ No tienes ningún pedido activo en este momento.`;
-    }
-  }
-
-  if (!abiertoDomicilio) {
-    if (abiertoMesa) {
-      return `⚠️ *Atención:* El servicio de *domicilios ya cerró por hoy* (opera hasta las 9:30 PM).\n\n🍽️ *¡Pero aún puedes visitarnos en el local o pedir para recoger hasta las 9:45 PM!*`;
-    } else {
-      return `🌙 *¡Hola! En este momento la cocina de Ary la arepa está cerrada.*\n\n🕒 *Horarios:*\n🛵 Domicilios: 4:00 PM a 9:30 PM\n🍽️ Mesa y Recoger: 4:00 PM a 9:45 PM\n\nEscribe *"Menú"* para revisar nuestra carta. ¡Te esperamos hoy a las 4:00 PM! 🧀`;
-    }
-  }
-
-  let productoEncontrado = DB.productos.find(p => texto.includes(p.nombre.toLowerCase()));
-  if (productoEncontrado) {
-    sesion.items.push({ id: productoEncontrado.id, nombre: productoEncontrado.nombre, precio: productoEncontrado.precio, extras: [], notas: '' });
-    sesion.fase = 'ARMANDO_PEDIDO';
-    return `✅ Agregué *1x Arepa ${productoEncontrado.nombre}* ($${productoEncontrado.precio.toLocaleString()}).\n¿Deseas algo más o escribes *"Listo"* para tomar tus datos de entrega? (Recibimos domicilios hasta las 9:30 PM).`;
-  }
-
-  return `👋 ¡Hola! Bienvenido a *Ary la arepa* Popayán 🧀.\n\n🛵 Domicilios activos de *4:00 PM a 9:30 PM*.\n🍽️ Servicio en mesa y recoger hasta las *9:45 PM*.\n\nEscribe *"Menú"* para ver la carta o dime qué arepa deseas pedir.`;
-}
-
-app.post('/api/bot/chat', (req, res) => {
-  const { celular, mensaje } = req.body;
-  if (!celular || !mensaje) return res.status(400).json({ error: 'Faltan datos' });
-  const respuesta = procesarMensajeAgente(celular, mensaje);
-  res.json({ ok: true, respuesta });
-});
-
 // Sockets
 io.on('connection', (socket) => {
   socket.on('nuevo-pedido', (pedidoData) => {
-    const { abiertoDomicilio, abiertoMesa } = verificarEstadoServicios();
-    const esDomicilio = (pedidoData.modalidad === 'Domicilio');
-    const esLocalOMesaORecoger = (pedidoData.modalidad && (
-      pedidoData.modalidad.includes('Local') || 
-      pedidoData.modalidad.includes('Mesa') || 
-      pedidoData.modalidad.includes('Recoger')
-    ));
-
-    if (esDomicilio && !abiertoDomicilio) {
-      socket.emit('error-horario', { 
-        mensaje: '⛔ El servicio de domicilios está cerrado. Nuestro horario de envíos es de 4:00 PM a 9:30 PM.' 
-      });
-      return;
-    }
-
-    if (esLocalOMesaORecoger && !abiertoMesa) {
-      socket.emit('error-horario', { 
-        mensaje: '⛔ La cocina ya cerró la recepción de pedidos en local y para recoger por hoy (recibimos hasta las 9:45 PM).' 
-      });
-      return;
-    }
-
     const nuevoPedido = registrarPedidoEnSistema(pedidoData);
     socket.emit('confirmacion-pedido', { id: nuevoPedido.id, numero: nuevoPedido.numero });
   });
@@ -722,9 +583,7 @@ io.on('connection', (socket) => {
     if (pedido) {
       pedido.estado = nuevoEstado;
       guardarDB();
-      if (supabase) {
-        supabase.from('pedidos').update({ estado: nuevoEstado }).eq('id', id).catch(() => {});
-      }
+      if (supabase) supabase.from('pedidos').update({ estado: nuevoEstado }).eq('id', id).catch(() => {});
       io.emit('estado-actualizado', { id, nuevoEstado, pedido });
     }
   });
@@ -736,19 +595,14 @@ io.on('connection', (socket) => {
       pedido.motivoCancelacion = motivo || 'Rechazado por cocina';
       devolverInventarioCancelado(pedido.items || [], pedido.modalidad);
       guardarDB();
-      if (supabase) {
-        supabase.from('pedidos').update({ estado: 'CANCELADO' }).eq('id', id).catch(() => {});
-      }
+      if (supabase) supabase.from('pedidos').update({ estado: 'CANCELADO' }).eq('id', id).catch(() => {});
       io.emit('estado-actualizado', { id, nuevoEstado: 'CANCELADO', pedido });
     }
   });
 });
 
-// ARRANQUE SEGURO EN 0.0.0.0 PARA RENDER
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`✓ Servidor activo en puerto ${PORT}`);
-  sincronizarConSupabase().catch(err => {
-    console.error("Error en sincronización inicial:", err.message);
-  });
+  sincronizarConSupabase().catch(() => {});
 });
