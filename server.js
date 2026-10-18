@@ -18,8 +18,8 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ limit: '15mb', extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/img', express.static(path.join(__dirname, 'public', 'img')));
 
@@ -56,6 +56,22 @@ const DB_DEFAULT = {
     puntosMinimosParaCanje: 5,
     valorDescuentoCanje: 5000,
     activo: true
+  },
+  // GASTOS DIARIOS (NUEVO)
+  gastos: [
+    { id: 'gst-1', fecha: '2026-10-18', hora: '10:30', descripcion: 'Gas propano pipa 40lb', cantidad: 1, valorUnitario: 85000, valorTotal: 85000, categoria: 'Servicios' },
+    { id: 'gst-2', fecha: '2026-10-18', hora: '12:00', descripcion: 'Bolsas y servilletas', cantidad: 5, valorUnitario: 6000, valorTotal: 30000, categoria: 'Empaques' }
+  ],
+  // NÓMINA Y EMPLEADOS (NUEVO)
+  nomina: {
+    empleados: [
+      { id: 1, nombre: 'Carlos Andrés', cargo: 'Parrillero / Cocinero', telefono: '3120001122', pagoTurno: 45000 },
+      { id: 2, nombre: 'Laura Gómez', cargo: 'Cajera', telefono: '3150003344', pagoTurno: 40000 },
+      { id: 3, nombre: 'Julián Moto', cargo: 'Domiciliario', telefono: '3180005566', pagoTurno: 35000 }
+    ],
+    pagos: [
+      { id: 'nom-1', fecha: '2026-10-18', hora: '22:15', empleadoId: 1, empleadoNombre: 'Carlos Andrés', monto: 45000, concepto: 'Turno dominical noche' }
+    ]
   },
   usuarios: [
     { id: 1, usuario: 'admin', clave: '1234', nombre: 'Administrador', rol: 'ADMIN' },
@@ -100,14 +116,15 @@ const DB_DEFAULT = {
     { nombre: 'Palacé / Villa del Viento', costo: 6000 },
     { nombre: 'Santa Clara / Los Hoyos', costo: 4000 }
   ],
+  // PRODUCTOS CON COSTO NETO DE PRODUCCIÓN (NUEVO)
   productos: [
-    { id: 1, cat: 'arepas', nombre: 'Campesina', desc: 'Chorizo ahumado • carne desmechada • guacamole • salsas de la casa', precio: 26000, img: '/img/campesina.png' },
-    { id: 2, cat: 'arepas', nombre: 'Doriloca', desc: 'Doritos • pico de gallo • carne desmechada • guacamole • salsas de la casa', precio: 25000, img: '/img/doriloca.png' },
-    { id: 3, cat: 'arepas', nombre: 'Ranchera', desc: 'Pollo desmechado • salchicha ranchera • huevo de codorniz • salsas de la casa', precio: 24000, img: '/img/ranchera.png' },
-    { id: 4, cat: 'arepas', nombre: 'Tocineta', desc: 'Tocineta ahumada • pollo desmechado • salsas de la casa', precio: 23000, img: '/img/tocineta.png' },
-    { id: 5, cat: 'arepas', nombre: 'Mexicana', desc: 'Carne desmechada • jalapeños • totopos • guacamole • salsas de la casa', precio: 22000, img: '/img/mexicana.png' },
-    { id: 6, cat: 'arepas', nombre: 'Hawaiana', desc: 'Tiras de jamón ahumado • piña calada • lonchas de jamón • salsas de la casa', precio: 17500, img: '/img/hawaiana.png' },
-    { id: 7, cat: 'arepas', nombre: 'Quipitos', desc: 'Quipitos • leche condensada • arequipe', precio: 16500, img: '/img/quipitos.png' }
+    { id: 1, cat: 'arepas', nombre: 'Campesina', desc: 'Chorizo ahumado • carne desmechada • guacamole • salsas de la casa', precio: 26000, costoNeto: 10500, img: '/img/campesina.png' },
+    { id: 2, cat: 'arepas', nombre: 'Doriloca', desc: 'Doritos • pico de gallo • carne desmechada • guacamole • salsas de la casa', precio: 25000, costoNeto: 9800, img: '/img/doriloca.png' },
+    { id: 3, cat: 'arepas', nombre: 'Ranchera', desc: 'Pollo desmechado • salchicha ranchera • huevo de codorniz • salsas de la casa', precio: 24000, costoNeto: 9200, img: '/img/ranchera.png' },
+    { id: 4, cat: 'arepas', nombre: 'Tocineta', desc: 'Tocineta ahumada • pollo desmechado • salsas de la casa', precio: 23000, costoNeto: 8900, img: '/img/tocineta.png' },
+    { id: 5, cat: 'arepas', nombre: 'Mexicana', desc: 'Carne desmechada • jalapeños • totopos • guacamole • salsas de la casa', precio: 22000, costoNeto: 8600, img: '/img/mexicana.png' },
+    { id: 6, cat: 'arepas', nombre: 'Hawaiana', desc: 'Tiras de jamón ahumado • piña calada • lonchas de jamón • salsas de la casa', precio: 17500, costoNeto: 6800, img: '/img/hawaiana.png' },
+    { id: 7, cat: 'arepas', nombre: 'Quipitos', desc: 'Quipitos • leche condensada • arequipe', precio: 16500, costoNeto: 5900, img: '/img/quipitos.png' }
   ],
   extras: [
     { id: 'ex-1', nombre: 'Ranchera', precio: 5000 },
@@ -126,12 +143,12 @@ const DB_DEFAULT = {
     { id: 'ex-14', nombre: 'Arepa sola', precio: 7000 }
   ],
   bebidas: [
-    { id: 101, nombre: 'Coca-Cola Cero 250ml', precio: 3000 },
-    { id: 102, nombre: 'Manzana Cero 250ml', precio: 3000 },
-    { id: 103, nombre: 'Colombiana Cero 250ml', precio: 3000 },
-    { id: 104, nombre: 'Pepsi Cero 250ml', precio: 3000 },
-    { id: 105, nombre: 'Pony Mini', precio: 3000 },
-    { id: 106, nombre: 'Agua', precio: 2000 }
+    { id: 101, nombre: 'Coca-Cola Cero 250ml', precio: 3000, costoNeto: 1800 },
+    { id: 102, nombre: 'Manzana Cero 250ml', precio: 3000, costoNeto: 1800 },
+    { id: 103, nombre: 'Colombiana Cero 250ml', precio: 3000, costoNeto: 1800 },
+    { id: 104, nombre: 'Pepsi Cero 250ml', precio: 3000, costoNeto: 1700 },
+    { id: 105, nombre: 'Pony Mini', precio: 3000, costoNeto: 1800 },
+    { id: 106, nombre: 'Agua', precio: 2000, costoNeto: 900 }
   ],
   pedidos: [],
   contadorPedido: 0,
@@ -139,6 +156,7 @@ const DB_DEFAULT = {
   historialTurnos: []
 };
 
+// Carga con fusión segura
 let DB = DB_DEFAULT;
 if (fs.existsSync(DATA_FILE)) {
   try {
@@ -149,6 +167,8 @@ if (fs.existsSync(DATA_FILE)) {
         ...dataGuardada,
         info: { ...DB_DEFAULT.info, ...(dataGuardada.info || {}) },
         configPuntos: { ...DB_DEFAULT.configPuntos, ...(dataGuardada.configPuntos || {}) },
+        gastos: Array.isArray(dataGuardada.gastos) ? dataGuardada.gastos : DB_DEFAULT.gastos,
+        nomina: (dataGuardada.nomina && Array.isArray(dataGuardada.nomina.empleados)) ? dataGuardada.nomina : DB_DEFAULT.nomina,
         recetas: { ...DB_DEFAULT.recetas, ...(dataGuardada.recetas || {}) },
         cupones: Array.isArray(dataGuardada.cupones) ? dataGuardada.cupones : DB_DEFAULT.cupones,
         inventario: Array.isArray(dataGuardada.inventario) ? dataGuardada.inventario : DB_DEFAULT.inventario,
@@ -163,7 +183,8 @@ if (fs.existsSync(DATA_FILE)) {
 
 if (!Array.isArray(DB.clientesFrecuentes)) DB.clientesFrecuentes = [];
 if (!Array.isArray(DB.pedidos)) DB.pedidos = [];
-if (!Array.isArray(DB.inventario)) DB.inventario = DB_DEFAULT.inventario;
+if (!Array.isArray(DB.gastos)) DB.gastos = [];
+if (!DB.nomina) DB.nomina = DB_DEFAULT.nomina;
 
 function guardarDB(claveModificada = null) {
   try {
@@ -229,8 +250,8 @@ function obtenerMinutosDiaColombia() {
 
 function verificarEstadoServicios() {
   const mins = obtenerMinutosDiaColombia();
-  const abiertoDomicilio = (mins >= 960 && mins <= 1290); // 4:00 PM a 9:30 PM
-  const abiertoMesaYRecoger = (mins >= 960 && mins <= 1305); // 4:00 PM a 9:45 PM
+  const abiertoDomicilio = (mins >= 960 && mins <= 1290);
+  const abiertoMesaYRecoger = (mins >= 960 && mins <= 1305);
   return { abiertoDomicilio, abiertoMesa: abiertoMesaYRecoger, abiertoRecoger: abiertoMesaYRecoger };
 }
 
@@ -240,11 +261,7 @@ app.get('/api/estado-horarios', (req, res) => {
     domicilio: st.abiertoDomicilio,
     mesa: st.abiertoMesa,
     recoger: st.abiertoRecoger,
-    horarios: {
-      domicilio: "4:00 PM a 9:30 PM",
-      mesa: "4:00 PM a 9:45 PM",
-      recoger: "4:00 PM a 9:45 PM"
-    }
+    horarios: { domicilio: "4:00 PM a 9:30 PM", mesa: "4:00 PM a 9:45 PM", recoger: "4:00 PM a 9:45 PM" }
   });
 });
 
@@ -256,16 +273,12 @@ function descontarInventarioPorPedido(items, modalidad) {
     if (receta) {
       Object.keys(receta).forEach(invId => {
         const insumo = DB.inventario.find(i => i.id === invId);
-        if (insumo) {
-          insumo.stockActual = Math.max(0, insumo.stockActual - receta[invId]);
-        }
+        if (insumo) insumo.stockActual = Math.max(0, insumo.stockActual - receta[invId]);
       });
     }
 
     const bebidaInsumo = DB.inventario.find(i => (i.nombre || '').toLowerCase().includes((item.nombre || '').toLowerCase()));
-    if (bebidaInsumo) {
-      bebidaInsumo.stockActual = Math.max(0, bebidaInsumo.stockActual - 1);
-    }
+    if (bebidaInsumo) bebidaInsumo.stockActual = Math.max(0, bebidaInsumo.stockActual - 1);
   });
 
   if (modalidad === 'Domicilio' || modalidad === 'Para Llevar' || modalidad === 'Rappi') {
@@ -326,7 +339,7 @@ function registrarPedidoEnSistema(pedidoData) {
 
       if (idx >= 0) {
         const cli = DB.clientesFrecuentes[idx];
-        cli.pedidos = (cli.pedidos || 0) + 1;
+        cli.pedidos += 1;
         if (pedidoData.canjeoPuntos && DB.configPuntos) {
           cli.puntos = Math.max(0, (cli.puntos || 0) - (DB.configPuntos.puntosMinimosParaCanje || 5));
         }
@@ -374,86 +387,167 @@ function registrarPedidoEnSistema(pedidoData) {
     io.emit('pedido-creado', nuevoPedido);
     return nuevoPedido;
   } catch (err) {
-    console.error("Error en registrarPedidoEnSistema:", err);
-    const fallback = {
-      id: `ORD-${Date.now()}`,
-      numero: `#${String(Date.now()).slice(-3)}`,
-      total: pedidoData.total || 0,
-      estado: 'PENDIENTE',
-      ...pedidoData
-    };
+    const fallback = { id: `ORD-${Date.now()}`, numero: `#${String(Date.now()).slice(-3)}`, total: pedidoData.total || 0, estado: 'PENDIENTE', ...pedidoData };
     DB.pedidos.unshift(fallback);
     io.emit('pedido-creado', fallback);
     return fallback;
   }
 }
 
-// ENDPOINTS API
+// ENDPOINTS GENERALES
 app.get('/api/data-inicial', (req, res) => res.json(DB));
 app.get('/api/pedidos', (req, res) => res.json(DB.pedidos));
 
 app.get('/api/pedido/:id', (req, res) => {
   const p = DB.pedidos.find(x => x.id === req.params.id);
   if (p) return res.json(p);
-
-  if (supabase) {
-    supabase.from('pedidos').select('*').eq('id', req.params.id).single()
-      .then(({ data }) => {
-        if (data) {
-          return res.json({
-            id: data.id,
-            numero: data.numero,
-            fecha: data.fecha,
-            hora: data.hora,
-            timestamp: Number(data.timestamp),
-            cliente: data.cliente,
-            modalidad: data.modalidad,
-            items: data.items,
-            metodoPago: data.metodo_pago,
-            subtotal: Number(data.subtotal),
-            costoEnvio: Number(data.costo_envio),
-            descuento: Number(data.descuento),
-            total: Number(data.total),
-            estado: data.estado,
-            turnoId: data.turno_id
-          });
-        }
-        res.status(404).json({ error: 'Pedido no encontrado' });
-      })
-      .catch(() => res.status(404).json({ error: 'Pedido no encontrado' }));
-  } else {
-    res.status(404).json({ error: 'Pedido no encontrado' });
-  }
+  res.status(404).json({ error: 'Pedido no encontrado' });
 });
 
-// RUTA POST DE PEDIDOS CON EXCEPCIÓN PARA CAJA POS
 app.post('/api/pedidos', (req, res) => {
   try {
     const pedidoData = req.body;
     const { abiertoDomicilio, abiertoMesa } = verificarEstadoServicios();
     const esDomicilio = (pedidoData.modalidad === 'Domicilio');
     const esLocalOMesa = (pedidoData.modalidad && (pedidoData.modalidad.includes('Local') || pedidoData.modalidad.includes('Mesa') || pedidoData.modalidad.includes('Recoger')));
-    
-    // REGLA CLAVE: La caja POS física NUNCA se bloquea por horario
     const esPOS = Boolean(pedidoData.cajero || pedidoData.origen === 'POS');
 
     if (!esPOS && !pedidoData.modoPrueba) {
-      if (esDomicilio && !abiertoDomicilio) {
-        return res.status(400).json({ ok: false, error: '⛔ El servicio a domicilio opera de 4:00 PM a 9:30 PM.', fueraDeHorario: true });
-      }
-      if (esLocalOMesa && !abiertoMesa) {
-        return res.status(400).json({ ok: false, error: '⛔ La cocina ya cerró la atención en mesa y recoger por hoy (hasta 9:45 PM).', fueraDeHorario: true });
-      }
+      if (esDomicilio && !abiertoDomicilio) return res.status(400).json({ ok: false, error: '⛔ El servicio a domicilio opera de 4:00 PM a 9:30 PM.', fueraDeHorario: true });
+      if (esLocalOMesa && !abiertoMesa) return res.status(400).json({ ok: false, error: '⛔ La cocina ya cerró la atención en mesa y recoger por hoy (hasta 9:45 PM).', fueraDeHorario: true });
     }
 
     const nuevoPedido = registrarPedidoEnSistema(pedidoData);
     res.json({ ok: true, id: nuevoPedido.id, numero: nuevoPedido.numero, total: nuevoPedido.total, pedido: nuevoPedido });
   } catch (err) {
-    console.error("Error en POST /api/pedidos:", err);
-    res.status(500).json({ ok: false, error: 'Error procesando la orden: ' + err.message });
+    res.status(500).json({ ok: false, error: 'Error procesando orden' });
   }
 });
 
+// ========================================================
+// CONTABILIDAD: GASTOS DIARIOS (NUEVO)
+// ========================================================
+app.get('/api/admin/gastos', (req, res) => res.json(DB.gastos || []));
+
+app.post('/api/admin/gastos', (req, res) => {
+  const { descripcion, cantidad, valorUnitario, categoria } = req.body;
+  if (!descripcion || !valorUnitario) return res.status(400).json({ error: 'Datos incompletos' });
+
+  const cant = parseFloat(cantidad) || 1;
+  const vUnit = parseFloat(valorUnitario) || 0;
+  const nuevoGasto = {
+    id: `gst-${Date.now()}`,
+    fecha: new Date().toISOString().split('T')[0],
+    hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    descripcion: descripcion.trim(),
+    cantidad: cant,
+    valorUnitario: vUnit,
+    valorTotal: cant * vUnit,
+    categoria: categoria || 'General'
+  };
+
+  DB.gastos.unshift(nuevoGasto);
+  guardarDB('gastos');
+  res.json({ ok: true, gasto: nuevoGasto, gastos: DB.gastos });
+});
+
+app.delete('/api/admin/gastos/:id', (req, res) => {
+  const idx = DB.gastos.findIndex(g => g.id === req.params.id);
+  if (idx !== -1) {
+    DB.gastos.splice(idx, 1);
+    guardarDB('gastos');
+    res.json({ ok: true });
+  } else res.status(404).json({ error: 'Gasto no encontrado' });
+});
+
+// ========================================================
+// CONTABILIDAD: NÓMINA DE EMPLEADOS (NUEVO)
+// ========================================================
+app.get('/api/admin/nomina', (req, res) => res.json(DB.nomina || { empleados: [], pagos: [] }));
+
+app.post('/api/admin/nomina/empleados', (req, res) => {
+  const { nombre, cargo, telefono, pagoTurno } = req.body;
+  if (!nombre) return res.status(400).json({ error: 'Nombre requerido' });
+
+  const nuevoEmp = {
+    id: Date.now(),
+    nombre: nombre.trim(),
+    cargo: cargo || 'Operativo',
+    telefono: telefono || '',
+    pagoTurno: parseFloat(pagoTurno) || 0
+  };
+
+  DB.nomina.empleados.push(nuevoEmp);
+  guardarDB('nomina');
+  res.json({ ok: true, empleado: nuevoEmp, empleados: DB.nomina.empleados });
+});
+
+app.delete('/api/admin/nomina/empleados/:id', (req, res) => {
+  const idx = DB.nomina.empleados.findIndex(e => e.id === parseInt(req.params.id));
+  if (idx !== -1) {
+    DB.nomina.empleados.splice(idx, 1);
+    guardarDB('nomina');
+    res.json({ ok: true });
+  } else res.status(404).json({ error: 'No encontrado' });
+});
+
+app.post('/api/admin/nomina/pagos', (req, res) => {
+  const { empleadoId, monto, concepto } = req.body;
+  const emp = DB.nomina.empleados.find(e => e.id === parseInt(empleadoId));
+  if (!emp || !monto) return res.status(400).json({ error: 'Datos incompletos' });
+
+  const nuevoPago = {
+    id: `nom-${Date.now()}`,
+    fecha: new Date().toISOString().split('T')[0],
+    hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    empleadoId: emp.id,
+    empleadoNombre: emp.nombre,
+    cargo: emp.cargo,
+    monto: parseFloat(monto) || 0,
+    concepto: concepto || 'Pago de turno'
+  };
+
+  DB.nomina.pagos.unshift(nuevoPago);
+  guardarDB('nomina');
+  res.json({ ok: true, pago: nuevoPago, pagos: DB.nomina.pagos });
+});
+
+app.delete('/api/admin/nomina/pagos/:id', (req, res) => {
+  const idx = DB.nomina.pagos.findIndex(p => p.id === req.params.id);
+  if (idx !== -1) {
+    DB.nomina.pagos.splice(idx, 1);
+    guardarDB('nomina');
+    res.json({ ok: true });
+  } else res.status(404).json({ error: 'Pago no encontrado' });
+});
+
+// ========================================================
+// SEGURIDAD EXTRA: BACKUP Y RESTORE COMPLETO (NUEVO)
+// ========================================================
+app.get('/api/admin/backup', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', `attachment; filename=Backup_Ary_La_Arepa_${new Date().toISOString().split('T')[0]}.json`);
+  res.json(DB);
+});
+
+app.post('/api/admin/restore', (req, res) => {
+  try {
+    const backupData = req.body;
+    if (!backupData || !backupData.info || !Array.isArray(backupData.productos)) {
+      return res.status(400).json({ error: 'Archivo de backup no válido' });
+    }
+
+    DB = { ...DB_DEFAULT, ...backupData };
+    guardarDB();
+
+    console.log("✓ Base de datos restaurada completamente desde backup.");
+    res.json({ ok: true, mensaje: 'Base de datos restaurada con éxito' });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al restaurar backup: ' + err.message });
+  }
+});
+
+// Endpoints estándar de gestión
 app.post('/api/admin/config-puntos', (req, res) => {
   const { puntosPorArepa, puntosMinimosParaCanje, valorDescuentoCanje, activo } = req.body;
   DB.configPuntos = {
@@ -467,21 +561,16 @@ app.post('/api/admin/config-puntos', (req, res) => {
 });
 
 app.post('/api/admin/clientes/:id/puntos', (req, res) => {
-  const id = parseInt(req.params.id);
-  const { puntos } = req.body;
-  const cliente = DB.clientesFrecuentes.find(c => c && c.id === id);
+  const cliente = DB.clientesFrecuentes.find(c => c && c.id === parseInt(req.params.id));
   if (cliente) {
-    cliente.puntos = Math.max(0, parseInt(puntos) || 0);
+    cliente.puntos = Math.max(0, parseInt(req.body.puntos) || 0);
     guardarDB('clientesFrecuentes');
     res.json({ ok: true, cliente });
-  } else {
-    res.status(404).json({ error: 'No encontrado' });
-  }
+  } else res.status(404).json({ error: 'No encontrado' });
 });
 
 app.post('/api/admin/verificar-pin', (req, res) => {
-  const { pin } = req.body;
-  if (pin === (DB.info.pinAdmin || "1234")) res.json({ ok: true });
+  if (req.body.pin === (DB.info.pinAdmin || "1234")) res.json({ ok: true });
   else res.status(401).json({ ok: false, error: 'PIN incorrecto' });
 });
 
@@ -504,10 +593,9 @@ app.post('/api/admin/inventario', (req, res) => {
 });
 
 app.post('/api/cupones/validar', (req, res) => {
-  const { codigo, subtotal } = req.body;
-  const cup = DB.cupones.find(c => c.codigo.toUpperCase() === (codigo || '').trim().toUpperCase() && c.activo);
+  const cup = DB.cupones.find(c => c.codigo.toUpperCase() === (req.body.codigo || '').trim().toUpperCase() && c.activo);
   if (!cup) return res.status(404).json({ error: 'Cupón no válido' });
-  let descuento = (cup.tipo === 'PORCENTAJE') ? Math.round((subtotal * cup.valor) / 100) : cup.valor;
+  let descuento = (cup.tipo === 'PORCENTAJE') ? Math.round((req.body.subtotal * cup.valor) / 100) : cup.valor;
   res.json({ ok: true, cupon: cup, descuento });
 });
 
@@ -556,8 +644,7 @@ app.delete('/api/usuarios/:id', (req, res) => {
 });
 
 app.post('/api/cajero/login', (req, res) => {
-  const { usuario, clave } = req.body;
-  const user = DB.usuarios.find(u => u.usuario.toLowerCase() === (usuario || '').trim().toLowerCase() && u.clave === (clave || '').trim());
+  const user = DB.usuarios.find(u => u.usuario.toLowerCase() === (req.body.usuario || '').trim().toLowerCase() && u.clave === (req.body.clave || '').trim());
   if (user) res.json({ ok: true, usuario: { id: user.id, nombre: user.nombre, rol: user.rol } });
   else res.status(401).json({ ok: false, error: 'Credenciales inválidas' });
 });
@@ -620,24 +707,6 @@ app.post('/api/caja/cerrar', (req, res) => {
   DB.historialTurnos.unshift(turnoCerrado);
   DB.turnoActual = null;
   guardarDB();
-
-  if (supabase) {
-    supabase.from('turnos_caja').insert([{
-      id: turnoCerrado.id,
-      cajero: turnoCerrado.cajero,
-      base_inicial: turnoCerrado.baseInicial,
-      hora_apertura: turnoCerrado.horaApertura,
-      hora_cierre: turnoCerrado.horaCierre,
-      fecha: turnoCerrado.fecha,
-      estado: turnoCerrado.estado,
-      ventas_efectivo: turnoCerrado.ventasEfectivo,
-      ventas_digital: turnoCerrado.ventasDigital,
-      ventas_rappi: turnoCerrado.ventasRappi,
-      ventas_pauta: turnoCerrado.ventasPauta,
-      total_caja_esperado: turnoCerrado.totalCajaEsperado
-    }]).catch(() => {});
-  }
-
   res.json({ ok: true, resumenCierre: turnoCerrado });
 });
 
@@ -653,7 +722,6 @@ io.on('connection', (socket) => {
     if (pedido) {
       pedido.estado = nuevoEstado;
       guardarDB();
-      if (supabase) supabase.from('pedidos').update({ estado: nuevoEstado }).eq('id', id).catch(() => {});
       io.emit('estado-actualizado', { id, nuevoEstado, pedido });
     }
   });
@@ -665,8 +733,7 @@ io.on('connection', (socket) => {
       pedido.motivoCancelacion = motivo || 'Rechazado por cocina';
       devolverInventarioCancelado(pedido.items || [], pedido.modalidad);
       guardarDB();
-      if (supabase) supabase.from('pedidos').update({ estado: 'CANCELADO' }).eq('id', id).catch(() => {});
-      io.emit('estado-actualizado', { id, nuevoEstado: 'CANCELADO', pedido });
+      io.emit('estado-actualizado', { id, nuevoEstado, pedido });
     }
   });
 });
