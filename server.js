@@ -9,6 +9,7 @@ const io = new Server(server);
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/img', express.static(path.join(__dirname, 'public', 'img')));
 
 const DB = {
   info: {
@@ -25,7 +26,7 @@ const DB = {
   clientesFrecuentes: [
     { id: 1, nombre: 'Juan Camilo', celular: '3110000000', direccion: 'Cra 9 # 12N-45', barrio: 'Ciudad Jardín', pedidos: 4 }
   ],
-  turnoActual: null, // { id, cajero, baseInicial, horaApertura, estado: 'ABIERTA' }
+  turnoActual: null,
   historialTurnos: [],
   barrios: [
     { nombre: 'Prados del Norte (Local)', costo: 2000 },
@@ -76,7 +77,7 @@ const DB = {
   contadorPedido: 0
 };
 
-// Endpoints
+// Rutas generales
 app.get('/api/data-inicial', (req, res) => res.json(DB));
 app.get('/api/pedidos', (req, res) => res.json(DB.pedidos));
 app.get('/api/pedido/:id', (req, res) => {
@@ -84,10 +85,44 @@ app.get('/api/pedido/:id', (req, res) => {
   p ? res.json(p) : res.status(404).json({ error: 'No encontrado' });
 });
 
-// Login de Cajero
+// GESTIÓN DE USUARIOS / CAJEROS
+app.get('/api/usuarios', (req, res) => res.json(DB.usuarios));
+
+app.post('/api/usuarios', (req, res) => {
+  const { usuario, clave, nombre } = req.body;
+  if (!usuario || !clave || !nombre) {
+    return res.status(400).json({ error: 'Todos los campos son obligatorios' });
+  }
+  const existe = DB.usuarios.find(u => u.usuario.toLowerCase() === usuario.trim().toLowerCase());
+  if (existe) {
+    return res.status(400).json({ error: 'Ese nombre de usuario ya existe' });
+  }
+  const nuevo = {
+    id: Date.now(),
+    usuario: usuario.trim().toLowerCase(),
+    clave: clave.trim(),
+    nombre: nombre.trim(),
+    rol: 'CAJERO'
+  };
+  DB.usuarios.push(nuevo);
+  res.json({ ok: true, usuario: nuevo });
+});
+
+app.delete('/api/usuarios/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const idx = DB.usuarios.findIndex(u => u.id === id);
+  if (idx === -1) return res.status(404).json({ error: 'Usuario no encontrado' });
+  if (DB.usuarios[idx].rol === 'ADMIN') {
+    return res.status(403).json({ error: 'No se puede eliminar el Administrador principal' });
+  }
+  DB.usuarios.splice(idx, 1);
+  res.json({ ok: true });
+});
+
+// Login Cajero POS
 app.post('/api/cajero/login', (req, res) => {
   const { usuario, clave } = req.body;
-  const user = DB.usuarios.find(u => u.usuario === usuario && u.clave === clave);
+  const user = DB.usuarios.find(u => u.usuario.toLowerCase() === usuario.trim().toLowerCase() && u.clave === clave.trim());
   if (user) {
     res.json({ ok: true, usuario: { id: user.id, nombre: user.nombre, rol: user.rol } });
   } else {
@@ -95,7 +130,7 @@ app.post('/api/cajero/login', (req, res) => {
   }
 });
 
-// Apertura de Turno de Caja
+// Turnos de Caja
 app.post('/api/caja/abrir', (req, res) => {
   const { cajeroNombre, baseInicial } = req.body;
   DB.turnoActual = {
@@ -104,19 +139,16 @@ app.post('/api/caja/abrir', (req, res) => {
     baseInicial: parseFloat(baseInicial) || 0,
     horaApertura: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     fecha: new Date().toLocaleDateString('es-CO'),
-    estado: 'ABIERTA',
-    pedidosAtendidos: []
+    estado: 'ABIERTA'
   };
   res.json({ ok: true, turno: DB.turnoActual });
 });
 
-// Estado de Caja y Resumen
 app.get('/api/caja/resumen', (req, res) => {
   if (!DB.turnoActual) return res.json({ turnoActivo: false });
-  
   const pedidosTurno = DB.pedidos.filter(p => p.turnoId === DB.turnoActual.id && p.estado !== 'CANCELADO');
   const ventasEfectivo = pedidosTurno.filter(p => p.metodoPago === 'Efectivo').reduce((a, b) => a + b.total, 0);
-  const ventasDigital = pedidosTurno.filter(p => p.metodoPago.includes('Nequi') || p.metodoPago.includes('Transferencia')).reduce((a, b) => a + b.total, 0);
+  const ventasDigital = pedidosTurno.filter(p => p.metodoPago.includes('Nequi') || p.metodoPago.includes('Bre-B') || p.metodoPago.includes('Transferencia')).reduce((a, b) => a + b.total, 0);
 
   res.json({
     turnoActivo: true,
@@ -129,13 +161,11 @@ app.get('/api/caja/resumen', (req, res) => {
   });
 });
 
-// Cierre de Turno
 app.post('/api/caja/cerrar', (req, res) => {
   if (!DB.turnoActual) return res.status(400).json({ error: 'No hay turno activo' });
-  
   const pedidosTurno = DB.pedidos.filter(p => p.turnoId === DB.turnoActual.id && p.estado !== 'CANCELADO');
   const ventasEfectivo = pedidosTurno.filter(p => p.metodoPago === 'Efectivo').reduce((a, b) => a + b.total, 0);
-  const ventasDigital = pedidosTurno.filter(p => p.metodoPago.includes('Nequi') || p.metodoPago.includes('Transferencia')).reduce((a, b) => a + b.total, 0);
+  const ventasDigital = pedidosTurno.filter(p => p.metodoPago.includes('Nequi') || p.metodoPago.includes('Bre-B') || p.metodoPago.includes('Transferencia')).reduce((a, b) => a + b.total, 0);
 
   const turnoCerrado = {
     ...DB.turnoActual,
@@ -152,20 +182,6 @@ app.post('/api/caja/cerrar', (req, res) => {
   res.json({ ok: true, resumenCierre: turnoCerrado });
 });
 
-// Cancelar Pedido
-app.post('/api/pedido/cancelar', (req, res) => {
-  const { pedidoId, motivo } = req.body;
-  const p = DB.pedidos.find(x => x.id === pedidoId);
-  if (p) {
-    p.estado = 'CANCELADO';
-    p.motivoCancelacion = motivo || 'Cancelado por caja';
-    io.emit('estado-actualizado', { id: p.id, nuevoEstado: 'CANCELADO', pedido: p });
-    res.json({ ok: true });
-  } else {
-    res.status(404).json({ error: 'Pedido no encontrado' });
-  }
-});
-
 // WebSockets
 io.on('connection', (socket) => {
   socket.on('nuevo-pedido', (pedidoData) => {
@@ -180,7 +196,6 @@ io.on('connection', (socket) => {
       ...pedidoData
     };
 
-    // Actualizar o guardar cliente frecuente
     if (pedidoData.cliente && pedidoData.cliente.celular) {
       const idx = DB.clientesFrecuentes.findIndex(c => c.celular === pedidoData.cliente.celular);
       if (idx >= 0) {
@@ -215,6 +230,7 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(` Ary la arepa en línea: http://localhost:${PORT}`);
-  console.log(` Punto de Venta (POS): http://localhost:${PORT}/pos.html`);
+  console.log(` Servidor activo: http://localhost:${PORT}`);
+  console.log(` Administrador:  http://localhost:${PORT}/admin.html`);
+  console.log(` Caja POS:       http://localhost:${PORT}/pos.html`);
 });
