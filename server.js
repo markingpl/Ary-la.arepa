@@ -1,5 +1,5 @@
-process.on('unhandledRejection', (reason) => console.error('⚠️ Rejection:', reason));
-process.on('uncaughtException', (err) => console.error('⚠️ Exception:', err.message));
+process.on('unhandledRejection', (reason) => console.error('⚠️ Rejection capturada:', reason));
+process.on('uncaughtException', (err) => console.error('⚠️ Exception capturada:', err.message));
 
 const express = require('express');
 const http = require('http');
@@ -11,7 +11,7 @@ let createClient = null;
 try {
   createClient = require('@supabase/supabase-js').createClient;
 } catch (e) {
-  console.log("ℹ️ Operando en modo local (sin librería Supabase).");
+  console.log("ℹ️ Operando en modo local (sin librería Supabase instalada).");
 }
 
 const app = express();
@@ -48,6 +48,7 @@ const DB_DEFAULT = {
     nit: "1061789456-1",
     horarioDomicilio: "4:00 PM a 9:30 PM",
     horarioMesa: "4:00 PM a 9:45 PM",
+    numeroMesas: 8,
     pinAdmin: "1234"
   },
   configPuntos: {
@@ -138,7 +139,6 @@ const DB_DEFAULT = {
   historialTurnos: []
 };
 
-// Carga con blindaje garantizado de arreglos
 let DB = DB_DEFAULT;
 if (fs.existsSync(DATA_FILE)) {
   try {
@@ -318,7 +318,6 @@ function registrarPedidoEnSistema(pedidoData) {
 
     descontarInventarioPorPedido(nuevoPedido.items || [], nuevoPedido.modalidad);
 
-    // Guardar puntos cliente frecuente
     if (pedidoData.cliente && pedidoData.cliente.celular && !String(pedidoData.metodoPago).includes('Pauta')) {
       const idx = DB.clientesFrecuentes.findIndex(c => c && c.celular === pedidoData.cliente.celular);
       const cantArepas = (nuevoPedido.items || []).filter(i => i && (!i.desc || !i.desc.includes('Bebida'))).length || 1;
@@ -372,7 +371,6 @@ function registrarPedidoEnSistema(pedidoData) {
       }]).catch(() => {});
     }
 
-    // EMISIÓN EN TIEMPO REAL A COCINA
     io.emit('pedido-creado', nuevoPedido);
     return nuevoPedido;
   } catch (err) {
@@ -390,16 +388,14 @@ function registrarPedidoEnSistema(pedidoData) {
   }
 }
 
-// ENDPOINTS API GENERALES
+// ENDPOINTS API
 app.get('/api/data-inicial', (req, res) => res.json(DB));
 app.get('/api/pedidos', (req, res) => res.json(DB.pedidos));
 
-// RUTA CLAVE: CONSULTAR PEDIDO INDIVIDUAL POR ID (Evita "Pedido no encontrado")
 app.get('/api/pedido/:id', (req, res) => {
   const p = DB.pedidos.find(x => x.id === req.params.id);
   if (p) return res.json(p);
 
-  // Respaldo en Supabase si no está en memoria
   if (supabase) {
     supabase.from('pedidos').select('*').eq('id', req.params.id).single()
       .then(({ data }) => {
@@ -430,15 +426,18 @@ app.get('/api/pedido/:id', (req, res) => {
   }
 });
 
-// RUTA POST DE PEDIDOS CON RESPUESTA INMEDIATA
+// RUTA POST DE PEDIDOS CON EXCEPCIÓN PARA CAJA POS
 app.post('/api/pedidos', (req, res) => {
   try {
     const pedidoData = req.body;
     const { abiertoDomicilio, abiertoMesa } = verificarEstadoServicios();
     const esDomicilio = (pedidoData.modalidad === 'Domicilio');
     const esLocalOMesa = (pedidoData.modalidad && (pedidoData.modalidad.includes('Local') || pedidoData.modalidad.includes('Mesa') || pedidoData.modalidad.includes('Recoger')));
+    
+    // REGLA CLAVE: La caja POS física NUNCA se bloquea por horario
+    const esPOS = Boolean(pedidoData.cajero || pedidoData.origen === 'POS');
 
-    if (!pedidoData.modoPrueba) {
+    if (!esPOS && !pedidoData.modoPrueba) {
       if (esDomicilio && !abiertoDomicilio) {
         return res.status(400).json({ ok: false, error: '⛔ El servicio a domicilio opera de 4:00 PM a 9:30 PM.', fueraDeHorario: true });
       }
