@@ -1,10 +1,10 @@
-```javascript
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const fs = require('fs');
 
+// Carga segura de Supabase (no tumba el servidor si la librería no está instalada)
 let createClient = null;
 try {
   createClient = require('@supabase/supabase-js').createClient;
@@ -16,11 +16,13 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// Límite ampliado para permitir subida de fotos en Base64
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/img', express.static(path.join(__dirname, 'public', 'img')));
 
+// CONEXIÓN A SUPABASE (POSTGRESQL EN LA NUBE)
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://rwoioajzmkjtaveosgyh.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_KEY || '';
 
@@ -30,6 +32,7 @@ const supabase = (createClient && SUPABASE_URL && SUPABASE_KEY && !SUPABASE_KEY.
 
 const DATA_FILE = path.join(__dirname, 'data.json');
 
+// BASE DE DATOS INICIAL DE ARY LA AREPA
 const DB_DEFAULT = {
   info: {
     nombre: "Ary la arepa",
@@ -42,11 +45,10 @@ const DB_DEFAULT = {
     horarioMesa: "4:00 PM a 9:45 PM",
     pinAdmin: "1234"
   },
-  // REGLAS CONFIGURABLES DEL PROGRAMA VIP (NUEVO)
   configPuntos: {
-    puntosPorArepa: 1,             // Cuántos puntos da cada arepa
-    puntosMinimosParaCanje: 5,     // Desde cuántos puntos es VIP y puede canjear
-    valorDescuentoCanje: 5000,     // Descuento en pesos al canjear ($ COP)
+    puntosPorArepa: 1,
+    puntosMinimosParaCanje: 5,
+    valorDescuentoCanje: 5000,
     activo: true
   },
   usuarios: [
@@ -131,7 +133,7 @@ const DB_DEFAULT = {
   historialTurnos: []
 };
 
-// Carga con fusión segura (auto-repara data.json viejo)
+// Carga con fusión segura (auto-repara data.json viejo si le faltan campos)
 let DB = DB_DEFAULT;
 if (fs.existsSync(DATA_FILE)) {
   try {
@@ -183,7 +185,7 @@ async function sincronizarConSupabase() {
       for (const k of claves) {
         if (DB[k]) await supabase.from('configuracion').upsert({ clave: k, datos: DB[k] });
       }
-      console.log("✓ Migración a Supabase completada.");
+      console.log("✓ Migración inicial a Supabase completada.");
     }
 
     const { data: pedidosDb } = await supabase.from('pedidos').select('*').order('timestamp', { ascending: false }).limit(200);
@@ -209,7 +211,7 @@ async function sincronizarConSupabase() {
       DB.contadorPedido = DB.pedidos.length;
     }
   } catch (err) {
-    console.log("⚠️ Operando con data.json local.");
+    console.log("⚠️ Operando con base de datos local (data.json).");
   }
 }
 
@@ -240,7 +242,7 @@ app.get('/api/estado-horarios', (req, res) => {
   });
 });
 
-// INVENTARIO
+// GESTIÓN DE INVENTARIO
 function descontarInventarioPorPedido(items, modalidad) {
   if (!DB.recetas || !DB.inventario) return;
 
@@ -314,7 +316,6 @@ function registrarPedidoEnSistema(pedidoData) {
 
   descontarInventarioPorPedido(nuevoPedido.items || [], nuevoPedido.modalidad);
 
-  // Lógica de Fidelización VIP
   if (pedidoData.cliente && pedidoData.cliente.celular && !String(pedidoData.metodoPago).includes('Pauta')) {
     const idx = DB.clientesFrecuentes.findIndex(c => c.celular === pedidoData.cliente.celular);
     const cantArepas = (nuevoPedido.items || []).filter(i => !i.desc || !i.desc.includes('Bebida')).length || 1;
@@ -324,11 +325,9 @@ function registrarPedidoEnSistema(pedidoData) {
     if (idx >= 0) {
       const cli = DB.clientesFrecuentes[idx];
       cli.pedidos += 1;
-      // Si canjeó puntos, se le descuentan los puntos mínimos del canje
       if (pedidoData.canjeoPuntos && DB.configPuntos) {
         cli.puntos = Math.max(0, (cli.puntos || 0) - (DB.configPuntos.puntosMinimosParaCanje || 5));
       }
-      // Sumar los nuevos puntos ganados en este pedido
       cli.puntos = (cli.puntos || 0) + puntosGanados;
       cli.direccion = pedidoData.cliente.direccion;
       cli.barrio = pedidoData.cliente.barrio;
@@ -380,7 +379,7 @@ function registrarPedidoEnSistema(pedidoData) {
 app.get('/api/data-inicial', (req, res) => res.json(DB));
 app.get('/api/pedidos', (req, res) => res.json(DB.pedidos));
 
-// CONFIGURACIÓN DINÁMICA DE PUNTOS VIP (NUEVO)
+// CONFIGURACIÓN DINÁMICA DE PUNTOS VIP
 app.post('/api/admin/config-puntos', (req, res) => {
   const { puntosPorArepa, puntosMinimosParaCanje, valorDescuentoCanje, activo } = req.body;
   DB.configPuntos = {
@@ -393,7 +392,7 @@ app.post('/api/admin/config-puntos', (req, res) => {
   res.json({ ok: true, configPuntos: DB.configPuntos });
 });
 
-// MODIFICAR PUNTOS MANUALMENTE A UN CLIENTE (NUEVO)
+// MODIFICAR PUNTOS MANUALMENTE A UN CLIENTE
 app.post('/api/admin/clientes/:id/puntos', (req, res) => {
   const id = parseInt(req.params.id);
   const { puntos } = req.body;
@@ -623,6 +622,10 @@ function procesarMensajeAgente(celular, mensajeTexto) {
     return respuestaMenu;
   }
 
+  if (texto.includes('vegetariano') || texto.includes('vegetariana') || texto.includes('sin carne')) {
+    return `🌱 *¡Sí, tenemos opciones vegetarianas!*\nNuestra base es de *arepa agridulce con abundante queso fundido* 🧀.\nPuedes armarla con: Guacamole fresco ($2.000), Pico de gallo ($2.000), Totopos ($2.000), Piña calada ($2.000), Jalapeños ($2.000) o Huevos de codorniz ($1.000). También la dulce de *Quipitos* ($16.500) es sin carne.`;
+  }
+
   if (texto.includes('cancelar') || texto.includes('cancelo') || texto.includes('anular')) {
     const ultimoPedido = DB.pedidos.find(p => p.cliente && p.cliente.celular === celular && p.estado !== 'CANCELADO' && p.estado !== 'ENTREGADO');
     if (ultimoPedido) {
@@ -731,4 +734,3 @@ server.listen(PORT, async () => {
   console.log(` Servidor activo: http://localhost:${PORT}`);
   await sincronizarConSupabase();
 });
-```
