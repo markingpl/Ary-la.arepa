@@ -101,6 +101,14 @@ function guardarDB() {
   }
 }
 
+// Función con zona horaria de Colombia (Popayán)
+function verificarHorarioAbiertoColombia() {
+  const ahoraColombia = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Bogota" }));
+  const hora = ahoraColombia.getHours(); // 0 a 23
+  // Abierto de 4:00 PM (16) a 10:00 PM (22)
+  return hora >= 16 && hora < 22;
+}
+
 app.get('/api/data-inicial', (req, res) => res.json(DB));
 app.get('/api/pedidos', (req, res) => res.json(DB.pedidos));
 
@@ -260,12 +268,13 @@ function registrarPedidoEnSistema(pedidoData) {
 }
 
 // ========================================================
-// CEREBRO DEL AGENTE IA DE WHATSAPP (CON FOTOS, ASESOR Y FALLBACK HUMANO)
+// CEREBRO DEL AGENTE IA (CON CONTROL DE HORARIO 4PM - 10PM)
 // ========================================================
 const sesionesBot = {};
 
 function procesarMensajeAgente(celular, mensajeTexto) {
   const texto = mensajeTexto.trim().toLowerCase();
+  const abierto = verificarHorarioAbiertoColombia();
 
   if (!sesionesBot[celular]) {
     sesionesBot[celular] = {
@@ -278,20 +287,49 @@ function procesarMensajeAgente(celular, mensajeTexto) {
 
   const sesion = sesionesBot[celular];
 
-  // 1. SOLICITAR ATENCIÓN CON UNA PERSONA (ASESOR HUMANO)
-  if (texto.includes('asesor') || texto.includes('humano') || texto.includes('persona') || texto.includes('alguien') || texto.includes('que me atienda alguien') || texto.includes('atencion al cliente') || texto.includes('atención al cliente')) {
-    return `🙋‍♂️ ¡Con gusto! Te estoy transfiriendo con nuestro equipo de atención humana en Popayán.\n\nEn un momento un asesor tomará este chat para colaborarte personalmente. Si es urgente, también puedes llamarnos directamente a nuestra línea telefónica:\n📞 *321 5035691*`;
+  // 1. SOLICITAR ASESOR HUMANO
+  if (texto.includes('asesor') || texto.includes('humano') || texto.includes('persona') || texto.includes('alguien') || texto.includes('atencion') || texto.includes('atención')) {
+    return `🙋‍♂️ ¡Con gusto! Te estoy transfiriendo con nuestro equipo de atención humana en Popayán.\n\nEn un momento un asesor tomará este chat para colaborarte personalmente. Si es urgente, también puedes llamarnos directamente:\n📞 *321 5035691*`;
   }
 
-  // 2. FOTOS DEL MENÚ O REDES SOCIALES
-  if (texto.includes('foto') || texto.includes('fotos') || texto.includes('imagen') || texto.includes('imagenes') || texto.includes('imágenes') || texto.includes('como se ven') || texto.includes('cómo se ven') || texto.includes('instagram') || texto.includes('verlas')) {
-    return `📸 *¡Claro que sí!*\n\nPuedes ver las fotos reales en alta definición de todas nuestras arepas en nuestro menú interactivo:\n👉 *https://ary-la-arepa.onrender.com*\n\nAllí puedes ver la *Campesina*, *Doriloca*, *Ranchera*, *Tocineta*, *Mexicana*, *Hawaiana* y la dulce de *Quipitos* bañadas en queso fundido.\n\n¿Cuál de ellas se te antoja para pedirte una? 😊`;
+  // 2. FOTOS DEL MENÚ O REDES
+  if (texto.includes('foto') || texto.includes('fotos') || texto.includes('imagen') || texto.includes('imagenes') || texto.includes('imágenes') || texto.includes('como se ven') || texto.includes('cómo se ven') || texto.includes('instagram')) {
+    return `📸 *¡Claro que sí!*\n\nPuedes ver las fotos reales en alta definición de todas nuestras arepas en nuestro menú interactivo:\n👉 *https://ary-la-arepa.onrender.com*\n\nAllí puedes ver la *Campesina*, *Doriloca*, *Ranchera*, *Tocineta*, *Mexicana*, *Hawaiana* y la dulce de *Quipitos* bañadas en queso fundido.\n\n¿Cuál de ellas te llama la atención? 😊`;
   }
 
-  // 3. CANCELACIÓN DE PEDIDOS
-  if (texto.includes('cancelar') || texto.includes('cancelo') || texto.includes('anular') || texto.includes('ya no quiero') || texto.includes('cancelacion') || texto.includes('cancelación')) {
-    const ultimoPedido = DB.pedidos.find(p => p.cliente && p.cliente.celular === celular && p.estado !== 'CANCELADO' && p.estado !== 'ENTREGADO');
+  // 3. CONSULTA DEL MENÚ (SIEMPRE DISPONIBLE AUNQUE ESTÉ CERRADO)
+  if (texto.includes('menu') || texto.includes('menú') || texto.includes('carta') || texto.includes('precios') || texto.includes('que hay') || texto.includes('qué hay')) {
+    let respuestaMenu = `🧀 *MENÚ OFICIAL ARY LA AREPA*\n_Base de arepa agridulce con abundante queso fundido:_\n\n`;
+    DB.productos.forEach((p, idx) => {
+      respuestaMenu += `*${idx + 1}. ${p.nombre}* - $${p.precio.toLocaleString()}\n_${p.desc}_\n\n`;
+    });
+    respuestaMenu += `🥤 *Bebidas:* Coca-Cola Cero ($3.000), Manzana ($3.000), Colombiana ($3.000), Pepsi ($3.000), Pony Mini ($3.000), Agua ($2.000).\n\n`;
     
+    if (!abierto) {
+      respuestaMenu += `⚠️ *Nota:* En este momento la cocina está cerrada. Abrimos a las *4:00 PM*. ¡Puedes ir escogiendo y a esa hora te tomamos la orden!`;
+    } else {
+      respuestaMenu += `👉 *Para pedir, escríbeme el nombre de la arepa* (ejemplo: _"Quiero una Campesina y una Coca-Cola"_).`;
+    }
+    return respuestaMenu;
+  }
+
+  // 4. OPCIONES VEGETARIANAS
+  if (texto.includes('vegetariano') || texto.includes('vegetariana') || texto.includes('vegano') || texto.includes('vegana') || texto.includes('sin carne') || texto.includes('vegetales')) {
+    return `🌱 *¡Sí, tenemos opciones vegetarianas deliciosas!*\n\nNuestra base es de *arepa agridulce rellena con abundante queso y bañada en queso fundido artesanal* 🧀.\n\nPuedes pedir la *Arepa Sola con Queso ($7.000)* y armarla con nuestros extras vegetarianos:\n• 🥑 Guacamole fresco ($2.000)\n• 🍅 Pico de gallo ($2.000)\n• 🌽 Totopos Doritos ($2.000)\n• 🍍 Piña calada artesanal ($2.000)\n• 🌶️ Jalapeños ($2.000)\n• 🥚 Huevos de codorniz x2 ($1.000)\n• 🧀 Queso extra fundido ($5.000)\n\nAdemás, nuestra arepa dulce *Quipitos ($16.500)* tampoco contiene carne.`;
+  }
+
+  // 5. HORARIOS Y UBICACIÓN
+  if (texto.includes('horario') || texto.includes('abierto') || texto.includes('hora') || texto.includes('cierran')) {
+    return `🕒 Nuestro horario de atención en Popayán es de *4:00 PM a 10:00 PM*, todos los días.\n\n${abierto ? '🟢 ¡Actualmente estamos ABIERTOS y cocinando!' : '🔴 En este momento nos encontramos descansando, abrimos a las 4:00 PM.'}`;
+  }
+
+  if (texto.includes('donde estan') || texto.includes('dónde están') || texto.includes('ubicacion') || texto.includes('ubicación') || texto.includes('direccion') || texto.includes('dirección')) {
+    return `📍 Estamos ubicados en Popayán en la *Cra 7 #10N-22 B, Prados del Norte (en WokHouse)*. ¡También tenemos servicio a domicilio en toda la ciudad!`;
+  }
+
+  // 6. CANCELACIONES
+  if (texto.includes('cancelar') || texto.includes('cancelo') || texto.includes('anular') || texto.includes('ya no quiero')) {
+    const ultimoPedido = DB.pedidos.find(p => p.cliente && p.cliente.celular === celular && p.estado !== 'CANCELADO' && p.estado !== 'ENTREGADO');
     if (ultimoPedido) {
       if (ultimoPedido.estado === 'PENDIENTE') {
         ultimoPedido.estado = 'CANCELADO';
@@ -299,62 +337,35 @@ function procesarMensajeAgente(celular, mensajeTexto) {
         guardarDB();
         io.emit('estado-actualizado', { id: ultimoPedido.id, nuevoEstado: 'CANCELADO', pedido: ultimoPedido });
         delete sesionesBot[celular];
-        return `❌ *¡Tu pedido ${ultimoPedido.numero} ha sido cancelado con éxito!*\n\nYa notificamos a la cocina para que no preparen la comanda. Si ya habías transferido por Nequi/Bre-B, por favor escríbenos directamente para gestionar tu reembolso de inmediato.`;
-      } else if (ultimoPedido.estado === 'PREPARANDO') {
-        return `⚠️ *Atención:* Tu pedido *${ultimoPedido.numero}* ya está en la plancha preparándose 🔥.\n\nPara verificar si aún es posible cancelarlo o cambiarlo, por favor llama de inmediato a nuestra línea directa: *321 5035691*.`;
-      } else if (ultimoPedido.estado === 'LISTO') {
-        return `🛵 *No es posible cancelar:* Tu pedido *${ultimoPedido.numero}* ya está empacado y listo para salir con el domiciliario. Comunícate urgente al *321 5035691*.`;
+        return `❌ *¡Tu pedido ${ultimoPedido.numero} ha sido cancelado con éxito!*\n\nYa notificamos a la cocina para que no lo preparen.`;
+      } else {
+        return `⚠️ Tu pedido *${ultimoPedido.numero}* ya está en preparación o despacho. Comunícate urgente al *321 5035691*.`;
       }
     } else {
-      return `ℹ️ No tienes ningún pedido activo en este momento para cancelar.\n\nSi necesitas ayuda con un pedido anterior, puedes comunicarte con nuestro equipo al *321 5035691*.`;
+      return `ℹ️ No tienes ningún pedido activo en este momento para cancelar.`;
     }
   }
 
-  // 4. OPCIONES VEGETARIANAS
-  if (texto.includes('vegetariano') || texto.includes('vegetariana') || texto.includes('vegano') || texto.includes('vegana') || texto.includes('sin carne') || texto.includes('vegetales')) {
-    return `🌱 *¡Sí, tenemos opciones vegetarianas deliciosas!*\n\nNuestra base es de *arepa agridulce rellena con abundante queso y bañada en queso fundido artesanal* 🧀.\n\nPuedes pedir la *Arepa Sola con Queso ($7.000)* y armarla con nuestros extras 100% vegetarianos:\n• 🥑 Guacamole fresco ($2.000)\n• 🍅 Pico de gallo ($2.000)\n• 🌽 Totopos / Doritos ($2.000)\n• 🍍 Piña calada artesanal ($2.000)\n• 🌶️ Jalapeños ($2.000)\n• 🥚 Huevos de codorniz x2 ($1.000)\n• 🧀 Queso extra fundido ($5.000)\n\nAdemás, nuestra arepa dulce *Quipitos ($16.500)* tampoco contiene carne.\n\n👉 ¿Deseas armar una? Dime qué ingredientes te gustaría ponerle.`;
-  }
-
-  // 5. CONSULTA DE ESTADO DE PEDIDO
-  if (texto.includes('estado') || texto.includes('mi pedido') || texto.includes('como va') || texto.includes('cómo va') || texto.includes('demora') || texto.includes('cuanto falta')) {
+  // 7. CONSULTA DE ESTADO
+  if (texto.includes('estado') || texto.includes('mi pedido') || texto.includes('como va') || texto.includes('cómo va')) {
     const ultimoPedido = DB.pedidos.find(p => p.cliente && p.cliente.celular === celular && p.estado !== 'CANCELADO');
     if (ultimoPedido) {
-      let detalleEstado = '';
-      if (ultimoPedido.estado === 'PENDIENTE') detalleEstado = '🕒 Tu pedido fue recibido y está en cola de cocina.';
-      else if (ultimoPedido.estado === 'PREPARANDO') detalleEstado = '🔥 ¡Tus arepas ya se están asando y bañando en queso!';
-      else if (ultimoPedido.estado === 'LISTO') detalleEstado = '🛵 ¡Tu comanda está lista y empacada para entrega!';
-      else detalleEstado = '✅ Tu pedido ya fue entregado. ¡Esperamos que lo disfrutes!';
-
-      return `👋 Hola, tu pedido *${ultimoPedido.numero}* está en estado:\n\n*${ultimoPedido.estado}*\n${detalleEstado}\n\nTotal: $${ultimoPedido.total.toLocaleString()}`;
+      return `👋 Tu pedido *${ultimoPedido.numero}* está en estado: *${ultimoPedido.estado}* (Total: $${ultimoPedido.total.toLocaleString()}).`;
     } else {
-      return `No encontré ningún pedido activo con el número ${celular}. Si deseas pedir, dime: *"Quiero ver el menú"* 😊.`;
+      return `No encontré ningún pedido activo con este número.`;
     }
   }
 
-  // 6. PREGUNTAS FRECUENTES (Horarios, Dirección, Tiempos de entrega)
-  if (texto.includes('horario') || texto.includes('abierto') || texto.includes('hora') || texto.includes('cierran')) {
-    return `🕒 Nuestro horario de atención en Popayán es de *4:00 PM a 10:00 PM*, todos los días. ¡Estamos listos para tomar tu orden!`;
+  // ========================================================
+  // CONTROL DE ATENCIÓN: SI LA COCINA ESTÁ CERRADA
+  // ========================================================
+  if (!abierto) {
+    return `🌙 *¡Hola! En este momento no tenemos servicio de cocina.*\n\n🕒 Nuestro horario de atención y domicilios en Popayán es de *4:00 PM a 10:00 PM*, todos los días.\n\n📖 *¡Pero sí puedes consultar todo nuestro menú y fotos!*\n• Escribe *"Menú"* para ver la carta completa y precios.\n• Escribe *"Fotos"* para ver cómo lucen nuestras arepas.\n• O visita nuestra web: *https://ary-la-arepa.onrender.com*\n\n¡Te esperamos hoy a partir de las 4:00 PM para recibir tu pedido calientito! 🧀`;
   }
 
-  if (texto.includes('donde estan') || texto.includes('dónde están') || texto.includes('ubicacion') || texto.includes('ubicación') || texto.includes('direccion') || texto.includes('dirección')) {
-    return `📍 Estamos ubicados en Popayán en la *Cra 7 #10N-22 B, Prados del Norte (en WokHouse)*. ¡También tenemos servicio a domicilio en toda la ciudad!`;
-  }
-
-  if (texto.includes('tiempo') || texto.includes('cuanto demora') || texto.includes('cuánto tarda') || texto.includes('tardanza')) {
-    return `🛵 El tiempo promedio de entrega en Popayán es de *30 a 45 minutos*, dependiendo de la lluvia y la distancia a tu barrio. ¡Todo sale recién asado y calientito!`;
-  }
-
-  if (texto.includes('menu') || texto.includes('menú') || texto.includes('carta') || texto.includes('precios') || texto.includes('que hay')) {
-    let respuestaMenu = `🧀 *MENÚ OFICIAL ARY LA AREPA*\n_Base de arepa agridulce con abundante queso fundido:_\n\n`;
-    DB.productos.forEach((p, idx) => {
-      respuestaMenu += `*${idx + 1}. ${p.nombre}* - $${p.precio.toLocaleString()}\n_${p.desc}_\n\n`;
-    });
-    respuestaMenu += `🥤 *Bebidas:* Coca-Cola Cero ($3.000), Manzana ($3.000), Colombiana ($3.000), Pepsi ($3.000), Pony Mini ($3.000), Agua ($2.000).\n\n`;
-    respuestaMenu += `👉 *Para pedir, escríbeme el nombre de la arepa* (ejemplo: _"Quiero una Campesina y una Coca-Cola"_).`;
-    return respuestaMenu;
-  }
-
-  // 7. FLUJO DE TOMA DE PEDIDOS
+  // ========================================================
+  // SI ESTÁ ABIERTO: FLUJO DE TOMA DE PEDIDOS ACTIVO
+  // ========================================================
   let productoEncontrado = null;
   DB.productos.forEach(p => {
     if (texto.includes(p.nombre.toLowerCase())) productoEncontrado = p;
@@ -457,16 +468,16 @@ Para enviártelo a domicilio en Popayán, por favor indícame en un solo mensaje
       respuestaFinal += `💵 El domiciliario cobrará en efectivo al llegar a tu puerta.`;
     }
 
-    respuestaFinal += `\n\n👨‍🍳 Tu comanda ya empezó a sonar en la cocina de Prados del Norte. Si necesitas cancelar, solo escribe *"Cancelar pedido"*. ¡Muchas gracias!`;
+    respuestaFinal += `\n\n👨‍🍳 Tu comanda ya empezó a sonar en la cocina de Prados del Norte. ¡Muchas gracias!`;
     return respuestaFinal;
   }
 
-  // 8. SALUDOS EXPLÍCITOS
-  if (['hola', 'buenas', 'buenos dias', 'buenas tardes', 'buenas noches', 'hey', 'inicio'].includes(texto)) {
-    return `👋 ¡Hola! Bienvenido a *Ary la arepa* Popayán 🧀 (De Popayán para el mundo).\n\nSoy tu asistente virtual. ¿En qué te puedo colaborar?\n\n1️⃣ Escribe *"Menú"* para ver nuestras arepas y precios.\n2️⃣ Escribe *"Fotos"* para ver fotos de los platos.\n3️⃣ Escribe *"Vegetariano"* para opciones sin carne.\n4️⃣ Escribe *"Asesor"* para comunicarte con una persona real.\n5️⃣ O simplemente dime qué se te antoja ordenar.`;
+  // Saludo cuando está abierto
+  if (['hola', 'buenas', 'buenos dias', 'buenas tardes', 'buenas noches', 'hey'].includes(texto)) {
+    return `👋 ¡Hola! Bienvenido a *Ary la arepa* Popayán 🧀 (De Popayán para el mundo).\n\nSoy tu asistente virtual. ¿En qué te puedo colaborar?\n\n1️⃣ Escribe *"Menú"* para ver nuestras arepas y precios.\n2️⃣ Escribe *"Fotos"* para ver fotos de los platos.\n3️⃣ Escribe *"Vegetariano"* para opciones sin carne.\n4️⃣ Escribe *"Asesor"* para comunicarte con una persona real.\n5️⃣ O simplemente dime qué deseas ordenar (ej: _"Quiero una Campesina"_).`;
   }
 
-  // 9. FALLBACK INTELIGENTE (CUANDO LA PREGUNTA NO SE ENTIENDE)
+  // Fallback educado cuando no comprende
   return `🤖 *Disculpa, no comprendí bien tu mensaje o no tengo esa información a la mano.*\n\n👉 Si deseas que te atienda un *asesor humano* de nuestro equipo en Prados del Norte, escribe *"Asesor"* o llámanos directamente al 📞 *321 5035691*.\n\n👉 Si deseas hacer un pedido, escribe *"Menú"* o dime el nombre de la arepa que te gustaría comer.`;
 }
 
