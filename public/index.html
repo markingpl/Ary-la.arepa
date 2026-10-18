@@ -15,7 +15,7 @@
 </head>
 <body class="bg-neutral-900 text-white min-h-screen pb-28">
 
-  <!-- Modal Modalidad Inicial -->
+  <!-- Modal Modalidad Inicial (CON BLOQUEO EN LAS 3 OPCIONES) -->
   <div id="modal-modalidad" class="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4">
     <div class="bg-stone-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl relative overflow-hidden">
       
@@ -26,14 +26,14 @@
       <h1 class="text-3xl font-black uppercase text-yellow-400 tracking-wider">ARY LA AREPA</h1>
       <p class="font-script text-xl text-stone-200 mt-0.5">De Popayán para el mundo.</p>
       
-      <!-- Aviso Horarios Oficiales -->
+      <!-- Horarios Oficiales -->
       <div class="my-3 py-2 px-3 rounded-2xl bg-neutral-950 border border-stone-800 text-[11px] space-y-1 text-left">
         <div class="flex justify-between items-center">
           <span class="text-stone-400">🛵 Domicilios:</span>
           <span id="badge-horario-domi" class="font-bold text-yellow-400">4:00 PM a 9:30 PM</span>
         </div>
         <div class="flex justify-between items-center">
-          <span class="text-stone-400">🍽️ En Mesa / Local:</span>
+          <span class="text-stone-400">🍽️ Mesa & Para Llevar:</span>
           <span id="badge-horario-mesa" class="font-bold text-green-400">4:00 PM a 9:45 PM</span>
         </div>
       </div>
@@ -41,38 +41,40 @@
       <p class="text-xs font-bold text-yellow-400 mb-3 text-left uppercase tracking-wider">¿Cómo deseas ordenar?</p>
       
       <div class="space-y-2.5">
-        <!-- Botón Domicilio (Hasta las 9:30 PM) -->
+        <!-- 1. Domicilio (Hasta las 9:30 PM) -->
         <button onclick="seleccionarModalidad('Domicilio')" id="btn-modalidad-domi" class="w-full flex items-center justify-between bg-neutral-800 hover:bg-neutral-700 p-3.5 rounded-2xl border border-stone-700 text-left transition">
           <div class="flex items-center gap-3">
             <i class="fa-solid fa-motorcycle text-2xl text-yellow-400"></i>
             <div>
               <div class="font-black text-sm">Domicilio en Popayán</div>
-              <div class="text-[10px] text-stone-400">Hasta las 9:30 PM</div>
+              <div class="text-[10px] text-stone-400">Cierre 9:30 PM</div>
             </div>
           </div>
           <span id="tag-domi-estado" class="text-[10px] px-2 py-0.5 rounded-full font-black"></span>
         </button>
 
-        <!-- Botón Mesa (Hasta las 9:45 PM) -->
+        <!-- 2. Mesa (Hasta las 9:45 PM) -->
         <button onclick="seleccionarModalidad('Local')" id="btn-modalidad-mesa" class="w-full flex items-center justify-between bg-neutral-800 hover:bg-neutral-700 p-3.5 rounded-2xl border border-stone-700 text-left transition">
           <div class="flex items-center gap-3">
             <i class="fa-solid fa-utensils text-2xl text-green-400"></i>
             <div>
               <div class="font-black text-sm">Comer en mesa (Local)</div>
-              <div class="text-[10px] text-stone-400">Hasta las 9:45 PM</div>
+              <div class="text-[10px] text-stone-400">Cierre 9:45 PM</div>
             </div>
           </div>
           <span id="tag-mesa-estado" class="text-[10px] px-2 py-0.5 rounded-full font-black"></span>
         </button>
 
-        <button onclick="seleccionarModalidad('Recoger')" class="w-full flex items-center justify-between bg-neutral-800 hover:bg-neutral-700 p-3 rounded-2xl border border-stone-700 text-left transition">
+        <!-- 3. Recoger en Local (BLOQUEO HASTA LAS 9:45 PM) -->
+        <button onclick="seleccionarModalidad('Recoger')" id="btn-modalidad-recoger" class="w-full flex items-center justify-between bg-neutral-800 hover:bg-neutral-700 p-3 rounded-2xl border border-stone-700 text-left transition">
           <div class="flex items-center gap-3">
             <i class="fa-solid fa-bag-shopping text-xl text-stone-300"></i>
             <div>
-              <div class="font-bold text-xs">Recoger en local</div>
-              <div class="text-[10px] text-stone-400">Prados del Norte</div>
+              <div class="font-bold text-xs">Recoger en el local</div>
+              <div class="text-[10px] text-stone-400">Prados del Norte (hasta 9:45 PM)</div>
             </div>
           </div>
+          <span id="tag-recoger-estado" class="text-[10px] px-2 py-0.5 rounded-full font-black"></span>
         </button>
       </div>
     </div>
@@ -129,7 +131,6 @@
   <!-- Modal Personalización Arepa & Extras -->
   <div id="modal-producto" class="fixed inset-0 z-50 bg-black/90 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="bg-stone-900 border border-yellow-500/30 w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[90vh] overflow-y-auto p-5 space-y-4">
-      
       <div class="flex items-center gap-4 border-b border-stone-800 pb-4">
         <img id="modal-img" class="w-20 h-20 rounded-full object-cover border-2 border-yellow-400 shadow-md">
         <div class="flex-1">
@@ -339,35 +340,51 @@
       }
     };
 
-    // CONTROL EXACTO DE HORARIOS COLOMBIA (4:00 PM A 9:30 PM DOMI / 9:45 PM MESA)
+    // VERIFICACIÓN Y BLOQUEO EN VIVO
     async function verificarHorariosEnVivo() {
       try {
         const r = await fetch('/api/estado-horarios');
         estadoHorarios = await r.json();
 
-        // 1. Badge Domicilio
+        // 1. Domicilio (4:00 PM a 9:30 PM)
         const tagDomi = document.getElementById('tag-domi-estado');
         const btnDomi = document.getElementById('btn-modalidad-domi');
         if (estadoHorarios.domicilio) {
           tagDomi.className = 'text-[10px] px-2 py-0.5 rounded-full font-black bg-green-500/20 text-green-400 border border-green-500/50';
           tagDomi.innerText = '● Abierto';
+          btnDomi.classList.remove('opacity-40');
         } else {
           tagDomi.className = 'text-[10px] px-2 py-0.5 rounded-full font-black bg-red-950 text-red-400 border border-red-800';
           tagDomi.innerText = 'Cerrado';
-          btnDomi.classList.add('opacity-50');
+          btnDomi.classList.add('opacity-40');
         }
 
-        // 2. Badge Mesa
+        // 2. Mesa (4:00 PM a 9:45 PM)
         const tagMesa = document.getElementById('tag-mesa-estado');
         const btnMesa = document.getElementById('btn-modalidad-mesa');
         if (estadoHorarios.mesa) {
           tagMesa.className = 'text-[10px] px-2 py-0.5 rounded-full font-black bg-green-500/20 text-green-400 border border-green-500/50';
           tagMesa.innerText = '● Abierto';
+          btnMesa.classList.remove('opacity-40');
         } else {
           tagMesa.className = 'text-[10px] px-2 py-0.5 rounded-full font-black bg-red-950 text-red-400 border border-red-800';
           tagMesa.innerText = 'Cerrado';
-          btnMesa.classList.add('opacity-50');
+          btnMesa.classList.add('opacity-40');
         }
+
+        // 3. Recoger en Local (4:00 PM a 9:45 PM) - AHORA TAMBIÉN BLOQUEADO
+        const tagRecoger = document.getElementById('tag-recoger-estado');
+        const btnRecoger = document.getElementById('btn-modalidad-recoger');
+        if (estadoHorarios.mesa) {
+          tagRecoger.className = 'text-[10px] px-2 py-0.5 rounded-full font-black bg-green-500/20 text-green-400 border border-green-500/50';
+          tagRecoger.innerText = '● Abierto';
+          btnRecoger.classList.remove('opacity-40');
+        } else {
+          tagRecoger.className = 'text-[10px] px-2 py-0.5 rounded-full font-black bg-red-950 text-red-400 border border-red-800';
+          tagRecoger.innerText = 'Cerrado';
+          btnRecoger.classList.add('opacity-40');
+        }
+
       } catch (e) {}
     }
 
@@ -379,6 +396,12 @@
 
       if (m === 'Local' && !estadoHorarios.mesa) {
         alert('⛔ La recepción de pedidos en mesa opera de 4:00 PM a 9:45 PM. En este momento el servicio en mesa se encuentra cerrado.');
+        return;
+      }
+
+      // BLOQUEO DE RECOGER EN LOCAL
+      if (m === 'Recoger' && !estadoHorarios.mesa) {
+        alert('⛔ La recepción de pedidos para recoger en el local opera de 4:00 PM a 9:45 PM. En este momento se encuentra cerrada.');
         return;
       }
 
@@ -611,16 +634,24 @@
     }
 
     function enviarPedidoFinal() {
-      // DOBLE COMPROBACIÓN DE HORARIOS ANTES DE ENVIAR
+      // 1. REGLA DOMICILIOS (4:00 PM A 9:30 PM)
       const esDomicilio = (modalidadActual === 'Domicilio' && !mesaDetectada);
       if (esDomicilio && !estadoHorarios.domicilio) {
-        alert('⛔ Lo sentimos: el servicio a domicilio cerró a las 9:30 PM. No es posible procesar tu pedido para entrega en casa.');
+        alert('⛔ Lo sentimos: el servicio a domicilio cerró a las 9:30 PM.');
         return;
       }
 
+      // 2. REGLA MESA (4:00 PM A 9:45 PM)
       const esMesa = (mesaDetectada || modalidadActual === 'Local');
       if (esMesa && !estadoHorarios.mesa) {
         alert('⛔ Lo sentimos: los pedidos en mesa cerraron a las 9:45 PM.');
+        return;
+      }
+
+      // 3. REGLA RECOGER EN LOCAL (4:00 PM A 9:45 PM)
+      const esRecoger = (modalidadActual === 'Recoger');
+      if (esRecoger && !estadoHorarios.mesa) {
+        alert('⛔ Lo sentimos: la recepción de pedidos para recoger en el local cerró a las 9:45 PM.');
         return;
       }
 
@@ -638,7 +669,7 @@
         cliente: {
           nombre,
           celular,
-          direccion: mesaDetectada ? `En Mesa (${mesaDetectada})` : direccion,
+          direccion: mesaDetectada ? `En Mesa (${mesaDetectada})` : (modalidadActual === 'Recoger' ? 'Recoge en Local' : direccion),
           barrio: mesaDetectada ? 'En Local' : (modalidadActual === 'Domicilio' ? selBarrio.options[selBarrio.selectedIndex].text : 'En local')
         },
         modalidad: mesaDetectada ? `Local - ${mesaDetectada}` : modalidadActual,
