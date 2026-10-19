@@ -78,6 +78,11 @@
             <i class="fa-solid fa-chart-line text-sm"></i> Ventas & Métricas
           </button>
 
+          <!-- NUEVA PESTAÑA: HISTORIAL DE PEDIDOS -->
+          <button onclick="mostrarVista('historial')" id="nav-historial" class="w-full flex items-center gap-3 p-2 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl text-left transition">
+            <i class="fa-solid fa-clipboard-list text-yellow-400"></i> Historial de Pedidos
+          </button>
+
           <button onclick="mostrarVista('gastos')" id="nav-gastos" class="w-full flex items-center gap-3 p-2 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl text-left transition">
             <i class="fa-solid fa-receipt text-red-400"></i> Gastos Diarios
           </button>
@@ -133,7 +138,7 @@
     <!-- Área Principal -->
     <main class="flex-1 overflow-y-auto p-6">
       
-      <!-- 1. DASHBOARD & MÉTRICAS (CON BEBIDAS Y PAUTAS) -->
+      <!-- 1. DASHBOARD & MÉTRICAS -->
       <section id="vista-reportes" class="space-y-6">
         <div class="flex flex-wrap justify-between items-center gap-4 bg-neutral-900 border border-stone-800 p-4 rounded-2xl">
           <div>
@@ -177,7 +182,7 @@
           </div>
         </div>
 
-        <!-- Gráficas: Ventas por día y Horas Pico -->
+        <!-- Gráficas -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div class="bg-neutral-900 border border-stone-800 p-5 rounded-2xl">
             <h3 class="font-black text-yellow-400 text-sm mb-4">Ventas Diarias ($ COP)</h3>
@@ -189,7 +194,6 @@
           </div>
         </div>
 
-        <!-- Gráfica de Bebidas Más Vendidas y Métodos de Pago -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div class="bg-neutral-900 border border-stone-800 p-5 rounded-2xl">
             <h3 class="font-black text-sky-400 text-sm mb-4 flex items-center gap-2">
@@ -204,7 +208,30 @@
         </div>
       </section>
 
-      <!-- 2. GASTOS DIARIOS (NUEVO) -->
+      <!-- NUEVA SECCIÓN: HISTORIAL DE PEDIDOS CON COMPRA COMPLETA EN TEXTO -->
+      <section id="vista-historial" class="hidden space-y-6">
+        <div class="flex flex-wrap justify-between items-center gap-4 bg-neutral-900 border border-stone-800 p-4 rounded-2xl">
+          <div>
+            <h1 class="text-2xl font-black text-yellow-400">Historial Detallado de Pedidos</h1>
+            <p class="text-xs text-stone-400">Revisa la compra completa en texto de cada orden, verifica pedidos cancelados o motivos de reclamo.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <input type="text" id="busqueda-pedido-input" oninput="filtrarHistorialPedidos()" placeholder="Buscar por número o cliente..." class="bg-neutral-800 border border-stone-700 px-3 py-2 rounded-xl text-xs text-white">
+            <select id="filtro-estado-historial" onchange="filtrarHistorialPedidos()" class="bg-neutral-800 border border-stone-700 px-3 py-2 rounded-xl text-xs text-white font-bold">
+              <option value="TODOS">Todos los Estados</option>
+              <option value="PENDIENTE">Pendientes</option>
+              <option value="PREPARANDO">En Preparación</option>
+              <option value="LISTO">Listos</option>
+              <option value="ENTREGADO">Entregados</option>
+              <option value="CANCELADO">Cancelados / Rechazados</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="space-y-4" id="contenedor-historial-pedidos"></div>
+      </section>
+
+      <!-- 2. GASTOS DIARIOS -->
       <section id="vista-gastos" class="hidden space-y-6">
         <div class="flex flex-wrap justify-between items-center gap-4 bg-neutral-900 border border-stone-800 p-4 rounded-2xl">
           <div>
@@ -217,7 +244,6 @@
           </div>
         </div>
 
-        <!-- Formulario Crear Gasto -->
         <div class="bg-neutral-900 border border-stone-800 p-4 rounded-2xl flex flex-wrap gap-3 items-end">
           <div class="flex-1 min-w-[200px]">
             <label class="block text-xs font-bold text-stone-300 mb-1">Descripción del Gasto *</label>
@@ -246,7 +272,6 @@
           </button>
         </div>
 
-        <!-- Tabla Gastos -->
         <div class="bg-neutral-900 border border-stone-800 rounded-2xl overflow-hidden shadow-lg">
           <table class="w-full text-left text-xs">
             <thead class="bg-neutral-800/60 text-stone-400 uppercase text-[10px]">
@@ -265,7 +290,7 @@
         </div>
       </section>
 
-      <!-- 3. COSTOS NETOS Y MARGEN DE GANANCIA % (NUEVO) -->
+      <!-- 3. COSTOS NETOS Y MARGEN DE GANANCIA % -->
       <section id="vista-costos" class="hidden space-y-6">
         <div class="flex flex-wrap justify-between items-center gap-4 bg-neutral-900 border border-stone-800 p-4 rounded-2xl">
           <div>
@@ -293,7 +318,7 @@
         </div>
       </section>
 
-      <!-- 4. NÓMINA DE EMPLEADOS (NUEVO) -->
+      <!-- 4. NÓMINA DE EMPLEADOS -->
       <section id="vista-nomina" class="hidden space-y-6">
         <div class="flex flex-wrap justify-between items-center gap-4 bg-neutral-900 border border-stone-800 p-4 rounded-2xl">
           <div>
@@ -306,15 +331,12 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <!-- Columna 1: Lista de Empleados -->
           <div class="bg-neutral-900 border border-stone-800 rounded-2xl p-4 space-y-3">
             <h3 class="font-black text-yellow-400 text-sm mb-2">Personal Activo</h3>
             <div id="lista-empleados-box" class="space-y-2 max-h-96 overflow-y-auto"></div>
           </div>
 
-          <!-- Columna 2 y 3: Formulario y Registro de Pagos -->
           <div class="lg:col-span-2 space-y-4">
-            <!-- Formulario Pago -->
             <div class="bg-neutral-900 border border-stone-800 p-4 rounded-2xl flex flex-wrap gap-3 items-end text-xs">
               <div class="flex-1 min-w-[160px]">
                 <label class="block font-bold text-stone-300 mb-1">Empleado a Pagar *</label>
@@ -333,7 +355,6 @@
               </button>
             </div>
 
-            <!-- Tabla de Pagos Realizados -->
             <div class="bg-neutral-900 border border-stone-800 rounded-2xl overflow-hidden shadow-lg">
               <div class="p-3 border-b border-stone-800 text-xs font-black text-yellow-400 uppercase">
                 Historial de Pagos de Nómina
@@ -364,9 +385,6 @@
             <p class="text-xs text-stone-400">Define gramos o unidades por porción y mira cuántas arepas puedes armar en tiempo real.</p>
           </div>
           <div class="flex gap-2">
-            <button onclick="abrirModalNuevoInsumo()" class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2.5 rounded-xl text-xs font-black shadow-lg flex items-center gap-2">
-              <i class="fa-solid fa-plus"></i> + Agregar Insumo
-            </button>
             <button onclick="guardarInventarioAdmin(true)" class="bg-neutral-800 hover:bg-neutral-700 border border-stone-700 text-stone-200 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2">
               <i class="fa-solid fa-floppy-disk"></i> Guardar Existencias
             </button>
@@ -519,7 +537,7 @@
         </div>
       </section>
 
-      <!-- 11. SEGURIDAD EXTRA: BACKUP Y RESTORE (NUEVO) -->
+      <!-- 11. SEGURIDAD EXTRA: BACKUP Y RESTORE -->
       <section id="vista-backup" class="hidden space-y-6">
         <div class="bg-neutral-900 border-2 border-cyan-500/50 p-6 rounded-3xl shadow-xl space-y-6">
           <div>
@@ -530,7 +548,6 @@
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-            <!-- Descargar Backup -->
             <div class="bg-neutral-950 border border-stone-800 p-5 rounded-2xl space-y-3">
               <div class="w-12 h-12 bg-cyan-950 text-cyan-400 rounded-xl flex items-center justify-center text-xl font-bold">
                 <i class="fa-solid fa-cloud-arrow-down"></i>
@@ -542,7 +559,6 @@
               </button>
             </div>
 
-            <!-- Restaurar Backup -->
             <div class="bg-neutral-950 border border-stone-800 p-5 rounded-2xl space-y-3">
               <div class="w-12 h-12 bg-amber-950 text-amber-400 rounded-xl flex items-center justify-center text-xl font-bold">
                 <i class="fa-solid fa-cloud-arrow-up"></i>
@@ -559,6 +575,27 @@
       </section>
 
     </main>
+  </div>
+
+  <!-- Modal Ver Comanda en Texto Plano -->
+  <div id="modal-comanda-texto" class="fixed inset-0 z-50 bg-black/90 hidden flex items-center justify-center p-4">
+    <div class="bg-neutral-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-lg w-full space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-stone-800 pb-2">
+        <h3 class="font-black text-yellow-400 text-base" id="modal-comanda-titulo">Comanda en Texto</h3>
+        <button onclick="cerrarModalComandaTexto()" class="text-stone-400 hover:text-white font-bold text-lg">✕</button>
+      </div>
+
+      <pre id="contenido-comanda-pre" class="bg-neutral-950 border border-stone-800 p-4 rounded-2xl text-xs text-stone-200 font-mono whitespace-pre-wrap max-h-96 overflow-y-auto leading-relaxed select-all"></pre>
+
+      <div class="flex gap-2">
+        <button onclick="copiarComandaTexto()" class="flex-1 bg-yellow-400 hover:bg-yellow-300 text-black py-2.5 rounded-xl font-black text-xs uppercase transition">
+          <i class="fa-regular fa-copy mr-1"></i> Copiar Texto
+        </button>
+        <button onclick="cerrarModalComandaTexto()" class="px-5 bg-neutral-800 hover:bg-neutral-700 text-stone-300 py-2.5 rounded-xl font-bold text-xs transition">
+          Cerrar
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Modal Nuevo Empleado (Nómina) -->
@@ -627,7 +664,6 @@
 
   <script>
     let currentPin = '';
-    const CORRECT_PIN = '1234';
     let DB_LOCAL = null;
     let todosLosPedidos = [];
     let pedidosFiltrados = [];
@@ -695,7 +731,7 @@
     }
 
     function mostrarVista(vista) {
-      const vistas = ['reportes', 'gastos', 'costos', 'nomina', 'inventario', 'cupones', 'qr-mesas', 'barrios', 'menu', 'usuarios', 'backup'];
+      const vistas = ['reportes', 'historial', 'gastos', 'costos', 'nomina', 'inventario', 'cupones', 'qr-mesas', 'barrios', 'menu', 'usuarios', 'backup'];
       vistas.forEach(v => {
         const el = document.getElementById(`vista-${v}`);
         if (el) el.classList.toggle('hidden', v !== vista);
@@ -705,7 +741,8 @@
           : 'w-full flex items-center gap-3 p-2 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl text-left transition';
       });
 
-      if (vista === 'gastos') renderGastosAdmin();
+      if (vista === 'historial') cargarYRenderizarHistorial();
+      else if (vista === 'gastos') renderGastosAdmin();
       else if (vista === 'costos') renderCostosMargen();
       else if (vista === 'nomina') renderNominaAdmin();
       else if (vista === 'inventario') renderInventarioAdmin();
@@ -715,6 +752,177 @@
       else if (vista === 'menu') { mostrarSubMenu(subMenuActual || 'arepas'); renderMenuEditor(); }
       else if (vista === 'usuarios') cargarUsuarios();
       else if (vista === 'reportes') cargarReportesEstadisticas();
+    }
+
+    // ==========================================
+    // SECCIÓN NUEVA: HISTORIAL DE PEDIDOS CON TEXTO COMPLETO
+    // ==========================================
+    async function cargarYRenderizarHistorial() {
+      const res = await fetch('/api/pedidos');
+      todosLosPedidos = await res.json();
+      filtrarHistorialPedidos();
+    }
+
+    function filtrarHistorialPedidos() {
+      const busq = (document.getElementById('busqueda-pedido-input').value || '').toLowerCase().trim();
+      const filtroEst = document.getElementById('filtro-estado-historial').value;
+      const contenedor = document.getElementById('contenedor-historial-pedidos');
+
+      const filtrados = (todosLosPedidos || []).filter(p => {
+        const matchEst = (filtroEst === 'TODOS') || (p.estado === filtroEst);
+        const cliNombre = (p.cliente && p.cliente.nombre ? p.cliente.nombre : '').toLowerCase();
+        const num = (p.numero || '').toLowerCase();
+        const tel = (p.cliente && p.cliente.celular ? p.cliente.celular : '');
+        const matchBusq = !busq || cliNombre.includes(busq) || num.includes(busq) || tel.includes(busq);
+        return matchEst && matchBusq;
+      });
+
+      if (filtrados.length === 0) {
+        contenedor.innerHTML = `<div class="bg-neutral-900 border border-stone-800 p-8 rounded-2xl text-center text-stone-500 italic">No se encontraron pedidos con este filtro.</div>`;
+        return;
+      }
+
+      contenedor.innerHTML = filtrados.map(p => {
+        const esCancelado = (p.estado === 'CANCELADO');
+        let badgeColor = esCancelado 
+          ? 'bg-red-950 text-red-400 border border-red-700' 
+          : (p.estado === 'ENTREGADO' 
+              ? 'bg-green-950 text-green-400 border border-green-700' 
+              : 'bg-yellow-950 text-yellow-400 border border-yellow-700');
+
+        return `
+          <div class="bg-neutral-900 border ${esCancelado ? 'border-red-800/80' : 'border-stone-800'} rounded-2xl p-5 shadow-xl space-y-4">
+            
+            <div class="flex flex-wrap justify-between items-start gap-2 border-b border-stone-800 pb-3">
+              <div>
+                <div class="flex items-center gap-3">
+                  <span class="text-2xl font-black text-yellow-400">${p.numero}</span>
+                  <span class="px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase ${badgeColor}">${p.estado}</span>
+                  <span class="text-xs text-stone-400"><i class="fa-regular fa-clock"></i> ${p.fecha} - ${p.hora}</span>
+                </div>
+                <div class="text-xs text-stone-300 mt-1">
+                  <span class="font-bold text-white">${p.cliente ? p.cliente.nombre : 'Cliente sin nombre'}</span> • 
+                  <span class="text-stone-400">${p.cliente && p.cliente.celular ? p.cliente.celular : 'Sin teléfono'}</span> • 
+                  <span class="text-yellow-300 font-semibold">${p.modalidad}</span>
+                </div>
+                <div class="text-[11px] text-stone-400">
+                  📍 ${p.cliente && p.cliente.direccion ? p.cliente.direccion : 'Local'} ${p.cliente && p.cliente.barrio ? `(${p.cliente.barrio})` : ''}
+                </div>
+              </div>
+
+              <div class="text-right">
+                <span class="text-[10px] text-stone-400 uppercase font-bold block">Método de Pago:</span>
+                <span class="text-xs font-black text-stone-200">${p.metodoPago || 'No especificado'}</span>
+                <div class="text-lg font-black text-green-400 mt-0.5">$${(p.total || 0).toLocaleString()}</div>
+              </div>
+            </div>
+
+            ${esCancelado ? `
+              <div class="bg-red-950/60 border border-red-700 p-3 rounded-xl text-xs text-red-300 flex items-start gap-2">
+                <i class="fa-solid fa-triangle-exclamation text-red-400 text-sm mt-0.5"></i>
+                <div>
+                  <span class="font-black text-red-400 uppercase block">Pedido Cancelado / Rechazado:</span>
+                  <span>Motivo registrado: <strong>${p.motivoCancelacion || 'Rechazado por cocina / sin motivo específico'}</strong></span>
+                </div>
+              </div>
+            ` : ''}
+
+            <!-- DESGLOSE EN TEXTO DE LA COMPRA COMPLETA -->
+            <div class="bg-neutral-950 border border-stone-800 rounded-xl p-3.5 space-y-2 text-xs">
+              <div class="text-[11px] font-black text-yellow-400 uppercase tracking-wider flex justify-between items-center">
+                <span>📋 Compra Completa en Texto:</span>
+                <button onclick="verComandaTextoModal('${p.id}')" class="text-stone-400 hover:text-white underline text-[10px]">
+                  Ver Comanda en Formato Plano
+                </button>
+              </div>
+
+              <div class="space-y-1.5 divide-y divide-stone-900 pt-1">
+                ${(p.items || []).map(it => `
+                  <div class="pt-1.5 first:pt-0">
+                    <div class="flex justify-between font-bold text-white">
+                      <span>• 1x ${it.nombre}</span>
+                      <span class="text-stone-300">$${(it.precio || 0).toLocaleString()}</span>
+                    </div>
+                    ${it.extras && it.extras.length ? `
+                      <div class="text-[11px] text-yellow-300/90 pl-3">
+                        + Extras: ${it.extras.map(e => typeof e === 'object' ? `${e.nombre} (+$${e.precio})` : e).join(', ')}
+                      </div>
+                    ` : ''}
+                    ${it.notas ? `
+                      <div class="text-[10px] text-amber-300 pl-3 italic">
+                        Nota cocina: ${it.notas}
+                      </div>
+                    ` : ''}
+                  </div>
+                `).join('')}
+              </div>
+
+              <div class="border-t border-stone-800 pt-2 flex flex-wrap justify-between text-[11px] text-stone-400">
+                <span>Subtotal: $${(p.subtotal || 0).toLocaleString()}</span>
+                <span>Envío: $${(p.costoEnvio || 0).toLocaleString()}</span>
+                <span>Descuento: -$${(p.descuento || 0).toLocaleString()}</span>
+                <span class="font-black text-white">Total Pagado: $${(p.total || 0).toLocaleString()}</span>
+              </div>
+            </div>
+
+          </div>
+        `;
+      }).join('');
+    }
+
+    function verComandaTextoModal(id) {
+      const p = todosLosPedidos.find(x => x.id === id);
+      if (!p) return;
+
+      document.getElementById('modal-comanda-titulo').innerText = `Comanda ${p.numero} - Texto Completo`;
+
+      let texto = `========================================\n`;
+      texto += `          ARY LA AREPA - POPAYÁN       \n`;
+      texto += `========================================\n`;
+      texto += `ORDEN: ${p.numero}  |  ESTADO: ${p.estado}\n`;
+      texto += `FECHA: ${p.fecha}  |  HORA: ${p.hora}\n`;
+      texto += `MODALIDAD: ${p.modalidad}\n`;
+      texto += `CLIENTE: ${p.cliente ? p.cliente.nombre : 'Cliente'}\n`;
+      texto += `TEL: ${p.cliente ? p.cliente.celular : 'N/A'}\n`;
+      texto += `DIRECCIÓN: ${p.cliente ? p.cliente.direccion : 'En local'} (${p.cliente ? p.cliente.barrio : ''})\n`;
+      texto += `MÉTODO PAGO: ${p.metodoPago}\n`;
+      if (p.estado === 'CANCELADO') {
+        texto += `----------------------------------------\n`;
+        texto += `⚠️ ORDEN CANCELADA\n`;
+        texto += `MOTIVO: ${p.motivoCancelacion || 'Cancelado por cocina'}\n`;
+      }
+      texto += `----------------------------------------\n`;
+      texto += `DETALLE DE PRODUCTOS:\n`;
+
+      (p.items || []).forEach((it, idx) => {
+        texto += `\n[${idx + 1}] 1x ${it.nombre} - $${(it.precio || 0).toLocaleString()}\n`;
+        if (it.extras && it.extras.length) {
+          const exStr = it.extras.map(e => typeof e === 'object' ? `${e.nombre} (+$${e.precio})` : e).join(', ');
+          texto += `    + Extras: ${exStr}\n`;
+        }
+        if (it.notas) {
+          texto += `    * Nota Cocina: ${it.notas}\n`;
+        }
+      });
+
+      texto += `\n----------------------------------------\n`;
+      texto += `SUBTOTAL:  $${(p.subtotal || 0).toLocaleString()}\n`;
+      texto += `DOMICILIO: $${(p.costoEnvio || 0).toLocaleString()}\n`;
+      texto += `DESCUENTO: -$${(p.descuento || 0).toLocaleString()}\n`;
+      texto += `TOTAL:     $${(p.total || 0).toLocaleString()}\n`;
+      texto += `========================================\n`;
+
+      document.getElementById('contenido-comanda-pre').innerText = texto;
+      document.getElementById('modal-comanda-texto').classList.remove('hidden');
+    }
+
+    function cerrarModalComandaTexto() {
+      document.getElementById('modal-comanda-texto').classList.add('hidden');
+    }
+
+    function copiarComandaTexto() {
+      const txt = document.getElementById('contenido-comanda-pre').innerText;
+      navigator.clipboard.writeText(txt).then(() => alert('✓ Comanda copiada al portapapeles.'));
     }
 
     // ==========================================
@@ -758,7 +966,6 @@
       document.getElementById('kpi-total').innerText = `$${total.toLocaleString()}`;
       document.getElementById('kpi-pedidos-count').innerText = `${pedidosFiltrados.length} comandas`;
 
-      // Top Arepa
       const conteoProds = {};
       const conteoBebidas = {};
       let valorTotalPauta = 0;
@@ -785,13 +992,11 @@
       document.getElementById('kpi-top-arepa').innerText = topA;
       document.getElementById('kpi-top-arepa-count').innerText = `${maxA} unidades`;
 
-      // Top Bebida
       let topB = '--', maxB = 0;
       Object.keys(conteoBebidas).forEach(k => { if (conteoBebidas[k]>maxB) { maxB = conteoBebidas[k]; topB = k; } });
       document.getElementById('kpi-top-bebida').innerText = topB;
       document.getElementById('kpi-top-bebida-count').innerText = `${maxB} unidades`;
 
-      // Pautas
       document.getElementById('kpi-pauta-valor').innerText = `$${valorTotalPauta.toLocaleString()}`;
       document.getElementById('kpi-pauta-count').innerText = `${countPautas} órdenes ($0 cobrado)`;
     }
@@ -800,7 +1005,6 @@
     function renderGraficas() {
       Chart.defaults.color = '#a8a29e';
 
-      // Ventas Diarias
       const ventasPorDia = {};
       pedidosFiltrados.forEach(p => {
         const f = new Date(p.timestamp||Date.now()).toLocaleDateString('es-CO', { day:'2-digit', month:'short' });
@@ -813,7 +1017,6 @@
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
       });
 
-      // Horas Pico
       const horasRango = [16,17,18,19,20,21,22], horasData = [0,0,0,0,0,0,0];
       pedidosFiltrados.forEach(p => {
         const h = new Date(p.timestamp||Date.now()).getHours();
@@ -827,7 +1030,6 @@
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
       });
 
-      // Ranking Bebidas Más Vendidas
       const conteoBebidas = {};
       pedidosFiltrados.forEach(p => {
         (p.items || []).forEach(it => {
@@ -847,7 +1049,6 @@
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
       });
 
-      // Métodos de Pago
       let cantNequi = 0, cantEfectivo = 0, cantRappi = 0;
       pedidosFiltrados.forEach(p => {
         if ((p.metodoPago || '').includes('Nequi') || (p.metodoPago || '').includes('Bre-B') || (p.metodoPago || '').includes('Transferencia')) cantNequi++;
@@ -1330,7 +1531,33 @@
 
     function exportarExcel() {
       if (pedidosFiltrados.length === 0) return alert('Sin pedidos');
-      const filas = pedidosFiltrados.map(p => ({ "Número": p.numero, "Fecha": p.fecha, "Hora": p.hora, "Cliente": p.cliente?p.cliente.nombre:'', "Total ($)": p.total, "Estado": p.estado }));
+      const filas = pedidosFiltrados.map(p => {
+        const detalleTexto = (p.items || []).map(i => {
+          let str = `${i.nombre} ($${i.precio})`;
+          if (i.extras && i.extras.length) str += ` [Extras: ${i.extras.map(e => typeof e === 'object' ? e.nombre : e).join(', ')}]`;
+          if (i.notas) str += ` (Nota: ${i.notas})`;
+          return str;
+        }).join(' // ');
+
+        return {
+          "Número": p.numero,
+          "Fecha": p.fecha,
+          "Hora": p.hora,
+          "Cliente": p.cliente ? p.cliente.nombre : '',
+          "Celular": p.cliente ? p.cliente.celular : '',
+          "Dirección": p.cliente ? p.cliente.direccion : '',
+          "Barrio": p.cliente ? p.cliente.barrio : '',
+          "Modalidad": p.modalidad,
+          "Método Pago": p.metodoPago,
+          "Productos y Extras": detalleTexto,
+          "Subtotal ($)": p.subtotal || 0,
+          "Envío ($)": p.costoEnvio || 0,
+          "Descuento ($)": p.descuento || 0,
+          "Total ($)": p.total,
+          "Estado": p.estado,
+          "Motivo Cancelación": p.motivoCancelacion || ''
+        };
+      });
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filas), "Ventas");
       XLSX.writeFile(wb, `Ventas_${new Date().toISOString().split('T')[0]}.xlsx`);
