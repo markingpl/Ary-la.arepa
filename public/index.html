@@ -14,7 +14,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/socket.io/socket.io.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet">
   
   <style>
     * { touch-action: manipulation; }
@@ -26,7 +26,7 @@
     }
   </style>
 </head>
-<body class="bg-neutral-950 text-white min-h-screen pb-24">
+<body class="bg-neutral-950 text-white min-h-screen pb-28">
 
   <!-- Modal Modalidad Inicial -->
   <div id="modal-modalidad" class="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4">
@@ -89,7 +89,7 @@
     </div>
   </div>
 
-  <!-- Header Adaptable (PC y Celular) -->
+  <!-- Header Adaptable -->
   <header class="sticky top-0 z-20 bg-neutral-900/95 backdrop-blur border-b border-stone-800 shadow-md">
     <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
       <div class="flex items-center gap-3">
@@ -144,34 +144,35 @@
     </button>
   </div>
 
-  <!-- Modal Personalización Arepa & Extras -->
+  <!-- Modal Personalización Arepa & Extras con Tipografía Ampliada -->
   <div id="modal-producto" class="fixed inset-0 z-50 bg-black/90 hidden flex items-center justify-center p-4">
-    <div class="bg-stone-900 border border-yellow-500/30 w-full max-w-md rounded-3xl max-h-[90vh] overflow-y-auto p-6 space-y-4 shadow-2xl">
+    <div class="bg-stone-900 border border-yellow-500/30 w-full max-w-lg rounded-3xl max-h-[90vh] overflow-y-auto p-6 space-y-5 shadow-2xl">
       <div class="flex items-center gap-4 border-b border-stone-800 pb-4">
-        <img id="modal-img" class="w-20 h-20 rounded-full object-cover border-2 border-yellow-400 shadow-md">
+        <img id="modal-img" class="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-yellow-400 shadow-md">
         <div class="flex-1">
           <div class="flex justify-between items-start">
-            <h3 id="modal-titulo" class="text-xl font-black text-yellow-400"></h3>
-            <button onclick="cerrarModalProducto()" class="text-stone-400 hover:text-white font-bold text-lg">✕</button>
+            <h3 id="modal-titulo" class="text-xl sm:text-2xl font-black text-yellow-400"></h3>
+            <button onclick="cerrarModalProducto()" class="text-stone-400 hover:text-white font-bold text-xl px-2">✕</button>
           </div>
-          <p id="modal-desc" class="text-xs text-stone-400 mt-1"></p>
-          <div id="modal-precio-base" class="text-sm font-black text-stone-200 mt-1"></div>
+          <p id="modal-desc" class="text-xs sm:text-sm text-stone-300 mt-1"></p>
+          <div id="modal-precio-base" class="text-sm sm:text-base font-black text-yellow-400 mt-1"></div>
         </div>
       </div>
 
       <div>
-        <label class="text-xs font-black text-yellow-400 uppercase tracking-wider block mb-2">
-          ¿Deseas agregar Extras? (Opcional)
+        <label class="text-xs sm:text-sm font-black text-yellow-400 uppercase tracking-wider block mb-2.5">
+          ⭐ ¿Deseas agregar Extras a tu arepa? (Opcional)
         </label>
-        <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-1" id="lista-extras-modal"></div>
+        <!-- Contenedor con scroll y tipografía clara -->
+        <div class="space-y-2 max-h-56 overflow-y-auto pr-1" id="lista-extras-modal"></div>
       </div>
 
       <div>
-        <label class="text-xs font-bold text-stone-300 block mb-1">Nota especial para la cocina:</label>
-        <textarea id="modal-notas" class="w-full bg-neutral-800 border border-stone-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-yellow-400" placeholder="Ej: sin salsa, salsas aparte..."></textarea>
+        <label class="text-xs sm:text-sm font-bold text-stone-300 block mb-1">Nota especial para la cocina:</label>
+        <textarea id="modal-notas" class="w-full bg-neutral-800 border border-stone-700 rounded-xl p-3 text-xs sm:text-sm text-white focus:outline-none focus:border-yellow-400" placeholder="Ej: sin salsa tartara, salsas aparte, bien tostada..."></textarea>
       </div>
 
-      <button onclick="confirmarArepa()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-3.5 rounded-xl font-black text-sm transition">
+      <button onclick="confirmarArepa()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-4 rounded-2xl font-black text-sm sm:text-base uppercase tracking-wider transition shadow-lg shadow-yellow-500/20">
         Agregar Arepa • <span id="modal-precio-total">$0</span>
       </button>
     </div>
@@ -191,7 +192,7 @@
     </div>
   </div>
 
-  <!-- Vista Checkout Adaptable -->
+  <!-- Vista Checkout -->
   <div id="vista-checkout" class="fixed inset-0 z-50 bg-black/95 hidden overflow-y-auto p-4 flex items-center justify-center">
     <div class="bg-stone-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl my-auto">
       
@@ -202,7 +203,7 @@
 
       <div class="bg-neutral-950 border border-stone-800 rounded-2xl p-3.5 space-y-2.5 max-h-48 overflow-y-auto" id="checkout-items"></div>
 
-      <div class="bg-neutral-950 border border-stone-800 rounded-2xl p-4 space-y-3 text-xs">
+      <div class="bg-neutral-950 border border-stone-800 rounded-2xl p-4 space-y-3 text-xs sm:text-sm">
         <div>
           <label class="block font-bold mb-1 text-stone-300">Tu Nombre *</label>
           <input type="text" id="cli-nombre" required class="w-full bg-neutral-900 border border-stone-700 rounded-xl p-3 text-white font-bold" placeholder="Ej: Carlos Pérez">
@@ -213,7 +214,7 @@
           <input type="tel" id="cli-celular" required oninput="consultarPuntosCliente()" class="w-full bg-neutral-900 border border-stone-700 rounded-xl p-3 text-white font-bold" placeholder="Ej: 321 000 0000">
         </div>
 
-        <div id="alerta-puntos-vip" class="hidden bg-yellow-400/10 border border-yellow-400/40 p-3 rounded-2xl text-yellow-300 text-[11px] flex justify-between items-center">
+        <div id="alerta-puntos-vip" class="hidden bg-yellow-400/10 border border-yellow-400/40 p-3 rounded-2xl text-yellow-300 text-xs flex justify-between items-center">
           <div>
             <span class="font-black text-white block">⭐ Eres Cliente Frecuente</span>
             <span id="lbl-pts-status">Tienes puntos disponibles</span>
@@ -244,14 +245,14 @@
           <p id="msg-cupon" class="text-[11px] mt-1 font-bold hidden"></p>
         </div>
 
-        <!-- MÉTODOS DE PAGO CLAROS -->
+        <!-- MÉTODOS DE PAGO -->
         <div>
           <label class="block font-bold mb-1 text-stone-300">Selecciona cómo deseas pagar *</label>
           <div class="grid grid-cols-2 gap-2">
-            <button type="button" onclick="setPago('Nequi / Bre-B')" id="btn-transf" class="p-3 bg-yellow-400 font-black text-black rounded-xl text-center shadow transition flex items-center justify-center gap-1.5">
+            <button type="button" onclick="setPago('Nequi / Bre-B')" id="btn-transf" class="p-3 bg-yellow-400 font-black text-black rounded-xl text-center shadow transition flex items-center justify-center gap-1.5 text-xs sm:text-sm">
               <i class="fa-solid fa-qrcode text-base"></i> QR Bre-B / Nequi
             </button>
-            <button type="button" onclick="setPago('Efectivo')" id="btn-efectivo" class="p-3 bg-neutral-800 font-bold rounded-xl border border-stone-700 text-stone-300 text-center transition flex items-center justify-center gap-1.5">
+            <button type="button" onclick="setPago('Efectivo')" id="btn-efectivo" class="p-3 bg-neutral-800 font-bold rounded-xl border border-stone-700 text-stone-300 text-center transition flex items-center justify-center gap-1.5 text-xs sm:text-sm">
               <i class="fa-solid fa-money-bill-wave text-base"></i> Efectivo
             </button>
           </div>
@@ -259,26 +260,26 @@
       </div>
 
       <!-- Resumen -->
-      <div class="bg-neutral-950 border border-stone-800 rounded-2xl p-3.5 space-y-1.5 text-xs">
+      <div class="bg-neutral-950 border border-stone-800 rounded-2xl p-3.5 space-y-1.5 text-xs sm:text-sm">
         <div class="flex justify-between text-stone-400"><span>Subtotal arepas:</span><span id="res-subtotal">$0</span></div>
         <div class="flex justify-between text-stone-400" id="row-envio"><span>Costo Domicilio:</span><span id="res-envio">$0</span></div>
         <div class="flex justify-between text-emerald-400 font-bold hidden" id="row-descuento">
           <span>Descuento aplicado:</span><span id="res-descuento">-$0</span>
         </div>
         <div class="flex justify-between text-base font-black text-white pt-2 border-t border-stone-800">
-          <span>Total a pagar:</span><span id="res-total" class="text-yellow-400 text-lg">$0</span>
+          <span>Total a pagar:</span><span id="res-total" class="text-yellow-400 text-lg sm:text-xl">$0</span>
         </div>
       </div>
 
       <!-- BOTÓN PRINCIPAL DE PAGO -->
-      <button onclick="enviarPedidoFinal()" id="btn-confirmar-pedido-final" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-4 rounded-2xl font-black text-sm shadow-xl shadow-yellow-500/20 uppercase tracking-wider flex items-center justify-center gap-2">
+      <button onclick="enviarPedidoFinal()" id="btn-confirmar-pedido-final" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-4 rounded-2xl font-black text-sm sm:text-base shadow-xl shadow-yellow-500/20 uppercase tracking-wider flex items-center justify-center gap-2">
         <span id="txt-btn-accion">Continuar y Pagar con QR Bre-B</span>
         <i class="fa-solid fa-arrow-right"></i>
       </button>
     </div>
   </div>
 
-  <!-- Modal Pago QR Bre-B (Con z-index superior para estar siempre al frente) -->
+  <!-- Modal Pago QR Bre-B -->
   <div id="modal-pago-nequi" class="fixed inset-0 z-[60] bg-black/95 hidden flex items-center justify-center p-4">
     <div class="bg-stone-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl">
       <div class="flex items-center justify-center gap-2">
@@ -490,6 +491,7 @@
       if (DATA.barrios) sel.innerHTML = DATA.barrios.map(b => `<option value="${b.costo}">${b.nombre} (+$${b.costo.toLocaleString()})</option>`).join('');
     }
 
+    // MODAL DE PERSONALIZACIÓN CON EXTRAS AMPLIADOS
     function abrirModalArepa(id) {
       arepaSeleccionada = DATA.productos.find(p => p.id === id);
       document.getElementById('modal-img').src = arepaSeleccionada.img;
@@ -498,13 +500,14 @@
       document.getElementById('modal-precio-base').innerText = `Precio base: $${arepaSeleccionada.precio.toLocaleString()}`;
       document.getElementById('modal-notas').value = '';
 
+      // Lista de extras con letra grande y casillas amplias
       document.getElementById('lista-extras-modal').innerHTML = DATA.extras.map(ex => `
-        <label class="flex items-center justify-between bg-neutral-800 p-2 rounded-xl text-xs cursor-pointer hover:bg-neutral-700">
-          <span class="flex items-center gap-2">
-            <input type="checkbox" data-precio="${ex.precio}" data-nombre="${ex.nombre}" onchange="recalcularModalPrecio()" class="extra-check accent-yellow-400">
-            <span class="font-semibold">${ex.nombre}</span>
+        <label class="flex items-center justify-between bg-neutral-800 hover:bg-neutral-700/80 p-3 rounded-2xl border border-stone-800 cursor-pointer transition">
+          <span class="flex items-center gap-3">
+            <input type="checkbox" data-precio="${ex.precio}" data-nombre="${ex.nombre}" onchange="recalcularModalPrecio()" class="extra-check w-5 h-5 accent-yellow-400 rounded cursor-pointer">
+            <span class="font-bold text-white text-sm sm:text-base">${ex.nombre}</span>
           </span>
-          <span class="font-black text-yellow-400">+$${ex.precio.toLocaleString()}</span>
+          <span class="font-black text-yellow-400 text-sm sm:text-base">+$${ex.precio.toLocaleString()}</span>
         </label>
       `).join('');
 
@@ -542,12 +545,12 @@
 
     function abrirUpsell() {
       document.getElementById('lista-upsell').innerHTML = DATA.bebidas.map(b => `
-        <div class="flex items-center justify-between bg-neutral-800 p-3 rounded-xl text-xs">
+        <div class="flex items-center justify-between bg-neutral-800 p-3 rounded-xl text-xs sm:text-sm">
           <div>
             <div class="font-black text-white">${b.nombre}</div>
             <div class="text-yellow-400 font-bold">$${b.precio.toLocaleString()}</div>
           </div>
-          <button onclick="agregarBebida(${b.id})" class="bg-yellow-400 hover:bg-yellow-300 text-black px-3 py-1.5 rounded-lg font-black text-xs">Agregar</button>
+          <button onclick="agregarBebida(${b.id})" class="bg-yellow-400 hover:bg-yellow-300 text-black px-3.5 py-1.5 rounded-lg font-black text-xs">Agregar</button>
         </div>
       `).join('');
       document.getElementById('modal-upsell').classList.remove('hidden');
@@ -582,15 +585,15 @@
 
       document.getElementById('vista-checkout').classList.remove('hidden');
       document.getElementById('checkout-items').innerHTML = carrito.map((item, idx) => `
-        <div class="flex justify-between items-start border-b border-stone-800 pb-2 text-xs">
+        <div class="flex justify-between items-start border-b border-stone-800 pb-2 text-xs sm:text-sm">
           <div>
             <div class="font-black text-yellow-400">${item.nombre}</div>
-            ${item.extras && item.extras.length ? `<div class="text-[10px] text-stone-300">+ Extras: ${item.extras.map(e => e.nombre).join(', ')}</div>` : ''}
-            ${item.notas ? `<div class="text-[10px] text-yellow-200/80">Nota: ${item.notas}</div>` : ''}
+            ${item.extras && item.extras.length ? `<div class="text-xs text-stone-300 font-medium">+ Extras: ${item.extras.map(e => e.nombre).join(', ')}</div>` : ''}
+            ${item.notas ? `<div class="text-[11px] text-yellow-200/90 font-medium">Nota: ${item.notas}</div>` : ''}
           </div>
           <div class="flex items-center gap-3">
             <span class="font-black">$${item.precio.toLocaleString()}</span>
-            <button onclick="eliminarItem(${idx})" class="text-red-400 font-bold">✕</button>
+            <button onclick="eliminarItem(${idx})" class="text-red-400 font-bold px-1">✕</button>
           </div>
         </div>
       `).join('');
@@ -613,12 +616,12 @@
       const txtBtn = document.getElementById('txt-btn-accion');
 
       if (tipo.includes('Nequi') || tipo.includes('Bre-B')) {
-        btnTransf.className = 'p-3 bg-yellow-400 font-black text-black rounded-xl text-center shadow transition flex items-center justify-center gap-1.5';
-        btnEfec.className = 'p-3 bg-neutral-800 font-bold rounded-xl border border-stone-700 text-stone-300 text-center transition flex items-center justify-center gap-1.5';
+        btnTransf.className = 'p-3 bg-yellow-400 font-black text-black rounded-xl text-center shadow transition flex items-center justify-center gap-1.5 text-xs sm:text-sm';
+        btnEfec.className = 'p-3 bg-neutral-800 font-bold rounded-xl border border-stone-700 text-stone-300 text-center transition flex items-center justify-center gap-1.5 text-xs sm:text-sm';
         txtBtn.innerText = 'Continuar y Pagar con QR Bre-B';
       } else {
-        btnEfec.className = 'p-3 bg-yellow-400 font-black text-black rounded-xl text-center shadow transition flex items-center justify-center gap-1.5';
-        btnTransf.className = 'p-3 bg-neutral-800 font-bold rounded-xl border border-stone-700 text-stone-300 text-center transition flex items-center justify-center gap-1.5';
+        btnEfec.className = 'p-3 bg-yellow-400 font-black text-black rounded-xl text-center shadow transition flex items-center justify-center gap-1.5 text-xs sm:text-sm';
+        btnTransf.className = 'p-3 bg-neutral-800 font-bold rounded-xl border border-stone-700 text-stone-300 text-center transition flex items-center justify-center gap-1.5 text-xs sm:text-sm';
         txtBtn.innerText = 'Confirmar Pedido en Efectivo';
       }
     }
@@ -705,9 +708,6 @@
       document.getElementById('res-total').innerText = `$${total.toLocaleString()}`;
     }
 
-    // ==========================================
-    // FUNCIÓN DE ENVIAR PEDIDO 100% CORREGIDA
-    // ==========================================
     async function enviarPedidoFinal(forzarModoPrueba = false) {
       const btnEnviar = document.getElementById('btn-confirmar-pedido-final');
 
@@ -767,22 +767,17 @@
 
         if (data.ok) {
           pedidoCreadoId = data.id;
-
-          // CERRAMOS OBLIGATORIAMENTE EL CHECKOUT PARA QUE NO TAPE EL MODAL
           document.getElementById('vista-checkout').classList.add('hidden');
 
-          // Si es Nequi / Bre-B, abre el modal del QR
           if (metodoPago.includes('Bre-B') || metodoPago.includes('Nequi')) {
             document.getElementById('nequi-monto-total').innerText = `$${total.toLocaleString()}`;
             const mensajeWA = encodeURIComponent(`¡Hola Ary la arepa! Acabo de hacer el pedido ${data.numero} por $${total.toLocaleString()}. Aquí adjunto el comprobante.`);
             document.getElementById('btn-whatsapp-comprobante').href = `https://wa.me/573215035691?text=${mensajeWA}`;
             document.getElementById('modal-pago-nequi').classList.remove('hidden');
           } else {
-            // Si es Efectivo, redirige de inmediato al seguimiento
             window.location.href = `/seguimiento.html?id=${data.id}`;
           }
         } else {
-          // Desbloquear botón si el servidor reporta un error
           btnEnviar.disabled = false;
           setPago(metodoPago);
 
@@ -794,7 +789,6 @@
           }
         }
       } catch (err) {
-        // En caso de corte de red, respaldo socket y desbloqueo
         socket.emit('nuevo-pedido', payload);
         setTimeout(() => {
           if (!pedidoCreadoId) {
