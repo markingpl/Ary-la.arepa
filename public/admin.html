@@ -62,7 +62,7 @@
   </div>
 
   <div class="flex h-screen overflow-hidden">
-    <!-- Sidebar Completo -->
+    <!-- Sidebar -->
     <aside class="w-64 bg-neutral-900 border-r border-stone-800 p-4 flex flex-col justify-between hidden md:flex">
       <div class="space-y-4">
         <div class="flex items-center gap-3">
@@ -78,9 +78,12 @@
             <i class="fa-solid fa-chart-line text-sm"></i> Ventas & Métricas
           </button>
 
-          <!-- NUEVA PESTAÑA: HISTORIAL DE PEDIDOS -->
           <button onclick="mostrarVista('historial')" id="nav-historial" class="w-full flex items-center gap-3 p-2 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl text-left transition">
             <i class="fa-solid fa-clipboard-list text-yellow-400"></i> Historial de Pedidos
+          </button>
+
+          <button onclick="mostrarVista('menu')" id="nav-menu" class="w-full flex items-center gap-3 p-2 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl text-left transition">
+            <i class="fa-solid fa-utensils text-yellow-400"></i> Editor de Menú & Fotos
           </button>
 
           <button onclick="mostrarVista('gastos')" id="nav-gastos" class="w-full flex items-center gap-3 p-2 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl text-left transition">
@@ -109,10 +112,6 @@
 
           <button onclick="mostrarVista('barrios')" id="nav-barrios" class="w-full flex items-center gap-3 p-2 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl text-left transition">
             <i class="fa-solid fa-motorcycle text-yellow-400"></i> Tarifas Domicilios
-          </button>
-
-          <button onclick="mostrarVista('menu')" id="nav-menu" class="w-full flex items-center gap-3 p-2 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl text-left transition">
-            <i class="fa-solid fa-utensils text-yellow-400"></i> Editor de Menú & Fotos
           </button>
 
           <button onclick="mostrarVista('usuarios')" id="nav-usuarios" class="w-full flex items-center gap-3 p-2 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl text-left transition">
@@ -158,7 +157,6 @@
           </div>
         </div>
 
-        <!-- Métricas Rápidas -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div class="bg-neutral-900 border border-stone-800 p-5 rounded-2xl">
             <div class="text-xs text-stone-400 font-bold uppercase">Facturación del Período</div>
@@ -182,7 +180,6 @@
           </div>
         </div>
 
-        <!-- Gráficas -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div class="bg-neutral-900 border border-stone-800 p-5 rounded-2xl">
             <h3 class="font-black text-yellow-400 text-sm mb-4">Ventas Diarias ($ COP)</h3>
@@ -208,7 +205,7 @@
         </div>
       </section>
 
-      <!-- NUEVA SECCIÓN: HISTORIAL DE PEDIDOS CON COMPRA COMPLETA EN TEXTO -->
+      <!-- HISTORIAL DE PEDIDOS -->
       <section id="vista-historial" class="hidden space-y-6">
         <div class="flex flex-wrap justify-between items-center gap-4 bg-neutral-900 border border-stone-800 p-4 rounded-2xl">
           <div>
@@ -231,7 +228,43 @@
         <div class="space-y-4" id="contenedor-historial-pedidos"></div>
       </section>
 
-      <!-- 2. GASTOS DIARIOS -->
+      <!-- 2. EDITOR DE MENÚ & FOTOS (TOTALMENTE MEJORADO CON AGREGAR Y FOTOS) -->
+      <section id="vista-menu" class="hidden space-y-6">
+        <div class="flex flex-wrap justify-between items-center gap-4 bg-neutral-900 border border-stone-800 p-4 rounded-2xl">
+          <div>
+            <h1 class="text-2xl font-black text-yellow-400">Editor de Menú & Fotos</h1>
+            <p class="text-xs text-stone-400">Agrega nuevas arepas, bebidas y extras, actualiza precios y sube fotos desde tu celular o PC.</p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="abrirModalCrearItemMenu()" class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2.5 rounded-xl text-xs font-black shadow-lg flex items-center gap-1.5">
+              <i class="fa-solid fa-plus"></i> <span id="lbl-btn-agregar-menu">+ Agregar Arepa</span>
+            </button>
+            <button onclick="guardarTodoElMenu(true)" class="bg-neutral-800 hover:bg-neutral-700 border border-stone-700 text-stone-200 px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5">
+              <i class="fa-solid fa-floppy-disk"></i> Guardar Todo
+            </button>
+          </div>
+        </div>
+
+        <!-- Pestañas de submenú -->
+        <div class="flex gap-2">
+          <button onclick="mostrarSubMenu('arepas')" id="tab-m-arepas" class="px-5 py-2.5 rounded-xl text-xs font-black bg-yellow-400 text-black">
+            Arepas Principales
+          </button>
+          <button onclick="mostrarSubMenu('extras')" id="tab-m-extras" class="px-5 py-2.5 rounded-xl text-xs font-bold bg-neutral-900 border border-stone-800 text-stone-300">
+            Extras & Adiciones
+          </button>
+          <button onclick="mostrarSubMenu('bebidas')" id="tab-m-bebidas" class="px-5 py-2.5 rounded-xl text-xs font-bold bg-neutral-900 border border-stone-800 text-stone-300">
+            Bebidas Frías
+          </button>
+        </div>
+
+        <!-- Contenedores dinámicos -->
+        <div id="box-editor-arepas" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        <div id="box-editor-extras" class="bg-neutral-900 border border-stone-800 rounded-2xl p-4 space-y-3 hidden"></div>
+        <div id="box-editor-bebidas" class="grid grid-cols-1 md:grid-cols-2 gap-4 hidden"></div>
+      </section>
+
+      <!-- 3. GASTOS DIARIOS -->
       <section id="vista-gastos" class="hidden space-y-6">
         <div class="flex flex-wrap justify-between items-center gap-4 bg-neutral-900 border border-stone-800 p-4 rounded-2xl">
           <div>
@@ -290,7 +323,7 @@
         </div>
       </section>
 
-      <!-- 3. COSTOS NETOS Y MARGEN DE GANANCIA % -->
+      <!-- 4. COSTOS NETOS Y MARGEN DE GANANCIA % -->
       <section id="vista-costos" class="hidden space-y-6">
         <div class="flex flex-wrap justify-between items-center gap-4 bg-neutral-900 border border-stone-800 p-4 rounded-2xl">
           <div>
@@ -318,7 +351,7 @@
         </div>
       </section>
 
-      <!-- 4. NÓMINA DE EMPLEADOS -->
+      <!-- 5. NÓMINA DE EMPLEADOS -->
       <section id="vista-nomina" class="hidden space-y-6">
         <div class="flex flex-wrap justify-between items-center gap-4 bg-neutral-900 border border-stone-800 p-4 rounded-2xl">
           <div>
@@ -377,7 +410,7 @@
         </div>
       </section>
 
-      <!-- 5. INVENTARIO & STOCK -->
+      <!-- 6. INVENTARIO & STOCK -->
       <section id="vista-inventario" class="hidden space-y-6">
         <div class="flex flex-wrap justify-between items-center gap-4">
           <div>
@@ -418,7 +451,7 @@
         </div>
       </section>
 
-      <!-- 6. CUPONES & PUNTOS VIP -->
+      <!-- 7. CUPONES & PUNTOS VIP -->
       <section id="vista-cupones" class="hidden space-y-6">
         <div class="bg-neutral-900 border-2 border-yellow-500/50 p-5 rounded-3xl shadow-xl space-y-4">
           <div class="flex flex-wrap justify-between items-center gap-3 border-b border-stone-800 pb-3">
@@ -472,7 +505,7 @@
         </div>
       </section>
 
-      <!-- 7. QR MESAS -->
+      <!-- 8. QR MESAS -->
       <section id="vista-qr-mesas" class="space-y-6 hidden">
         <div class="flex flex-wrap justify-between items-center gap-4 bg-neutral-900 border border-stone-800 p-4 rounded-2xl">
           <div>
@@ -493,7 +526,7 @@
         <div id="zona-impresion-qr" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"></div>
       </section>
 
-      <!-- 8. TARIFAS DOMICILIOS -->
+      <!-- 9. TARIFAS DOMICILIOS -->
       <section id="vista-barrios" class="hidden space-y-6">
         <div class="flex justify-between items-center">
           <h1 class="text-2xl font-black text-yellow-400">Tarifas de Domicilios en Popayán</h1>
@@ -504,24 +537,6 @@
         <div class="bg-neutral-900 border border-stone-800 rounded-2xl overflow-hidden shadow-lg">
           <table class="w-full text-left text-xs"><tbody id="tabla-barrios-admin" class="divide-y divide-stone-800"></tbody></table>
         </div>
-      </section>
-
-      <!-- 9. EDITOR DE MENÚ -->
-      <section id="vista-menu" class="hidden space-y-6">
-        <div class="flex flex-wrap justify-between items-center gap-4">
-          <h1 class="text-2xl font-black text-yellow-400">Editor de Menú & Fotos</h1>
-          <button onclick="guardarTodoElMenu(true)" class="bg-neutral-800 hover:bg-neutral-700 border border-stone-700 text-stone-200 px-4 py-2.5 rounded-xl text-xs font-bold">
-            Guardar Cambios
-          </button>
-        </div>
-        <div class="flex gap-2">
-          <button onclick="mostrarSubMenu('arepas')" id="tab-m-arepas" class="px-4 py-2 rounded-xl text-xs font-black bg-yellow-400 text-black">Arepas Principales</button>
-          <button onclick="mostrarSubMenu('extras')" id="tab-m-extras" class="px-4 py-2 rounded-xl text-xs font-bold bg-neutral-900 border border-stone-800 text-stone-300">Extras & Adiciones</button>
-          <button onclick="mostrarSubMenu('bebidas')" id="tab-m-bebidas" class="px-4 py-2 rounded-xl text-xs font-bold bg-neutral-900 border border-stone-800 text-stone-300">Bebidas</button>
-        </div>
-        <div id="box-editor-arepas" class="bg-neutral-900 border border-stone-800 rounded-2xl p-4 space-y-3"></div>
-        <div id="box-editor-extras" class="bg-neutral-900 border border-stone-800 rounded-2xl p-4 space-y-3 hidden"></div>
-        <div id="box-editor-bebidas" class="bg-neutral-900 border border-stone-800 rounded-2xl p-4 space-y-3 hidden"></div>
       </section>
 
       <!-- 10. CAJEROS POS -->
@@ -575,6 +590,54 @@
       </section>
 
     </main>
+  </div>
+
+  <!-- Modal Crear Producto (Arepa, Extra o Bebida) -->
+  <div id="modal-crear-producto" class="fixed inset-0 z-50 bg-black/90 hidden flex items-center justify-center p-4">
+    <div class="bg-neutral-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-stone-800 pb-2">
+        <h3 class="font-black text-yellow-400 text-base" id="modal-crear-prod-titulo">Agregar Nuevo Producto</h3>
+        <button onclick="cerrarModalCrearItemMenu()" class="text-stone-400 hover:text-white font-bold text-lg">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <!-- Vista previa y carga de foto -->
+        <div id="box-upload-foto-prod" class="text-center">
+          <div class="relative w-24 h-24 mx-auto rounded-full overflow-hidden border-2 border-yellow-400 mb-2 bg-neutral-800 flex items-center justify-center">
+            <img id="img-preview-nuevo-prod" src="/img/mascota.png" class="w-full h-full object-cover">
+          </div>
+          <label class="inline-flex items-center gap-1.5 bg-neutral-800 hover:bg-neutral-700 text-yellow-400 px-3 py-1.5 rounded-xl cursor-pointer text-xs font-bold border border-stone-700 transition">
+            <i class="fa-solid fa-camera"></i> Subir Foto del Producto
+            <input type="file" accept="image/*" onchange="procesarFotoNuevoProducto(event)" class="hidden">
+          </label>
+        </div>
+
+        <div>
+          <label class="block font-bold text-stone-300 mb-1">Nombre *</label>
+          <input type="text" id="nuevo-prod-nombre" placeholder="Ej: Arepa Campesina Especial" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold">
+        </div>
+
+        <div id="box-nuevo-prod-desc">
+          <label class="block font-bold text-stone-300 mb-1">Descripción / Ingredientes</label>
+          <textarea id="nuevo-prod-desc" rows="2" placeholder="Ej: Carne desmechada, queso fundido, guacamole..." class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-stone-200"></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-stone-300 mb-1">Precio Venta ($) *</label>
+            <input type="number" id="nuevo-prod-precio" placeholder="Ej: 26000" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-yellow-400 font-black text-sm">
+          </div>
+          <div id="box-nuevo-prod-costo">
+            <label class="block font-bold text-stone-300 mb-1">Costo Neto ($)</label>
+            <input type="number" id="nuevo-prod-costo" placeholder="Ej: 10500" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-stone-300 font-bold text-sm">
+          </div>
+        </div>
+      </div>
+
+      <button onclick="guardarNuevoItemMenu()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-3.5 rounded-xl font-black text-xs uppercase shadow-lg transition">
+        Guardar en el Menú
+      </button>
+    </div>
   </div>
 
   <!-- Modal Ver Comanda en Texto Plano -->
@@ -669,6 +732,7 @@
     let pedidosFiltrados = [];
     let periodoSeleccionado = 'hoy';
     let subMenuActual = 'arepas';
+    let fotoTemporalNuevoProducto = '/img/mascota.png';
 
     const variantesMascota = ['/img/mascota.png', '/img/mascota.jpg', '/img/Mascota.png', '/img/Mascota.jpg'];
     let intentoMascota = 0;
@@ -731,7 +795,7 @@
     }
 
     function mostrarVista(vista) {
-      const vistas = ['reportes', 'historial', 'gastos', 'costos', 'nomina', 'inventario', 'cupones', 'qr-mesas', 'barrios', 'menu', 'usuarios', 'backup'];
+      const vistas = ['reportes', 'historial', 'menu', 'gastos', 'costos', 'nomina', 'inventario', 'cupones', 'qr-mesas', 'barrios', 'usuarios', 'backup'];
       vistas.forEach(v => {
         const el = document.getElementById(`vista-${v}`);
         if (el) el.classList.toggle('hidden', v !== vista);
@@ -741,7 +805,8 @@
           : 'w-full flex items-center gap-3 p-2 text-stone-400 hover:bg-neutral-800 font-bold rounded-xl text-left transition';
       });
 
-      if (vista === 'historial') cargarYRenderizarHistorial();
+      if (vista === 'menu') { mostrarSubMenu(subMenuActual || 'arepas'); renderMenuEditor(); }
+      else if (vista === 'historial') cargarYRenderizarHistorial();
       else if (vista === 'gastos') renderGastosAdmin();
       else if (vista === 'costos') renderCostosMargen();
       else if (vista === 'nomina') renderNominaAdmin();
@@ -749,13 +814,290 @@
       else if (vista === 'cupones') renderCuponesYClientes();
       else if (vista === 'qr-mesas') generarQRsMesas();
       else if (vista === 'barrios') renderBarriosAdmin();
-      else if (vista === 'menu') { mostrarSubMenu(subMenuActual || 'arepas'); renderMenuEditor(); }
       else if (vista === 'usuarios') cargarUsuarios();
       else if (vista === 'reportes') cargarReportesEstadisticas();
     }
 
     // ==========================================
-    // SECCIÓN NUEVA: HISTORIAL DE PEDIDOS CON TEXTO COMPLETO
+    // EDITOR DE MENÚ & FOTOS (NUEVO CON FOTOS Y AGREGAR)
+    // ==========================================
+    function mostrarSubMenu(tipo) {
+      subMenuActual = tipo;
+      document.getElementById('box-editor-arepas').classList.toggle('hidden', tipo !== 'arepas');
+      document.getElementById('box-editor-extras').classList.toggle('hidden', tipo !== 'extras');
+      document.getElementById('box-editor-bebidas').classList.toggle('hidden', tipo !== 'bebidas');
+      
+      ['arepas', 'extras', 'bebidas'].forEach(t => {
+        document.getElementById(`tab-m-${t}`).className = t === tipo ? 'px-5 py-2.5 rounded-xl text-xs font-black bg-yellow-400 text-black shadow-md' : 'px-5 py-2.5 rounded-xl text-xs font-bold bg-neutral-900 border border-stone-800 text-stone-300';
+      });
+
+      const lblBtn = document.getElementById('lbl-btn-agregar-menu');
+      if (tipo === 'arepas') lblBtn.innerText = '+ Agregar Arepa';
+      else if (tipo === 'extras') lblBtn.innerText = '+ Agregar Extra';
+      else lblBtn.innerText = '+ Agregar Bebida';
+
+      renderMenuEditor();
+    }
+
+    function comprimirYConvertirImagen(file, callback) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const MAX_SIZE = 480;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+          } else {
+            if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          callback(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function renderMenuEditor() {
+      // 1. AREPAS
+      document.getElementById('box-editor-arepas').innerHTML = (DB_LOCAL.productos || []).map((p, idx) => `
+        <div class="bg-neutral-900 border border-stone-800 p-4 rounded-2xl flex flex-col justify-between space-y-3 shadow-lg">
+          <div class="flex items-center gap-3">
+            <div class="relative w-20 h-20 flex-shrink-0 group">
+              <img src="${p.img || '/img/mascota.png'}" class="w-full h-full rounded-2xl object-cover border-2 border-yellow-400 shadow">
+              <label class="absolute inset-0 bg-black/60 rounded-2xl flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition text-[10px] font-bold text-yellow-400">
+                <i class="fa-solid fa-camera text-sm mb-0.5"></i> Cambiar
+                <input type="file" accept="image/*" onchange="cambiarFotoArepaExistente(${idx}, event)" class="hidden">
+              </label>
+            </div>
+            <div class="flex-1 min-w-0">
+              <input type="text" value="${p.nombre}" onchange="DB_LOCAL.productos[${idx}].nombre = this.value" class="bg-neutral-800 border border-stone-700 p-1.5 rounded-xl text-yellow-400 font-black text-sm w-full mb-1">
+              <textarea onchange="DB_LOCAL.productos[${idx}].desc = this.value" class="w-full bg-neutral-800 border border-stone-700 p-1.5 rounded-xl text-stone-300 text-xs leading-snug" rows="2">${p.desc || ''}</textarea>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between border-t border-stone-800 pt-2 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="text-stone-400 font-bold">Precio:</span>
+              <input type="number" value="${p.precio}" onchange="DB_LOCAL.productos[${idx}].precio = parseInt(this.value) || 0" class="w-24 bg-neutral-800 border border-stone-700 p-1.5 rounded-xl text-white font-black text-right">
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-stone-400 hover:text-yellow-400 cursor-pointer font-bold flex items-center gap-1">
+                <i class="fa-solid fa-image"></i> Foto
+                <input type="file" accept="image/*" onchange="cambiarFotoArepaExistente(${idx}, event)" class="hidden">
+              </label>
+              <button onclick="eliminarProducto(${idx})" class="text-red-400 hover:text-red-300 p-1.5 bg-red-950/40 rounded-xl" title="Eliminar Arepa">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      // 2. EXTRAS
+      document.getElementById('box-editor-extras').innerHTML = (DB_LOCAL.extras || []).map((ex, idx) => `
+        <div class="bg-neutral-800/60 border border-stone-700 p-3 rounded-2xl flex items-center justify-between gap-3 text-xs">
+          <div class="flex-1">
+            <input type="text" value="${ex.nombre}" onchange="DB_LOCAL.extras[${idx}].nombre = this.value" class="w-full bg-neutral-900 border border-stone-700 p-2 rounded-xl text-white font-bold text-sm">
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-yellow-400 font-bold">$</span>
+            <input type="number" value="${ex.precio}" onchange="DB_LOCAL.extras[${idx}].precio = parseInt(this.value) || 0" class="w-24 bg-neutral-900 border border-stone-700 p-2 rounded-xl text-yellow-400 font-black text-right text-sm">
+            <button onclick="eliminarExtra(${idx})" class="text-red-400 hover:text-red-300 p-2 bg-red-950/40 rounded-xl ml-1">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      // 3. BEBIDAS
+      document.getElementById('box-editor-bebidas').innerHTML = (DB_LOCAL.bebidas || []).map((b, idx) => `
+        <div class="bg-neutral-900 border border-stone-800 p-4 rounded-2xl flex flex-col justify-between space-y-3 shadow-lg">
+          <div class="flex items-center gap-3">
+            <div class="relative w-16 h-16 flex-shrink-0 group">
+              <img src="${b.img || '/img/mascota.png'}" class="w-full h-full rounded-2xl object-cover border border-yellow-400 shadow">
+              <label class="absolute inset-0 bg-black/60 rounded-2xl flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition text-[9px] font-bold text-yellow-400">
+                <i class="fa-solid fa-camera"></i>
+                <input type="file" accept="image/*" onchange="cambiarFotoBebidaExistente(${idx}, event)" class="hidden">
+              </label>
+            </div>
+            <div class="flex-1">
+              <input type="text" value="${b.nombre}" onchange="DB_LOCAL.bebidas[${idx}].nombre = this.value" class="bg-neutral-800 border border-stone-700 p-2 rounded-xl text-white font-black text-sm w-full">
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between border-t border-stone-800 pt-2 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="text-stone-400 font-bold">Precio:</span>
+              <input type="number" value="${b.precio}" onchange="DB_LOCAL.bebidas[${idx}].precio = parseInt(this.value) || 0" class="w-24 bg-neutral-800 border border-stone-700 p-1.5 rounded-xl text-yellow-400 font-black text-right">
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-stone-400 hover:text-yellow-400 cursor-pointer font-bold flex items-center gap-1">
+                <i class="fa-solid fa-image"></i> Foto
+                <input type="file" accept="image/*" onchange="cambiarFotoBebidaExistente(${idx}, event)" class="hidden">
+              </label>
+              <button onclick="eliminarBebida(${idx})" class="text-red-400 hover:text-red-300 p-1.5 bg-red-950/40 rounded-xl" title="Eliminar Bebida">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function cambiarFotoArepaExistente(idx, event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      comprimirYConvertirImagen(file, (base64) => {
+        DB_LOCAL.productos[idx].img = base64;
+        renderMenuEditor();
+        guardarTodoElMenu(false);
+      });
+    }
+
+    function cambiarFotoBebidaExistente(idx, event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      comprimirYConvertirImagen(file, (base64) => {
+        DB_LOCAL.bebidas[idx].img = base64;
+        renderMenuEditor();
+        guardarTodoElMenu(false);
+      });
+    }
+
+    function abrirModalCrearItemMenu() {
+      fotoTemporalNuevoProducto = '/img/mascota.png';
+      document.getElementById('img-preview-nuevo-prod').src = fotoTemporalNuevoProducto;
+      document.getElementById('nuevo-prod-nombre').value = '';
+      document.getElementById('nuevo-prod-desc').value = '';
+      document.getElementById('nuevo-prod-precio').value = '';
+      document.getElementById('nuevo-prod-costo').value = '';
+
+      const titulo = document.getElementById('modal-crear-prod-titulo');
+      const boxFoto = document.getElementById('box-upload-foto-prod');
+      const boxDesc = document.getElementById('box-nuevo-prod-desc');
+      const boxCosto = document.getElementById('box-nuevo-prod-costo');
+
+      if (subMenuActual === 'arepas') {
+        titulo.innerText = 'Agregar Nueva Arepa';
+        boxFoto.classList.remove('hidden');
+        boxDesc.classList.remove('hidden');
+        boxCosto.classList.remove('hidden');
+      } else if (subMenuActual === 'extras') {
+        titulo.innerText = 'Agregar Extra o Adición';
+        boxFoto.classList.add('hidden');
+        boxDesc.classList.add('hidden');
+        boxCosto.classList.add('hidden');
+      } else {
+        titulo.innerText = 'Agregar Nueva Bebida';
+        boxFoto.classList.remove('hidden');
+        boxDesc.classList.add('hidden');
+        boxCosto.classList.remove('hidden');
+      }
+
+      document.getElementById('modal-crear-producto').classList.remove('hidden');
+    }
+
+    function cerrarModalCrearItemMenu() {
+      document.getElementById('modal-crear-producto').classList.add('hidden');
+    }
+
+    function procesarFotoNuevoProducto(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      comprimirYConvertirImagen(file, (base64) => {
+        fotoTemporalNuevoProducto = base64;
+        document.getElementById('img-preview-nuevo-prod').src = base64;
+      });
+    }
+
+    async function guardarNuevoItemMenu() {
+      const nombre = document.getElementById('nuevo-prod-nombre').value.trim();
+      const precio = parseInt(document.getElementById('nuevo-prod-precio').value);
+
+      if (!nombre || isNaN(precio) || precio <= 0) {
+        return alert('Por favor ingresa nombre y precio válidos.');
+      }
+
+      if (subMenuActual === 'arepas') {
+        const desc = document.getElementById('nuevo-prod-desc').value.trim();
+        const costoNeto = parseInt(document.getElementById('nuevo-prod-costo').value) || Math.round(precio * 0.4);
+        
+        DB_LOCAL.productos.push({
+          id: Date.now(),
+          cat: 'arepas',
+          nombre,
+          desc: desc || 'Base de arepa artesanal con queso',
+          precio,
+          costoNeto,
+          img: fotoTemporalNuevoProducto
+        });
+      } else if (subMenuActual === 'extras') {
+        DB_LOCAL.extras.push({
+          id: `ex-${Date.now()}`,
+          nombre,
+          precio
+        });
+      } else if (subMenuActual === 'bebidas') {
+        const costoNeto = parseInt(document.getElementById('nuevo-prod-costo').value) || Math.round(precio * 0.5);
+        DB_LOCAL.bebidas.push({
+          id: Date.now(),
+          nombre,
+          precio,
+          costoNeto,
+          img: fotoTemporalNuevoProducto
+        });
+      }
+
+      cerrarModalCrearItemMenu();
+      renderMenuEditor();
+      await guardarTodoElMenu(true);
+    }
+
+    function eliminarProducto(idx) {
+      if (confirm(`¿Eliminar la arepa ${DB_LOCAL.productos[idx].nombre}?`)) {
+        DB_LOCAL.productos.splice(idx, 1);
+        renderMenuEditor();
+        guardarTodoElMenu(false);
+      }
+    }
+
+    function eliminarExtra(idx) {
+      if (confirm(`¿Eliminar el extra ${DB_LOCAL.extras[idx].nombre}?`)) {
+        DB_LOCAL.extras.splice(idx, 1);
+        renderMenuEditor();
+        guardarTodoElMenu(false);
+      }
+    }
+
+    function eliminarBebida(idx) {
+      if (confirm(`¿Eliminar la bebida ${DB_LOCAL.bebidas[idx].nombre}?`)) {
+        DB_LOCAL.bebidas.splice(idx, 1);
+        renderMenuEditor();
+        guardarTodoElMenu(false);
+      }
+    }
+
+    async function guardarTodoElMenu(notificar = true) {
+      try {
+        await fetch('/api/admin/productos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productos: DB_LOCAL.productos }) });
+        await fetch('/api/admin/extras', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ extras: DB_LOCAL.extras }) });
+        await fetch('/api/admin/bebidas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bebidas: DB_LOCAL.bebidas }) });
+        if (notificar) alert('✓ Menú y fotos guardados con éxito.');
+      } catch (err) {
+        alert('Error guardando menú.');
+      }
+    }
+
+    // ==========================================
+    // HISTORIAL DE PEDIDOS CON TEXTO COMPLETO
     // ==========================================
     async function cargarYRenderizarHistorial() {
       const res = await fetch('/api/pedidos');
@@ -916,17 +1258,14 @@
       document.getElementById('modal-comanda-texto').classList.remove('hidden');
     }
 
-    function cerrarModalComandaTexto() {
-      document.getElementById('modal-comanda-texto').classList.add('hidden');
-    }
-
+    function cerrarModalComandaTexto() { document.getElementById('modal-comanda-texto').classList.add('hidden'); }
     function copiarComandaTexto() {
       const txt = document.getElementById('contenido-comanda-pre').innerText;
       navigator.clipboard.writeText(txt).then(() => alert('✓ Comanda copiada al portapapeles.'));
     }
 
     // ==========================================
-    // 1. DASHBOARD, BEBIDAS & PAUTAS
+    // DASHBOARD & MÉTRICAS
     // ==========================================
     async function cargarReportesEstadisticas() {
       const res = await fetch('/api/pedidos');
@@ -1065,7 +1404,7 @@
     }
 
     // ==========================================
-    // 2. GASTOS DIARIOS
+    // GASTOS DIARIOS
     // ==========================================
     function renderGastosAdmin() {
       const tabla = document.getElementById('tabla-gastos');
@@ -1130,7 +1469,7 @@
     }
 
     // ==========================================
-    // 3. COSTOS NETOS Y MARGEN DE GANANCIA %
+    // COSTOS NETOS Y MARGEN
     // ==========================================
     function renderCostosMargen() {
       const tabla = document.getElementById('tabla-costos-margen');
@@ -1191,7 +1530,7 @@
     }
 
     // ==========================================
-    // 4. NÓMINA DE EMPLEADOS
+    // NÓMINA DE EMPLEADOS
     // ==========================================
     function renderNominaAdmin() {
       const nomina = DB_LOCAL.nomina || { empleados: [], pagos: [] };
@@ -1289,7 +1628,7 @@
     }
 
     // ==========================================
-    // 5. BACKUP Y RESTORE COMPLETO (JSON)
+    // BACKUP Y RESTORE COMPLETO
     // ==========================================
     function descargarBackupJSON() {
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(DB_LOCAL, null, 2));
@@ -1332,7 +1671,7 @@
     }
 
     // ==========================================
-    // RESTO DE FUNCIONES (INVENTARIO, CUPONES, QR, MESAS)
+    // QR MESAS
     // ==========================================
     function generarQRsMesas() {
       const box = document.getElementById('zona-impresion-qr');
@@ -1453,52 +1792,6 @@
     async function guardarTodosLosBarrios() {
       await fetch('/api/admin/barrios', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ barrios: DB_LOCAL.barrios }) });
       alert('Tarifas guardadas');
-    }
-
-    function mostrarSubMenu(tipo) {
-      subMenuActual = tipo;
-      document.getElementById('box-editor-arepas').classList.toggle('hidden', tipo !== 'arepas');
-      document.getElementById('box-editor-extras').classList.toggle('hidden', tipo !== 'extras');
-      document.getElementById('box-editor-bebidas').classList.toggle('hidden', tipo !== 'bebidas');
-      ['arepas', 'extras', 'bebidas'].forEach(t => {
-        document.getElementById(`tab-m-${t}`).className = t === tipo ? 'px-4 py-2 rounded-xl text-xs font-black bg-yellow-400 text-black' : 'px-4 py-2 rounded-xl text-xs font-bold bg-neutral-900 border border-stone-800 text-stone-300';
-      });
-    }
-
-    function renderMenuEditor() {
-      document.getElementById('box-editor-arepas').innerHTML = (DB_LOCAL.productos || []).map((p, idx) => `
-        <div class="bg-neutral-800/60 border border-stone-700/60 p-3.5 rounded-2xl flex flex-wrap gap-4 items-center justify-between text-xs">
-          <div class="flex items-center gap-3">
-            <img src="${p.img || '/img/mascota.png'}" class="w-12 h-12 rounded-full object-cover border border-yellow-400">
-            <div><input type="text" value="${p.nombre}" onchange="DB_LOCAL.productos[${idx}].nombre = this.value" class="bg-neutral-900 border border-stone-700 p-1.5 rounded-lg text-yellow-400 font-bold mb-1 w-full"><textarea onchange="DB_LOCAL.productos[${idx}].desc = this.value" class="bg-neutral-900 border border-stone-700 p-1 rounded-lg text-stone-300 w-full text-[11px]">${p.desc}</textarea></div>
-          </div>
-          <div class="w-32"><label class="text-[10px] text-stone-400 font-bold">Precio ($)</label><input type="number" value="${p.precio}" onchange="DB_LOCAL.productos[${idx}].precio = parseInt(this.value) || 0" class="bg-neutral-900 border border-stone-700 p-1.5 rounded-lg text-white font-bold w-full"></div>
-          <button onclick="eliminarProducto(${idx})" class="p-2 text-red-400"><i class="fa-solid fa-trash-can"></i></button>
-        </div>
-      `).join('');
-
-      document.getElementById('box-editor-extras').innerHTML = (DB_LOCAL.extras || []).map((ex, idx) => `
-        <div class="bg-neutral-800/60 border border-stone-700/60 p-3 rounded-2xl flex justify-between items-center gap-4 text-xs">
-          <input type="text" value="${ex.nombre}" onchange="DB_LOCAL.extras[${idx}].nombre = this.value" class="bg-neutral-900 border border-stone-700 p-1.5 rounded-lg text-white font-bold flex-1">
-          <input type="number" value="${ex.precio}" onchange="DB_LOCAL.extras[${idx}].precio = parseInt(this.value) || 0" class="bg-neutral-900 border border-stone-700 p-1.5 rounded-lg text-yellow-400 font-bold w-32">
-          <button onclick="eliminarExtra(${idx})" class="text-red-400 p-1.5"><i class="fa-solid fa-trash-can"></i></button>
-        </div>
-      `).join('');
-
-      document.getElementById('box-editor-bebidas').innerHTML = (DB_LOCAL.bebidas || []).map((b, idx) => `
-        <div class="bg-neutral-800/60 border border-stone-700/60 p-3 rounded-2xl flex justify-between items-center gap-4 text-xs">
-          <input type="text" value="${b.nombre}" onchange="DB_LOCAL.bebidas[${idx}].nombre = this.value" class="bg-neutral-900 border border-stone-700 p-1.5 rounded-lg text-white font-bold flex-1">
-          <input type="number" value="${b.precio}" onchange="DB_LOCAL.bebidas[${idx}].precio = parseInt(this.value) || 0" class="bg-neutral-900 border border-stone-700 p-1.5 rounded-lg text-yellow-400 font-bold w-32">
-          <button onclick="eliminarBebida(${idx})" class="text-red-400 p-1.5"><i class="fa-solid fa-trash-can"></i></button>
-        </div>
-      `).join('');
-    }
-
-    async function guardarTodoElMenu(notificar = true) {
-      await fetch('/api/admin/productos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productos: DB_LOCAL.productos }) });
-      await fetch('/api/admin/extras', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ extras: DB_LOCAL.extras }) });
-      await fetch('/api/admin/bebidas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bebidas: DB_LOCAL.bebidas }) });
-      if (notificar) alert('¡Menú guardado con éxito!');
     }
 
     async function cargarUsuarios() {
