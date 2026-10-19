@@ -86,6 +86,7 @@
 
     function renderComandas() {
       const grid = document.getElementById('grid-comandas');
+      // Filtramos cualquier pedido cancelado o entregado para que desaparezcan de la pantalla
       const activos = pedidos.filter(p => p.estado !== 'ENTREGADO' && p.estado !== 'CANCELADO');
 
       const nPendientes = pedidos.filter(p => p.estado === 'PENDIENTE').length;
@@ -127,16 +128,21 @@
 
               <div class="p-3 space-y-3">
                 ${(p.items || []).map(it => `
-                  <div class="border-b border-stone-800/60 pb-2.5">
-                    <div class="font-black text-base text-yellow-300">1x ${it.nombre}</div>
+                  <div class="border-b border-stone-800/60 pb-3">
+                    <div class="font-black text-lg text-yellow-400">1x ${it.nombre}</div>
+                    
                     ${it.extras && it.extras.length ? `
-                      <div class="text-xs text-stone-200 mt-1 pl-2 border-l-2 border-yellow-400 font-semibold">
-                        + Extras: ${it.extras.map(e => typeof e === 'object' ? e.nombre : e).join(', ')}
+                      <div class="mt-1.5 p-2 bg-yellow-400/10 border-l-4 border-yellow-400 rounded-r-xl">
+                        <span class="text-[10px] font-black text-yellow-400 uppercase tracking-widest block mb-0.5">⭐ EXTRAS SOLICITADOS:</span>
+                        <div class="text-sm font-black text-stone-100 leading-snug">
+                          ${it.extras.map(e => typeof e === 'object' ? e.nombre : e).join(' • ')}
+                        </div>
                       </div>
                     ` : ''}
+
                     ${it.notas ? `
-                      <div class="text-xs text-amber-300 bg-amber-950/40 border border-amber-800/60 p-1.5 rounded-lg mt-1 font-bold">
-                        ⚠️ Nota: ${it.notas}
+                      <div class="text-xs text-amber-200 bg-amber-950/50 border border-amber-600/50 p-2 rounded-xl mt-1.5 font-bold">
+                        ⚠️ <span class="uppercase font-black text-amber-400">Nota Cocina:</span> ${it.notas}
                       </div>
                     ` : ''}
                   </div>
@@ -144,10 +150,10 @@
               </div>
             </div>
 
-            <div class="p-3 border-t border-stone-800 bg-neutral-950">
+            <div class="p-3 border-t border-stone-800 bg-neutral-950 space-y-2">
               ${p.estado === 'PENDIENTE' ? `
                 <div class="flex gap-2">
-                  <button onclick="cancelarComanda('${p.id}', '${p.numero}')" class="px-3.5 py-3 bg-red-950/60 hover:bg-red-900/80 border border-red-700/60 text-red-400 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow" title="Rechazar Comanda">
+                  <button onclick="cancelarComanda('${p.id}', '${p.numero}')" class="px-3 py-3 bg-red-950 hover:bg-red-900 border border-red-700 text-red-400 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow" title="Rechazar Comanda">
                     <i class="fa-solid fa-ban"></i> Rechazar
                   </button>
                   <button onclick="cambiarEstadoComanda('${p.id}', 'PREPARANDO')" class="flex-1 bg-blue-600 hover:bg-blue-500 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-white shadow-lg transition flex items-center justify-center gap-1.5">
@@ -155,9 +161,14 @@
                   </button>
                 </div>
               ` : p.estado === 'PREPARANDO' ? `
-                <button onclick="cambiarEstadoComanda('${p.id}', 'LISTO')" class="w-full bg-yellow-400 hover:bg-yellow-300 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-black shadow-lg transition">
-                  ✓ Marcar Listo para Entrega
-                </button>
+                <div class="flex gap-2">
+                  <button onclick="cancelarComanda('${p.id}', '${p.numero}')" class="px-3 py-3 bg-red-950 hover:bg-red-900 border border-red-700 text-red-400 rounded-xl text-xs font-bold" title="Cancelar Orden">
+                    <i class="fa-solid fa-ban"></i>
+                  </button>
+                  <button onclick="cambiarEstadoComanda('${p.id}', 'LISTO')" class="flex-1 bg-yellow-400 hover:bg-yellow-300 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-black shadow-lg transition">
+                    ✓ Marcar Listo para Entrega
+                  </button>
+                </div>
               ` : p.estado === 'LISTO' ? `
                 <button onclick="cambiarEstadoComanda('${p.id}', 'ENTREGADO')" class="w-full bg-green-600 hover:bg-green-500 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-white shadow-lg transition">
                   🚀 Marcar como Entregado
@@ -175,17 +186,34 @@
       socket.emit('cambiar-estado', { id, nuevoEstado });
     }
 
-    function cancelarComanda(id, numero) {
+    async function cancelarComanda(id, numero) {
       const motivo = prompt(
-        `¿Por qué motivo rechazas la orden ${numero}?\n(Ej: Insumos agotados, cliente canceló, fuera de cobertura):`, 
+        `¿Por qué motivo cancelas o rechazas la orden ${numero}?\n(Ej: Insumos agotados, cliente canceló, fuera de cobertura):`, 
         'Insumos agotados en cocina'
       );
       
       if (motivo !== null) {
-        socket.emit('cancelar-comanda-cocina', { 
-          id, 
-          motivo: motivo.trim() || 'Cancelado por cocina' 
-        });
+        const motivoLimpio = motivo.trim() || 'Cancelado por cocina';
+
+        // 1. Emitir Socket
+        socket.emit('cancelar-comanda-cocina', { id, motivo: motivoLimpio });
+
+        // 2. Respaldo HTTP REST para asegurar desaparición inmediata
+        try {
+          await fetch(`/api/pedidos/${id}/cancelar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ motivo: motivoLimpio })
+          });
+        } catch (e) {}
+
+        // 3. Actualización de estado local inmediata para que no espere al socket
+        const p = pedidos.find(x => x.id === id);
+        if (p) {
+          p.estado = 'CANCELADO';
+          p.motivoCancelacion = motivoLimpio;
+        }
+        renderComandas();
       }
     }
 
@@ -204,7 +232,6 @@
       renderComandas();
     });
 
-    // Carga inicial y auto-consulta cada 5 segundos para que nunca falte una comanda
     cargarPedidos();
     setInterval(cargarPedidos, 5000);
   </script>
