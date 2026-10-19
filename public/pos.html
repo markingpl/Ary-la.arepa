@@ -2,474 +2,702 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>POS Caja - Ary la arepa</title>
+  
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/socket.io/socket.io.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet">
+
   <style>
+    * { touch-action: manipulation; }
+    body { font-family: 'Montserrat', sans-serif; }
+    .font-script { font-family: 'Caveat', cursive; }
+
+    /* ESTILOS DE IMPRESIÓN PARA TIRILLA TÉRMICA */
     @media print {
       body * { visibility: hidden; }
-      #ticket-impresion, #ticket-impresion * { visibility: visible; }
-      #ticket-impresion {
+      #area-impresion-ticket, #area-impresion-ticket * { visibility: visible; }
+      #area-impresion-ticket {
         position: absolute;
         left: 0;
         top: 0;
-        width: 72mm;
+        width: 76mm; /* Ajuste óptimo para papel de 80mm y 58mm */
         margin: 0;
-        padding: 2mm 0;
-        font-family: 'Courier New', Courier, monospace;
-        font-size: 11px;
-        line-height: 1.25;
-        color: #000;
+        padding: 4mm;
+        color: #000 !important;
+        background: #fff !important;
       }
     }
   </style>
 </head>
 <body class="bg-neutral-950 text-white min-h-screen flex flex-col font-sans select-none overflow-hidden">
 
-  <!-- Modal Login Cajero -->
-  <div id="modal-login" class="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4">
-    <div class="bg-neutral-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-xs w-full text-center space-y-4 shadow-2xl">
-      <img src="/img/mascota.png" onerror="this.src='https://placehold.co/80x80/facc15/000?text=Ary'" class="w-16 h-16 mx-auto object-contain">
-      <h2 class="text-xl font-black text-yellow-400">ACCESO CAJA POS</h2>
-      <p class="text-xs text-stone-400">Ingresa con tus credenciales de cajero</p>
-      
-      <div class="space-y-2 text-left text-xs">
-        <div>
-          <label class="block font-bold mb-1 text-stone-300">Usuario</label>
-          <input type="text" id="login-user" value="cajero1" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold">
-        </div>
-        <div>
-          <label class="block font-bold mb-1 text-stone-300">Contraseña / PIN</label>
-          <input type="password" id="login-pass" value="2024" class="w-full bg-neutral-800 border border-stone-700 p-2.5 rounded-xl text-white font-bold">
-        </div>
-      </div>
-      <p id="login-error" class="text-xs text-red-500 font-bold hidden">Credenciales inválidas</p>
-      <button onclick="iniciarSesionCajero()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-3 rounded-xl font-black text-xs uppercase shadow-lg">
-        Entrar al Turno
-      </button>
-    </div>
-  </div>
-
-  <!-- Modal Apertura Turno -->
-  <div id="modal-apertura" class="fixed inset-0 z-50 bg-black/95 hidden flex items-center justify-center p-4">
-    <div class="bg-neutral-900 border-2 border-green-500 rounded-3xl p-6 max-w-xs w-full text-center space-y-4">
-      <i class="fa-solid fa-cash-register text-3xl text-green-400"></i>
-      <h3 class="text-lg font-black text-green-400 uppercase">Apertura de Turno</h3>
-      <p class="text-xs text-stone-300">Ingresa la base en efectivo con la que inicias en caja:</p>
-      
-      <div class="text-left text-xs">
-        <label class="block font-bold mb-1 text-stone-400">Base en Efectivo ($ COP)</label>
-        <input type="number" id="caja-base" value="50000" class="w-full bg-neutral-800 border border-stone-700 p-3 rounded-xl text-lg font-black text-white text-center">
-      </div>
-
-      <button onclick="confirmarAperturaCaja()" class="w-full bg-green-500 hover:bg-green-400 text-black py-3 rounded-xl font-black text-xs uppercase shadow-lg">
-        Abrir Turno de Venta
-      </button>
-    </div>
-  </div>
-
-  <!-- Barra Superior -->
-  <header class="bg-neutral-900 border-b border-stone-800 p-3 flex justify-between items-center h-16">
-    <div class="flex items-center gap-3">
-      <img src="/img/mascota.png" onerror="this.src='https://placehold.co/40x40/facc15/000?text=Ary'" class="w-9 h-9 object-contain">
+  <!-- ========================================== -->
+  <!-- MODAL: LOGIN CAJERO                       -->
+  <!-- ========================================== -->
+  <div id="modal-login-pos" class="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4">
+    <div class="bg-stone-900 border-2 border-yellow-500 rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center space-y-5 shadow-2xl">
       <div>
-        <h1 class="text-sm font-black text-yellow-400 leading-tight">ARY LA AREPA • POS CAJA</h1>
-        <div class="text-[10px] text-stone-400 flex items-center gap-2">
-          <span><i class="fa-solid fa-user"></i> <strong id="lbl-cajero" class="text-stone-200">--</strong></span>
-          <span>•</span>
-          <span class="text-green-400 font-bold"><i class="fa-solid fa-circle text-[7px] animate-pulse"></i> CAJA ABIERTA</span>
+        <img src="/img/mascota.png" onerror="cargarMascotaSegura(this)" class="w-20 h-20 mx-auto object-contain mb-2 drop-shadow-[0_4px_10px_rgba(250,204,21,0.3)]">
+        <h1 class="text-2xl font-black text-yellow-400">PUNTO DE VENTA</h1>
+        <p class="text-xs text-stone-400 font-bold uppercase tracking-widest mt-0.5">Ary la arepa • Popayán</p>
+      </div>
+
+      <div class="space-y-3 text-left text-xs">
+        <div>
+          <label class="block font-bold text-stone-300 mb-1">Usuario Cajero</label>
+          <input type="text" id="login-usuario" placeholder="Ej: admin o cajero1" class="w-full bg-neutral-800 border border-stone-700 p-3 rounded-xl text-white font-bold text-sm">
         </div>
+        <div>
+          <label class="block font-bold text-stone-300 mb-1">Clave de Acceso</label>
+          <input type="password" id="login-clave" placeholder="••••" class="w-full bg-neutral-800 border border-stone-700 p-3 rounded-xl text-yellow-400 font-mono text-center text-lg tracking-widest">
+        </div>
+      </div>
+
+      <p id="msg-login-error" class="text-xs text-red-500 font-bold hidden">Credenciales inválidas</p>
+
+      <button onclick="iniciarSesionPOS()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-3.5 rounded-2xl font-black text-sm uppercase tracking-wider shadow-lg transition">
+        Ingresar a Caja
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: APERTURA DE TURNO (BASE INICIAL)   -->
+  <!-- ========================================== -->
+  <div id="modal-apertura-caja" class="fixed inset-0 z-50 bg-black/90 hidden flex items-center justify-center p-4">
+    <div class="bg-stone-900 border-2 border-green-500 rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl">
+      <div class="w-14 h-14 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mx-auto text-2xl">
+        <i class="fa-solid fa-cash-register"></i>
+      </div>
+      <div>
+        <h3 class="text-xl font-black text-white">Apertura de Caja</h3>
+        <p class="text-xs text-stone-400">Ingresa la base inicial en efectivo para iniciar el turno.</p>
+      </div>
+
+      <div class="text-left text-xs">
+        <label class="block font-bold text-stone-300 mb-1">Base en Efectivo ($ COP) *</label>
+        <input type="number" id="input-base-inicial" value="50000" class="w-full bg-neutral-800 border border-stone-700 p-3 rounded-xl text-green-400 font-black text-center text-xl">
+      </div>
+
+      <button onclick="confirmarAperturaCaja()" class="w-full bg-green-500 hover:bg-green-400 text-black py-3.5 rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg transition">
+        Abrir Turno de Caja
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: CIERRE DE TURNO Y ARQUEO            -->
+  <!-- ========================================== -->
+  <div id="modal-arqueo-caja" class="fixed inset-0 z-50 bg-black/90 hidden flex items-center justify-center p-4">
+    <div class="bg-stone-900 border-2 border-yellow-500 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b border-stone-800 pb-2">
+        <h3 class="text-base font-black text-yellow-400 uppercase flex items-center gap-2">
+          <i class="fa-solid fa-vault"></i> Resumen de Caja y Turno
+        </h3>
+        <button onclick="cerrarModalArqueo()" class="text-stone-400 hover:text-white font-bold text-lg">✕</button>
+      </div>
+
+      <div class="bg-neutral-950 p-4 rounded-2xl border border-stone-800 space-y-2" id="box-datos-arqueo">
+        <!-- Rellenado dinámicamente -->
+      </div>
+
+      <div class="flex gap-2">
+        <button onclick="ejecutarCierreCaja()" class="flex-1 bg-red-600 hover:bg-red-500 text-white py-3 rounded-xl font-black text-xs uppercase transition shadow">
+          Cerrar Turno Definitivo
+        </button>
+        <button onclick="cerrarModalArqueo()" class="px-4 bg-neutral-800 hover:bg-neutral-700 text-stone-300 rounded-xl font-bold">
+          Seguir Facturando
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: PERSONALIZACIÓN AREPA Y EXTRAS      -->
+  <!-- ========================================== -->
+  <div id="modal-personalizar-item" class="fixed inset-0 z-50 bg-black/90 hidden flex items-center justify-center p-4">
+    <div class="bg-stone-900 border border-yellow-500/40 w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-start border-b border-stone-800 pb-3">
+        <div>
+          <h3 id="modal-item-nombre" class="text-xl font-black text-yellow-400"></h3>
+          <p id="modal-item-desc" class="text-xs text-stone-400"></p>
+        </div>
+        <button onclick="cerrarModalPersonalizar()" class="text-stone-400 hover:text-white font-bold text-lg px-2">✕</button>
+      </div>
+
+      <div>
+        <label class="text-xs font-black text-yellow-400 uppercase tracking-wider block mb-2">
+          ⭐ Extras y Adiciones:
+        </label>
+        <div id="lista-extras-pos" class="space-y-2 max-h-52 overflow-y-auto pr-1"></div>
+      </div>
+
+      <div>
+        <label class="text-xs font-bold text-stone-300 block mb-1">Nota especial para la cocina:</label>
+        <input type="text" id="modal-item-nota" placeholder="Ej: bien tostada, salsas aparte, sin tartara..." class="w-full bg-neutral-800 border border-stone-700 rounded-xl p-2.5 text-xs text-white">
+      </div>
+
+      <button onclick="confirmarAgregarAlCarrito()" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-3.5 rounded-2xl font-black text-sm uppercase transition shadow">
+        Agregar a la Orden • <span id="modal-item-total">$0</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- BARRA SUPERIOR (HEADER POS)                -->
+  <!-- ========================================== -->
+  <header class="bg-neutral-900 border-b border-stone-800 px-4 py-2.5 flex justify-between items-center flex-shrink-0">
+    <div class="flex items-center gap-3">
+      <img src="/img/mascota.png" onerror="cargarMascotaSegura(this)" class="w-10 h-10 object-contain drop-shadow">
+      <div>
+        <h2 class="text-sm font-black text-yellow-400 leading-none">ARY LA AREPA • CAJA POS</h2>
+        <span class="text-[10px] text-stone-400">Atención rápida y comandas</span>
       </div>
     </div>
 
-    <div class="flex items-center gap-2">
-      <button onclick="abrirModalArqueo()" class="bg-neutral-800 hover:bg-neutral-700 text-stone-300 border border-stone-700 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2">
-        <i class="fa-solid fa-calculator text-yellow-400"></i> Cuadre / Cerrar Turno
+    <div class="flex items-center gap-3">
+      <div class="text-right text-xs hidden sm:block">
+        <span class="text-stone-400 text-[10px] block">Cajero en turno:</span>
+        <span id="lbl-cajero-nombre" class="font-bold text-yellow-300">--</span>
+      </div>
+
+      <button onclick="abrirArqueoCaja()" class="bg-neutral-800 hover:bg-neutral-700 text-stone-200 border border-stone-700 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition">
+        <i class="fa-solid fa-cash-register text-yellow-400"></i>
+        <span>Caja / Arqueo</span>
       </button>
-      <button onclick="location.reload()" class="bg-red-950 hover:bg-red-900 text-red-400 px-3 py-1.5 rounded-xl text-xs font-bold border border-red-800">
-        <i class="fa-solid fa-power-off"></i>
+
+      <button onclick="cerrarSesionPOS()" class="text-stone-400 hover:text-red-400 p-1.5" title="Cerrar Sesión">
+        <i class="fa-solid fa-power-off text-base"></i>
       </button>
     </div>
   </header>
 
-  <!-- Cuerpo Principal -->
+  <!-- ========================================== -->
+  <!-- PANTALLA PRINCIPAL: CATÁLOGO Y COMANDA     -->
+  <!-- ========================================== -->
   <div class="flex-1 flex overflow-hidden">
     
-    <!-- Lado Izquierdo: Catálogo -->
-    <div class="w-7/12 flex flex-col border-r border-stone-800 bg-neutral-950 p-3 space-y-3 overflow-y-auto">
-      <div class="flex gap-2">
-        <button onclick="mostrarSeccion('arepas')" id="tab-arepas" class="px-4 py-2 bg-yellow-400 text-black font-black text-xs rounded-xl shadow">Arepas Principales</button>
-        <button onclick="mostrarSeccion('extras')" id="tab-extras" class="px-4 py-2 bg-neutral-800 text-stone-300 font-bold text-xs rounded-xl border border-stone-700">Extras & Adiciones</button>
-        <button onclick="mostrarSeccion('bebidas')" id="tab-bebidas" class="px-4 py-2 bg-neutral-800 text-stone-300 font-bold text-xs rounded-xl border border-stone-700">Bebidas Frías</button>
-      </div>
-
-      <div id="grid-pos-arepas" class="grid grid-cols-3 gap-2.5"></div>
-      <div id="grid-pos-extras" class="grid grid-cols-3 gap-2 hidden"></div>
-      <div id="grid-pos-bebidas" class="grid grid-cols-3 gap-2 hidden"></div>
-    </div>
-
-    <!-- Lado Derecho: Comanda & Facturación -->
-    <div class="w-5/12 flex flex-col justify-between bg-neutral-900 p-3 space-y-2">
+    <!-- COLUMNA IZQUIERDA: CATÁLOGO DE PRODUCTOS -->
+    <section class="flex-1 flex flex-col bg-neutral-950 border-r border-stone-800 p-4 overflow-hidden">
       
-      <div class="bg-neutral-950 border border-stone-800 p-2.5 rounded-2xl text-xs space-y-1.5">
-        <div class="flex justify-between items-center">
-          <span class="font-black text-yellow-400 uppercase text-[10px]"><i class="fa-solid fa-address-book"></i> Destino / Cliente</span>
-          <select id="pos-tipo-orden" onchange="cambiarTipoOrden()" class="bg-neutral-800 text-white rounded-lg p-1 text-[10px] font-bold border border-stone-700">
-            <option value="Mesa">En Local / Mesa</option>
-            <option value="Domicilio">Domicilio Popayán</option>
-            <option value="Para Llevar">Para Llevar</option>
-          </select>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <input type="tel" id="pos-cli-tel" oninput="buscarClienteFrecuente()" placeholder="Celular (ej: 311...)" class="bg-neutral-800 border border-stone-700 p-1.5 rounded-lg text-white text-xs">
-          <input type="text" id="pos-cli-nombre" placeholder="Nombre cliente" class="bg-neutral-800 border border-stone-700 p-1.5 rounded-lg text-white text-xs">
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <input type="text" id="pos-cli-dir" placeholder="Dirección / Mesa #" class="bg-neutral-800 border border-stone-700 p-1.5 rounded-lg text-white text-xs">
-          <select id="pos-cli-barrio" onchange="recalcularTotalPOS()" class="bg-neutral-800 border border-stone-700 p-1.5 rounded-lg text-white text-[11px]"></select>
-        </div>
+      <!-- Selector de Categorías -->
+      <div class="flex gap-2 pb-3 overflow-x-auto flex-shrink-0">
+        <button onclick="setCategoriaPOS('arepas')" id="btn-cat-arepas" class="px-5 py-2 rounded-xl text-xs font-black bg-yellow-400 text-black shadow">
+          Arepas Principales
+        </button>
+        <button onclick="setCategoriaPOS('bebidas')" id="btn-cat-bebidas" class="px-5 py-2 rounded-xl text-xs font-bold bg-neutral-900 border border-stone-800 text-stone-300 hover:text-white">
+          Bebidas Frías
+        </button>
+        <button onclick="setCategoriaPOS('extras')" id="btn-cat-extras" class="px-5 py-2 rounded-xl text-xs font-bold bg-neutral-900 border border-stone-800 text-stone-300 hover:text-white">
+          Extras Sueltos
+        </button>
       </div>
 
-      <div class="flex-1 bg-neutral-950 border border-stone-800 rounded-2xl p-2.5 overflow-y-auto space-y-1.5" id="pos-items-lista">
-        <p class="text-stone-500 text-xs text-center py-10 italic">Toca una arepa para comenzar la orden...</p>
-      </div>
+      <!-- Grid de Productos -->
+      <div class="flex-1 overflow-y-auto pr-1 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 content-start" id="grid-productos-pos"></div>
+    </section>
 
-      <div class="bg-neutral-950 border border-stone-800 p-2.5 rounded-2xl text-xs space-y-2">
+    <!-- COLUMNA DERECHA: TICKET Y DATOS DE LA ORDEN -->
+    <aside class="w-96 bg-neutral-900 flex flex-col justify-between p-4 flex-shrink-0 overflow-y-auto text-xs">
+      
+      <div class="space-y-3">
+        <!-- Modalidad de Entrega -->
         <div>
-          <label class="text-[10px] text-stone-400 font-bold uppercase block mb-1">Canal de Pago / Venta:</label>
+          <label class="block font-bold text-stone-400 mb-1 uppercase text-[10px]">Modalidad de Consumo:</label>
           <div class="grid grid-cols-4 gap-1.5">
-            <button type="button" onclick="setMetodoPagoPOS('Efectivo')" id="pos-btn-efec" class="py-2 px-1 rounded-xl font-bold text-xs bg-yellow-400 text-black text-center shadow">
-              💵 Efectivo
-            </button>
-            <button type="button" onclick="setMetodoPagoPOS('Nequi / Bre-B')" id="pos-btn-nequi" class="py-2 px-1 rounded-xl font-bold text-xs bg-neutral-800 text-stone-300 border border-stone-700 text-center">
-              📲 Nequi
-            </button>
-            <button type="button" onclick="setMetodoPagoPOS('Rappi')" id="pos-btn-rappi" class="py-2 px-1 rounded-xl font-black text-xs bg-neutral-800 text-orange-400 border border-stone-700 text-center">
-              🟠 Rappi (-20%)
-            </button>
-            <button type="button" onclick="setMetodoPagoPOS('Pauta')" id="pos-btn-pauta" class="py-2 px-1 rounded-xl font-black text-xs bg-neutral-800 text-purple-400 border border-stone-700 text-center">
-              ⭐ Pauta ($0)
-            </button>
+            <button onclick="setModalidadPOS('Mesa')" id="btn-mod-Mesa" class="py-2 rounded-xl font-bold bg-yellow-400 text-black text-center text-xs">Mesa</button>
+            <button onclick="setModalidadPOS('Llevar')" id="btn-mod-Llevar" class="py-2 rounded-xl font-bold bg-neutral-800 border border-stone-700 text-stone-300 text-center text-xs">Llevar</button>
+            <button onclick="setModalidadPOS('Domicilio')" id="btn-mod-Domicilio" class="py-2 rounded-xl font-bold bg-neutral-800 border border-stone-700 text-stone-300 text-center text-xs">Domi</button>
+            <button onclick="setModalidadPOS('Rappi')" id="btn-mod-Rappi" class="py-2 rounded-xl font-bold bg-neutral-800 border border-stone-700 text-stone-300 text-center text-xs">Rappi</button>
           </div>
         </div>
 
-        <div class="border-t border-stone-800 pt-1.5 space-y-0.5 text-[11px]">
+        <!-- Selector de Mesa / Dirección -->
+        <div id="box-campo-destino" class="space-y-1">
+          <label id="lbl-campo-destino" class="block font-bold text-stone-400 text-[10px] uppercase">Número de Mesa:</label>
+          <select id="sel-mesa-pos" class="w-full bg-neutral-950 border border-stone-700 p-2.5 rounded-xl text-yellow-400 font-black"></select>
+          <input type="text" id="input-direccion-pos" placeholder="Dirección exacta de entrega" class="w-full bg-neutral-950 border border-stone-700 p-2.5 rounded-xl text-white font-bold hidden">
+        </div>
+
+        <!-- Datos del Cliente -->
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[10px] text-stone-400 font-bold uppercase">Cliente</label>
+            <input type="text" id="pos-cliente-nombre" placeholder="Nombre" class="w-full bg-neutral-950 border border-stone-700 p-2 rounded-xl text-white font-bold">
+          </div>
+          <div>
+            <label class="block text-[10px] text-stone-400 font-bold uppercase">Celular</label>
+            <input type="tel" id="pos-cliente-tel" placeholder="321 000 0000" class="w-full bg-neutral-950 border border-stone-700 p-2 rounded-xl text-white">
+          </div>
+        </div>
+
+        <!-- Lista de Items en la Comanda -->
+        <div class="border-t border-stone-800 pt-2">
+          <div class="flex justify-between items-center text-[10px] font-black uppercase text-stone-400 mb-1.5">
+            <span>Comanda Actual (<span id="pos-items-count">0</span>):</span>
+            <button onclick="vaciarCarritoPOS()" class="text-red-400 hover:text-red-300 font-bold">Vaciar</button>
+          </div>
+          <div id="lista-carrito-pos" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+        </div>
+      </div>
+
+      <!-- Resumen de Totales y Cobro -->
+      <div class="border-t border-stone-800 pt-3 space-y-2.5">
+        <div class="space-y-1 text-xs">
           <div class="flex justify-between text-stone-400"><span>Subtotal:</span><span id="pos-subtotal">$0</span></div>
           <div class="flex justify-between text-stone-400" id="pos-row-envio"><span>Envío:</span><span id="pos-envio">$0</span></div>
-          
-          <div class="flex justify-between text-emerald-400 font-bold hidden" id="pos-row-descuento">
-            <span id="pos-lbl-desc-tipo">Descuento:</span><span id="pos-descuento">-$0</span>
-          </div>
-
-          <div class="flex justify-between text-base font-black text-white pt-1 border-t border-stone-800">
-            <span>TOTAL:</span><span id="pos-total" class="text-yellow-400 text-lg">$0</span>
+          <div class="flex justify-between font-black text-white text-base pt-1 border-t border-stone-800">
+            <span>Total a Cobrar:</span>
+            <span id="pos-total" class="text-yellow-400 text-lg">$0</span>
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-2 pt-1">
-          <button onclick="limpiarComandaPOS()" class="bg-neutral-800 hover:bg-neutral-700 py-3 rounded-xl font-bold text-xs text-stone-400">
-            Limpiar
-          </button>
-          <button onclick="cobrarEImprimirPOS()" id="btn-pos-cobrar" class="bg-yellow-400 hover:bg-yellow-300 text-black py-3 rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/20">
-            <i class="fa-solid fa-print"></i> Cobrar e Imprimir
-          </button>
+        <!-- Método de Pago -->
+        <div class="grid grid-cols-3 gap-1.5 text-[11px] font-bold">
+          <button onclick="setMetodoPagoPOS('Efectivo')" id="btn-pago-Efectivo" class="py-2 rounded-xl bg-yellow-400 text-black text-center">Efectivo</button>
+          <button onclick="setMetodoPagoPOS('Nequi / Bre-B')" id="btn-pago-Nequi" class="py-2 rounded-xl bg-neutral-800 border border-stone-700 text-stone-300 text-center">Nequi/QR</button>
+          <button onclick="setMetodoPagoPOS('Pauta')" id="btn-pago-Pauta" class="py-2 rounded-xl bg-neutral-800 border border-stone-700 text-stone-300 text-center">Pauta ($0)</button>
         </div>
+
+        <!-- Botón Despachar e Imprimir -->
+        <button onclick="despacharOrdenPOS()" id="btn-cobrar-pos" class="w-full bg-green-500 hover:bg-green-400 text-black py-4 rounded-2xl font-black text-sm uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 transition">
+          <i class="fa-solid fa-print"></i>
+          <span>Cobrar e Imprimir Comanda</span>
+        </button>
       </div>
+
+    </aside>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- ÁREA DE IMPRESIÓN DE TIRILLA TÉRMICA (VISIBLE ÚNICAMENTE AL IMPRIMIR)  -->
+  <!-- ====================================================================== -->
+  <div id="area-impresion-ticket" class="hidden font-mono text-black text-xs leading-tight">
+    
+    <!-- ENCABEZADO CON EL LOGO DE LA MASCOTA DESPUÉS DEL NOMBRE -->
+    <div class="text-center pb-2 border-b border-dashed border-black">
+      <!-- 1. NOMBRE DEL RESTAURANTE -->
+      <h1 class="text-xl font-black uppercase tracking-wider">ARY LA AREPA</h1>
+      
+      <!-- 2. LOGO DE LA MASCOTA DESPUÉS DEL NOMBRE -->
+      <img src="/img/mascota.png" onerror="cargarMascotaSegura(this)" alt="Mascota Ary" class="w-16 h-16 mx-auto object-contain my-1">
+      
+      <!-- 3. INFORMACIÓN DEL LOCAL -->
+      <p class="font-bold text-[11px]">De Popayán para el mundo</p>
+      <p class="text-[10px]">Cra 7 #10N-22 B, Prados del Norte en WokHouse</p>
+      <p class="text-[10px]">NIT: 1061789456-1 • Tel: 321 5035691</p>
+    </div>
+
+    <!-- DATOS DE LA COMANDA -->
+    <div class="py-2 border-b border-dashed border-black text-[11px] space-y-0.5">
+      <div class="flex justify-between font-black text-sm">
+        <span>ORDEN: <span id="ticket-num">#000</span></span>
+        <span id="ticket-modalidad">MESA</span>
+      </div>
+      <div>FECHA: <span id="ticket-fecha">--</span> - <span id="ticket-hora">--</span></div>
+      <div>CLIENTE: <span id="ticket-cliente" class="font-bold">--</span></div>
+      <div>TEL: <span id="ticket-tel">--</span></div>
+      <div id="ticket-box-dir">UBICACIÓN: <span id="ticket-dir">--</span></div>
+      <div>CAJERO: <span id="ticket-cajero">--</span></div>
+    </div>
+
+    <!-- PRODUCTOS -->
+    <div class="py-2 border-b border-dashed border-black space-y-1.5" id="ticket-items"></div>
+
+    <!-- TOTALES -->
+    <div class="py-2 border-b border-dashed border-black space-y-1 text-[11px]">
+      <div class="flex justify-between">
+        <span>Subtotal:</span>
+        <span id="ticket-subtotal">$0</span>
+      </div>
+      <div class="flex justify-between" id="row-ticket-envio">
+        <span>Envío Domicilio:</span>
+        <span id="ticket-envio">$0</span>
+      </div>
+      <div class="flex justify-between font-black text-sm pt-1 border-t border-dotted border-black">
+        <span>TOTAL PAGADO:</span>
+        <span id="ticket-total">$0</span>
+      </div>
+      <div class="text-[10px] pt-0.5">
+        MÉTODO DE PAGO: <span id="ticket-metodo" class="font-bold uppercase">EFECTIVO</span>
+      </div>
+    </div>
+
+    <!-- PIE DE TICKET -->
+    <div class="text-center pt-3 text-[10px] space-y-0.5">
+      <p class="font-black">¡GRACIAS POR TU VISITA!</p>
+      <p>Bañadas en queso fundido calientito</p>
     </div>
   </div>
 
-  <!-- Modal Arqueo de Caja -->
-  <div id="modal-arqueo" class="fixed inset-0 z-50 bg-black/95 hidden flex items-center justify-center p-4">
-    <div class="bg-neutral-900 border border-stone-800 rounded-3xl p-6 max-w-sm w-full space-y-4">
-      <div class="flex justify-between items-center border-b border-stone-800 pb-2">
-        <h3 class="font-black text-yellow-400">CUADRE Y CIERRE DE CAJA</h3>
-        <button onclick="cerrarModalArqueo()" class="text-stone-400">✕</button>
-      </div>
-
-      <div class="space-y-2 text-xs" id="arqueo-datos">
-        <div class="flex justify-between"><span>Base inicial:</span><strong id="arq-base">$0</strong></div>
-        <div class="flex justify-between text-green-400"><span>Ventas Efectivo (+):</span><strong id="arq-efectivo">$0</strong></div>
-        <div class="flex justify-between text-blue-400"><span>Ventas Nequi / Bre-B (+):</span><strong id="arq-digital">$0</strong></div>
-        <div class="flex justify-between text-orange-400"><span>Ventas Rappi (Neto):</span><strong id="arq-rappi">$0</strong></div>
-        <div class="flex justify-between text-purple-400"><span>Cortesías / Pautas:</span><strong id="arq-pauta">0 órdenes ($0)</strong></div>
-        
-        <div class="border-t border-stone-800 pt-2 flex justify-between font-black text-sm text-yellow-400">
-          <span>EFECTIVO ESPERADO EN CAJÓN:</span><strong id="arq-total-caja">$0</strong>
-        </div>
-        <p class="text-[10px] text-stone-500 italic">* Rappi y Nequi van a cuenta bancaria, no se exigen en físico.</p>
-      </div>
-
-      <div class="grid grid-cols-2 gap-2 pt-3">
-        <button onclick="imprimirCierreTurno()" class="bg-neutral-800 border border-stone-700 py-2.5 rounded-xl font-bold text-xs">
-          <i class="fa-solid fa-print"></i> Imprimir Tirilla
-        </button>
-        <button onclick="cerrarTurnoDefinitivo()" class="bg-red-600 hover:bg-red-500 text-white py-2.5 rounded-xl font-black text-xs">
-          Cerrar Turno
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <div id="ticket-impresion" class="hidden"></div>
-
+  <!-- ========================================== -->
+  <!-- JAVASCRIPT LOGIC DEL POS                   -->
+  <!-- ========================================== -->
   <script>
     const socket = io();
-    let DATA = { info: {}, productos: [], extras: [], bebidas: [], barrios: [], clientesFrecuentes: [] };
-    let cajeroActivo = null;
-    let comandaPOS = [];
+    let DATA = { productos: [], extras: [], bebidas: [], info: {}, barrios: [] };
+    let usuarioActivo = null;
+    let turnoActual = null;
+    let categoriaActual = 'arepas';
+    let modalidadActual = 'Mesa';
     let metodoPagoActual = 'Efectivo';
-    let descuentoTotal = 0;
+    let carritoPOS = [];
+    let itemEnPersonalizacion = null;
+
+    const variantesMascota = ['/img/mascota.png', '/img/mascota.jpg', '/img/Mascota.png', '/img/Mascota.jpg'];
+    let intentoMascota = 0;
+    function cargarMascotaSegura(img) {
+      intentoMascota++;
+      if (intentoMascota < variantesMascota.length) img.src = variantesMascota[intentoMascota];
+    }
 
     window.onload = async () => {
-      const res = await fetch('/api/data-inicial');
-      DATA = await res.json();
-      renderCatalogoPOS();
-      renderBarriosPOS();
+      // Verificar sesión almacenada
+      const userCache = sessionStorage.getItem('ary_cajero');
+      if (userCache) {
+        usuarioActivo = JSON.parse(userCache);
+        document.getElementById('modal-login-pos').classList.add('hidden');
+        document.getElementById('lbl-cajero-nombre').innerText = usuarioActivo.nombre;
+        await inicializarSistemaPOS();
+      }
     };
 
-    async function iniciarSesionCajero() {
-      const usuario = document.getElementById('login-user').value.trim();
-      const clave = document.getElementById('login-pass').value.trim();
+    async function iniciarSesionPOS() {
+      const usuario = document.getElementById('login-usuario').value.trim();
+      const clave = document.getElementById('login-clave').value.trim();
+      const errBox = document.getElementById('msg-login-error');
 
-      const res = await fetch('/api/cajero/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usuario, clave })
-      });
+      if (!usuario || !clave) return alert('Ingresa usuario y clave');
 
+      try {
+        const res = await fetch('/api/cajero/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario, clave })
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          usuarioActivo = data.usuario;
+          sessionStorage.setItem('ary_cajero', JSON.stringify(usuarioActivo));
+          document.getElementById('modal-login-pos').classList.add('hidden');
+          document.getElementById('lbl-cajero-nombre').innerText = usuarioActivo.nombre;
+          await inicializarSistemaPOS();
+        } else {
+          errBox.classList.remove('hidden');
+        }
+      } catch (e) {
+        alert('Error conectando con el servidor');
+      }
+    }
+
+    function cerrarSesionPOS() {
+      if (!confirm('¿Cerrar sesión de cajero?')) return;
+      sessionStorage.removeItem('ary_cajero');
+      location.reload();
+    }
+
+    async function inicializarSistemaPOS() {
+      const res = await fetch('/api/data-inicial');
+      DATA = await res.json();
+
+      // Configurar selector de mesas
+      const selMesa = document.getElementById('sel-mesa-pos');
+      const numMesas = (DATA.info && DATA.info.numeroMesas) ? DATA.info.numeroMesas : 8;
+      selMesa.innerHTML = '';
+      for (let i = 1; i <= numMesas; i++) {
+        selMesa.innerHTML += `<option value="Mesa ${i}">Mesa #${i}</option>`;
+      }
+
+      await verificarEstadoCaja();
+      renderProductosPOS();
+    }
+
+    async function verificarEstadoCaja() {
+      const res = await fetch('/api/caja/resumen');
       const data = await res.json();
-      if (data.ok) {
-        cajeroActivo = data.usuario;
-        document.getElementById('lbl-cajero').innerText = cajeroActivo.nombre;
-        document.getElementById('modal-login').classList.add('hidden');
-        
-        const rCaja = await fetch('/api/caja/resumen');
-        const stCaja = await rCaja.json();
-        if (!stCaja.turnoActivo) document.getElementById('modal-apertura').classList.remove('hidden');
+      if (!data.turnoActivo) {
+        document.getElementById('modal-apertura-caja').classList.remove('hidden');
       } else {
-        document.getElementById('login-error').classList.remove('hidden');
+        turnoActual = data.turno;
       }
     }
 
     async function confirmarAperturaCaja() {
-      const base = document.getElementById('caja-base').value;
-      await fetch('/api/caja/abrir', {
+      const baseInicial = parseFloat(document.getElementById('input-base-inicial').value) || 0;
+      const res = await fetch('/api/caja/abrir', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cajeroNombre: cajeroActivo.nombre, baseInicial: base })
+        body: JSON.stringify({
+          cajeroNombre: usuarioActivo ? usuarioActivo.nombre : 'Cajero',
+          baseInicial
+        })
       });
-      document.getElementById('modal-apertura').classList.add('hidden');
+      const data = await res.json();
+      if (data.ok) {
+        turnoActual = data.turno;
+        document.getElementById('modal-apertura-caja').classList.add('hidden');
+        alert('✓ Turno de caja abierto correctamente.');
+      }
     }
 
-    function renderCatalogoPOS() {
-      document.getElementById('grid-pos-arepas').innerHTML = DATA.productos.map(p => `
-        <button onclick="agregarArepaComanda(${p.id})" class="bg-neutral-900 border-2 border-yellow-500/40 hover:border-yellow-400 p-2.5 rounded-2xl text-left flex flex-col justify-between h-28 shadow transition">
-          <div class="font-black text-xs text-yellow-400 leading-tight">${p.nombre}</div>
-          <div class="text-[9px] text-stone-400 line-clamp-2">${p.desc}</div>
-          <div class="font-black text-xs text-white">$${p.precio.toLocaleString()}</div>
-        </button>
+    async function abrirArqueoCaja() {
+      const res = await fetch('/api/caja/resumen');
+      const data = await res.json();
+      if (!data.turnoActivo) {
+        return alert('No hay ningún turno de caja activo en este momento.');
+      }
+
+      document.getElementById('box-datos-arqueo').innerHTML = `
+        <div class="flex justify-between font-bold text-white"><span>Cajero:</span><span class="text-yellow-400">${data.turno.cajero}</span></div>
+        <div class="flex justify-between text-stone-400"><span>Apertura:</span><span>${data.turno.horaApertura} (${data.turno.fecha})</span></div>
+        <div class="flex justify-between text-stone-400 border-t border-stone-800 pt-1"><span>Base Inicial en Efectivo:</span><span class="font-bold text-white">$${data.turno.baseInicial.toLocaleString()}</span></div>
+        <div class="flex justify-between text-emerald-400"><span>Ventas Efectivo:</span><span class="font-bold">+$${data.ventasEfectivo.toLocaleString()}</span></div>
+        <div class="flex justify-between text-fuchsia-400"><span>Ventas QR / Nequi:</span><span class="font-bold">$${data.ventasDigital.toLocaleString()}</span></div>
+        <div class="flex justify-between text-orange-400"><span>Ventas Rappi:</span><span class="font-bold">$${data.ventasRappi.toLocaleString()}</span></div>
+        <div class="flex justify-between text-purple-400"><span>Pautas Publicitarias:</span><span>${data.ventasPauta} comandas</span></div>
+        <div class="flex justify-between font-black text-sm text-yellow-400 border-t border-stone-800 pt-2">
+          <span>EFECTIVO ESPERADO EN CAJA:</span>
+          <span class="text-base text-green-400">$${data.totalEnCajaEsperado.toLocaleString()}</span>
+        </div>
+      `;
+      document.getElementById('modal-arqueo-caja').classList.remove('hidden');
+    }
+
+    function cerrarModalArqueo() { document.getElementById('modal-arqueo-caja').classList.add('hidden'); }
+
+    async function ejecutarCierreCaja() {
+      if (!confirm('¿Deseas cerrar definitivamente este turno de caja?')) return;
+      const res = await fetch('/api/caja/cerrar', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        alert('✓ Caja cerrada con éxito.');
+        location.reload();
+      }
+    }
+
+    function setCategoriaPOS(cat) {
+      categoriaActual = cat;
+      ['arepas', 'bebidas', 'extras'].forEach(c => {
+        document.getElementById(`btn-cat-${c}`).className = c === cat 
+          ? 'px-5 py-2 rounded-xl text-xs font-black bg-yellow-400 text-black shadow' 
+          : 'px-5 py-2 rounded-xl text-xs font-bold bg-neutral-900 border border-stone-800 text-stone-300 hover:text-white';
+      });
+      renderProductosPOS();
+    }
+
+    function renderProductosPOS() {
+      const grid = document.getElementById('grid-productos-pos');
+      let items = [];
+
+      if (categoriaActual === 'arepas') items = DATA.productos || [];
+      else if (categoriaActual === 'bebidas') items = DATA.bebidas || [];
+      else items = DATA.extras || [];
+
+      grid.innerHTML = items.map((it, idx) => `
+        <div onclick="seleccionarProductoPOS(${idx})" class="bg-neutral-900 border border-stone-800 hover:border-yellow-400 p-3 rounded-2xl flex flex-col justify-between cursor-pointer transition shadow group">
+          ${it.img ? `
+            <div class="w-full h-24 mb-2 rounded-xl overflow-hidden bg-neutral-950 flex items-center justify-center">
+              <img src="${it.img}" onerror="cargarMascotaSegura(this)" class="w-full h-full object-cover group-hover:scale-105 transition">
+            </div>
+          ` : ''}
+          <div>
+            <h4 class="font-bold text-xs text-white line-clamp-1">${it.nombre}</h4>
+            ${it.desc ? `<p class="text-[10px] text-stone-400 line-clamp-2 mt-0.5">${it.desc}</p>` : ''}
+          </div>
+          <div class="mt-2 text-right">
+            <span class="text-xs font-black text-yellow-400">$${(it.precio || 0).toLocaleString()}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function seleccionarProductoPOS(idx) {
+      if (categoriaActual === 'arepas') {
+        itemEnPersonalizacion = { ...DATA.productos[idx] };
+        abrirModalPersonalizar();
+      } else if (categoriaActual === 'bebidas') {
+        const b = DATA.bebidas[idx];
+        carritoPOS.push({ id: b.id, nombre: b.nombre, precio: b.precio, extras: [], notas: '' });
+        actualizarCarritoPOS();
+      } else {
+        const ex = DATA.extras[idx];
+        carritoPOS.push({ id: ex.id, nombre: `Extra: ${ex.nombre}`, precio: ex.precio, extras: [], notas: '' });
+        actualizarCarritoPOS();
+      }
+    }
+
+    function abrirModalPersonalizar() {
+      document.getElementById('modal-item-nombre').innerText = itemEnPersonalizacion.nombre;
+      document.getElementById('modal-item-desc').innerText = itemEnPersonalizacion.desc || '';
+      document.getElementById('modal-item-nota').value = '';
+
+      // RENDERIZAR EXTRAS EN TAMAÑO VISIBLE
+      document.getElementById('lista-extras-pos').innerHTML = (DATA.extras || []).map(ex => `
+        <label class="flex items-center justify-between bg-neutral-800 hover:bg-neutral-700/80 p-2.5 rounded-xl border border-stone-700 cursor-pointer transition">
+          <span class="flex items-center gap-3">
+            <input type="checkbox" data-nombre="${ex.nombre}" data-precio="${ex.precio}" onchange="recalcularModalPOS()" class="check-extra-pos w-4 h-4 accent-yellow-400 rounded">
+            <span class="font-bold text-white text-xs sm:text-sm">${ex.nombre}</span>
+          </span>
+          <span class="font-black text-yellow-400 text-xs sm:text-sm">+$${ex.precio.toLocaleString()}</span>
+        </label>
       `).join('');
 
-      document.getElementById('grid-pos-extras').innerHTML = DATA.extras.map(e => `
-        <button onclick="agregarExtraUltimaArepa('${e.nombre}', ${e.precio})" class="bg-neutral-900 border border-stone-800 hover:border-yellow-400 p-2 rounded-xl text-left h-20 flex flex-col justify-between">
-          <div class="font-bold text-xs text-stone-200">+ ${e.nombre}</div>
-          <div class="font-black text-xs text-yellow-400">$${e.precio.toLocaleString()}</div>
-        </button>
-      `).join('');
-
-      document.getElementById('grid-pos-bebidas').innerHTML = DATA.bebidas.map(b => `
-        <button onclick="agregarBebidaComanda(${b.id})" class="bg-neutral-900 border border-stone-800 hover:border-yellow-400 p-2 rounded-xl text-left h-20 flex flex-col justify-between">
-          <div class="font-bold text-xs text-stone-200">${b.nombre}</div>
-          <div class="font-black text-xs text-yellow-400">$${b.precio.toLocaleString()}</div>
-        </button>
-      `).join('');
+      recalcularModalPOS();
+      document.getElementById('modal-personalizar-item').classList.remove('hidden');
     }
 
-    function mostrarSeccion(sec) {
-      document.getElementById('grid-pos-arepas').classList.toggle('hidden', sec !== 'arepas');
-      document.getElementById('grid-pos-extras').classList.toggle('hidden', sec !== 'extras');
-      document.getElementById('grid-pos-bebidas').classList.toggle('hidden', sec !== 'bebidas');
-
-      document.getElementById('tab-arepas').className = sec === 'arepas' ? 'px-4 py-2 bg-yellow-400 text-black font-black text-xs rounded-xl shadow' : 'px-4 py-2 bg-neutral-800 text-stone-300 font-bold text-xs rounded-xl border border-stone-700';
-      document.getElementById('tab-extras').className = sec === 'extras' ? 'px-4 py-2 bg-yellow-400 text-black font-black text-xs rounded-xl shadow' : 'px-4 py-2 bg-neutral-800 text-stone-300 font-bold text-xs rounded-xl border border-stone-700';
-      document.getElementById('tab-bebidas').className = sec === 'bebidas' ? 'px-4 py-2 bg-yellow-400 text-black font-black text-xs rounded-xl shadow' : 'px-4 py-2 bg-neutral-800 text-stone-300 font-bold text-xs rounded-xl border border-stone-700';
+    function recalcularModalPOS() {
+      let total = itemEnPersonalizacion.precio;
+      document.querySelectorAll('.check-extra-pos:checked').forEach(c => total += parseInt(c.dataset.precio));
+      document.getElementById('modal-item-total').innerText = `$${total.toLocaleString()}`;
     }
 
-    function renderBarriosPOS() {
-      document.getElementById('pos-cli-barrio').innerHTML = `<option value="0">En Local / Sin Domicilio ($0)</option>` + 
-        DATA.barrios.map(b => `<option value="${b.costo}">${b.nombre} (+$${b.costo})</option>`).join('');
+    function cerrarModalPersonalizar() {
+      document.getElementById('modal-personalizar-item').classList.add('hidden');
     }
 
-    function agregarArepaComanda(id) {
-      const p = DATA.productos.find(x => x.id === id);
-      comandaPOS.push({ id: p.id, nombre: p.nombre, precio: p.precio, extras: [], notas: '' });
-      renderComandaActiva();
+    function confirmarAgregarAlCarrito() {
+      const extras = Array.from(document.querySelectorAll('.check-extra-pos:checked')).map(c => ({
+        nombre: c.dataset.nombre,
+        precio: parseInt(c.dataset.precio)
+      }));
+      const sumaExtras = extras.reduce((a, b) => a + b.precio, 0);
+
+      carritoPOS.push({
+        id: itemEnPersonalizacion.id,
+        nombre: itemEnPersonalizacion.nombre,
+        precio: itemEnPersonalizacion.precio + sumaExtras,
+        extras,
+        notas: document.getElementById('modal-item-nota').value.trim()
+      });
+
+      cerrarModalPersonalizar();
+      actualizarCarritoPOS();
     }
 
-    function agregarExtraUltimaArepa(nombre, precio) {
-      if (comandaPOS.length === 0) return alert('Primero selecciona una arepa para añadirle este extra.');
-      const ultima = comandaPOS[comandaPOS.length - 1];
-      ultima.extras.push({ nombre, precio });
-      ultima.precio += precio;
-      renderComandaActiva();
-    }
+    function actualizarCarritoPOS() {
+      document.getElementById('pos-items-count').innerText = carritoPOS.length;
+      const box = document.getElementById('lista-carrito-pos');
 
-    function agregarBebidaComanda(id) {
-      const b = DATA.bebidas.find(x => x.id === id);
-      comandaPOS.push({ id: b.id, nombre: b.nombre, precio: b.precio, extras: [], notas: '' });
-      renderComandaActiva();
-    }
-
-    function renderComandaActiva() {
-      const box = document.getElementById('pos-items-lista');
-      if (comandaPOS.length === 0) {
-        box.innerHTML = `<p class="text-stone-500 text-xs text-center py-10 italic">Toca una arepa para comenzar la orden...</p>`;
-        recalcularTotalPOS();
+      if (carritoPOS.length === 0) {
+        box.innerHTML = `<div class="text-stone-500 italic text-center py-6 text-[11px]">Orden vacía</div>`;
+        calcularTotalesPOS();
         return;
       }
 
-      box.innerHTML = comandaPOS.map((item, idx) => `
-        <div class="bg-neutral-900 border border-stone-800 p-2 rounded-xl flex justify-between items-start text-xs">
+      box.innerHTML = carritoPOS.map((it, idx) => `
+        <div class="bg-neutral-950 p-2 rounded-xl border border-stone-800 flex justify-between items-start text-xs">
           <div>
-            <div class="font-black text-yellow-400">${item.nombre}</div>
-            ${item.extras && item.extras.length ? `<div class="text-[10px] text-stone-300">+ ${item.extras.map(e => e.nombre).join(', ')}</div>` : ''}
+            <div class="font-bold text-white">${it.nombre}</div>
+            ${it.extras && it.extras.length ? `<div class="text-[10px] text-yellow-400">+ ${it.extras.map(e => e.nombre).join(', ')}</div>` : ''}
+            ${it.notas ? `<div class="text-[10px] text-stone-400 italic">* ${it.notas}</div>` : ''}
           </div>
           <div class="flex items-center gap-2">
-            <span class="font-black">$${item.precio.toLocaleString()}</span>
-            <button onclick="eliminarItemPOS(${idx})" class="text-red-500 font-bold hover:text-red-400">✕</button>
+            <span class="font-black text-yellow-400">$${(it.precio || 0).toLocaleString()}</span>
+            <button onclick="eliminarItemPOS(${idx})" class="text-red-400 hover:text-red-300 font-bold px-1">✕</button>
           </div>
         </div>
       `).join('');
 
-      recalcularTotalPOS();
+      calcularTotalesPOS();
     }
 
     function eliminarItemPOS(idx) {
-      comandaPOS.splice(idx, 1);
-      renderComandaActiva();
+      carritoPOS.splice(idx, 1);
+      actualizarCarritoPOS();
     }
 
-    function setMetodoPagoPOS(tipo) {
-      metodoPagoActual = tipo;
+    function vaciarCarritoPOS() {
+      carritoPOS = [];
+      actualizarCarritoPOS();
+    }
 
-      const btnMap = {
-        'Efectivo': 'pos-btn-efec',
-        'Nequi / Bre-B': 'pos-btn-nequi',
-        'Rappi': 'pos-btn-rappi',
-        'Pauta': 'pos-btn-pauta'
-      };
-
-      Object.keys(btnMap).forEach(k => {
-        const btn = document.getElementById(btnMap[k]);
-        if (k === tipo) {
-          if (k === 'Rappi') btn.className = 'py-2 px-1 rounded-xl font-black text-xs bg-orange-500 text-black text-center shadow-lg';
-          else if (k === 'Pauta') btn.className = 'py-2 px-1 rounded-xl font-black text-xs bg-purple-500 text-black text-center shadow-lg';
-          else btn.className = 'py-2 px-1 rounded-xl font-black text-xs bg-yellow-400 text-black text-center shadow-lg';
-        } else {
-          btn.className = 'py-2 px-1 rounded-xl font-bold text-xs bg-neutral-800 text-stone-400 border border-stone-700 text-center';
-        }
+    function setModalidadPOS(mod) {
+      modalidadActual = mod;
+      ['Mesa', 'Llevar', 'Domicilio', 'Rappi'].forEach(m => {
+        document.getElementById(`btn-mod-${m}`).className = m === mod 
+          ? 'py-2 rounded-xl font-bold bg-yellow-400 text-black text-center text-xs' 
+          : 'py-2 rounded-xl font-bold bg-neutral-800 border border-stone-700 text-stone-300 text-center text-xs';
       });
 
-      if (tipo === 'Rappi') {
-        document.getElementById('pos-tipo-orden').value = 'Para Llevar';
-        document.getElementById('pos-cli-barrio').selectedIndex = 0;
-        document.getElementById('pos-cli-nombre').value = 'Cliente Rappi';
-        document.getElementById('pos-cli-dir').value = 'Domiciliario Rappi recoge';
-      } else if (tipo === 'Pauta') {
-        document.getElementById('pos-cli-nombre').value = 'Pauta / Cortesía';
-        document.getElementById('pos-cli-barrio').selectedIndex = 0;
-      }
+      const selMesa = document.getElementById('sel-mesa-pos');
+      const inputDir = document.getElementById('input-direccion-pos');
+      const lbl = document.getElementById('lbl-campo-destino');
 
-      recalcularTotalPOS();
-    }
-
-    function cambiarTipoOrden() {
-      recalcularTotalPOS();
-    }
-
-    function recalcularTotalPOS() {
-      const subtotal = comandaPOS.reduce((acc, i) => acc + i.precio, 0);
-      const tipoOrden = document.getElementById('pos-tipo-orden').value;
-      const envio = (tipoOrden === 'Domicilio' && metodoPagoActual !== 'Rappi') ? parseInt(document.getElementById('pos-cli-barrio').value || 0) : 0;
-
-      let descuento = 0;
-      const rowDesc = document.getElementById('pos-row-descuento');
-      const lblDesc = document.getElementById('pos-lbl-desc-tipo');
-
-      if (metodoPagoActual === 'Rappi') {
-        descuento = Math.round(subtotal * 0.20);
-        rowDesc.classList.remove('hidden');
-        lblDesc.innerText = 'Comisión Rappi (-20%):';
-        document.getElementById('pos-descuento').innerText = `-$${descuento.toLocaleString()}`;
-      } else if (metodoPagoActual === 'Pauta') {
-        descuento = subtotal + envio;
-        rowDesc.classList.remove('hidden');
-        lblDesc.innerText = 'Cortesía Pauta (100%):';
-        document.getElementById('pos-descuento').innerText = `-$${descuento.toLocaleString()}`;
+      if (mod === 'Mesa') {
+        lbl.innerText = 'Número de Mesa:';
+        selMesa.classList.remove('hidden');
+        inputDir.classList.add('hidden');
+      } else if (mod === 'Domicilio') {
+        lbl.innerText = 'Dirección de Entrega:';
+        selMesa.classList.add('hidden');
+        inputDir.classList.remove('hidden');
       } else {
-        rowDesc.classList.add('hidden');
+        lbl.innerText = 'Observación / Nota:';
+        selMesa.classList.add('hidden');
+        inputDir.classList.remove('hidden');
+        inputDir.placeholder = mod === 'Rappi' ? 'Código de orden Rappi' : 'Para llevar en barra';
       }
 
-      descuentoTotal = descuento;
-      const total = Math.max(0, subtotal + envio - descuentoTotal);
+      calcularTotalesPOS();
+    }
+
+    function setMetodoPagoPOS(metodo) {
+      metodoPagoActual = metodo;
+      ['Efectivo', 'Nequi', 'Pauta'].forEach(m => {
+        const id = `btn-pago-${m}`;
+        const match = (m === 'Nequi' && metodo.includes('Nequi')) || (m === metodo);
+        document.getElementById(id).className = match
+          ? 'py-2 rounded-xl bg-yellow-400 text-black text-center'
+          : 'py-2 rounded-xl bg-neutral-800 border border-stone-700 text-stone-300 text-center';
+      });
+      calcularTotalesPOS();
+    }
+
+    function calcularTotalesPOS() {
+      const subtotal = carritoPOS.reduce((a, b) => a + b.precio, 0);
+      const envio = (modalidadActual === 'Domicilio') ? 4000 : 0;
+      const total = metodoPagoActual === 'Pauta' ? 0 : (subtotal + envio);
 
       document.getElementById('pos-subtotal').innerText = `$${subtotal.toLocaleString()}`;
       document.getElementById('pos-envio').innerText = `$${envio.toLocaleString()}`;
       document.getElementById('pos-total').innerText = `$${total.toLocaleString()}`;
     }
 
-    function buscarClienteFrecuente() {
-      const cel = document.getElementById('pos-cli-tel').value.trim();
-      if (cel.length >= 7 && DATA.clientesFrecuentes) {
-        const cli = DATA.clientesFrecuentes.find(c => c && c.celular && c.celular.includes(cel));
-        if (cli) {
-          document.getElementById('pos-cli-nombre').value = cli.nombre;
-          document.getElementById('pos-cli-dir').value = cli.direccion;
-          recalcularTotalPOS();
-        }
+    // ==========================================
+    // DESPACHO E IMPRESIÓN DEL TICKET POS       -->
+    // ==========================================
+    async function despacharOrdenPOS() {
+      if (carritoPOS.length === 0) return alert('La orden está vacía.');
+
+      const nombre = document.getElementById('pos-cliente-nombre').value.trim() || 'Consumidor Final';
+      const celular = document.getElementById('pos-cliente-tel').value.trim() || '';
+      let ubicacion = '';
+
+      if (modalidadActual === 'Mesa') {
+        ubicacion = document.getElementById('sel-mesa-pos').value;
+      } else {
+        ubicacion = document.getElementById('input-direccion-pos').value.trim() || modalidadActual;
       }
-    }
 
-    function limpiarComandaPOS() {
-      comandaPOS = [];
-      descuentoTotal = 0;
-      document.getElementById('pos-cli-tel').value = '';
-      document.getElementById('pos-cli-nombre').value = '';
-      document.getElementById('pos-cli-dir').value = '';
-      document.getElementById('pos-cli-barrio').selectedIndex = 0;
-      setMetodoPagoPOS('Efectivo');
-      renderComandaActiva();
-    }
+      const subtotal = carritoPOS.reduce((a, b) => a + b.precio, 0);
+      const envio = (modalidadActual === 'Domicilio') ? 4000 : 0;
+      const total = metodoPagoActual === 'Pauta' ? 0 : (subtotal + envio);
 
-    // COBRO DIRECTO POR HTTP (RESPUESTA INSTANTÁNEA EN 0.1s)
-    async function cobrarEImprimirPOS() {
-      if (comandaPOS.length === 0) return alert('La comanda está vacía');
-
-      const btnCobrar = document.getElementById('btn-pos-cobrar');
-      btnCobrar.disabled = true;
-
-      const nombre = document.getElementById('pos-cli-nombre').value.trim() || 'Cliente Mostrador';
-      const celular = document.getElementById('pos-cli-tel').value.trim() || 'Local';
-      const direccion = document.getElementById('pos-cli-dir').value.trim() || 'En Local';
-      const barrioSel = document.getElementById('pos-cli-barrio');
-      const costoEnvio = (metodoPagoActual === 'Rappi' || metodoPagoActual === 'Pauta') ? 0 : parseInt(barrioSel.value || 0);
-      const subtotal = comandaPOS.reduce((a, b) => a + b.precio, 0);
-      const total = Math.max(0, subtotal + costoEnvio - descuentoTotal);
-
-      const pedidoPayload = {
-        cliente: { nombre, celular, direccion, barrio: barrioSel.options[barrioSel.selectedIndex].text },
-        modalidad: (metodoPagoActual === 'Rappi') ? 'Rappi' : (metodoPagoActual === 'Pauta' ? 'Pauta / Cortesía' : document.getElementById('pos-tipo-orden').value),
-        cajero: cajeroActivo ? cajeroActivo.nombre : 'Cajero Principal',
-        items: comandaPOS,
+      const payload = {
+        cliente: { nombre, celular, direccion: ubicacion, barrio: modalidadActual },
+        modalidad: modalidadActual === 'Mesa' ? ubicacion : modalidadActual,
+        items: carritoPOS,
         metodoPago: metodoPagoActual,
         subtotal,
-        descuento: descuentoTotal,
-        costoEnvio,
+        costoEnvio: envio,
+        descuento: metodoPagoActual === 'Pauta' ? subtotal : 0,
         total,
+        cajero: usuarioActivo ? usuarioActivo.nombre : 'Caja Principal',
         origen: 'POS'
       };
 
@@ -477,121 +705,63 @@
         const res = await fetch('/api/pedidos', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(pedidoPayload)
+          body: JSON.stringify(payload)
         });
         const data = await res.json();
 
         if (data.ok) {
-          imprimirTicket80mm(data.numero);
-          limpiarComandaPOS();
+          // Imprimir Tirilla Térmica con Logo de Mascota después del Nombre
+          imprimirTirillaTermica({ ...payload, numero: data.numero, id: data.id, fecha: new Date().toLocaleDateString('es-CO'), hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+
+          // Limpiar orden
+          vaciarCarritoPOS();
+          document.getElementById('pos-cliente-nombre').value = '';
+          document.getElementById('pos-cliente-tel').value = '';
+          document.getElementById('input-direccion-pos').value = '';
         } else {
-          alert(data.error || 'No se pudo procesar la orden en caja.');
+          alert(data.error || 'No se pudo crear la orden.');
         }
-      } catch (e) {
-        socket.emit('nuevo-pedido', pedidoPayload);
-      } finally {
-        btnCobrar.disabled = false;
+      } catch (err) {
+        alert('Error despachando la orden.');
       }
     }
 
-    function imprimirTicket80mm(numero) {
-      const nombre = document.getElementById('pos-cli-nombre').value || 'Cliente Mostrador';
-      const direccion = document.getElementById('pos-cli-dir').value || 'En mesa';
-      const subtotal = comandaPOS.reduce((a, b) => a + b.precio, 0);
-      const total = Math.max(0, subtotal - descuentoTotal);
+    function imprimirTirillaTermica(p) {
+      document.getElementById('ticket-num').innerText = p.numero;
+      document.getElementById('ticket-modalidad').innerText = p.modalidad.toUpperCase();
+      document.getElementById('ticket-fecha').innerText = p.fecha;
+      document.getElementById('ticket-hora').innerText = p.hora;
+      document.getElementById('ticket-cliente').innerText = p.cliente.nombre;
+      document.getElementById('ticket-tel').innerText = p.cliente.celular || 'N/A';
+      document.getElementById('ticket-dir').innerText = p.cliente.direccion;
+      document.getElementById('ticket-cajero').innerText = p.cajero;
+      document.getElementById('ticket-metodo').innerText = p.metodoPago.toUpperCase();
 
-      const ticket = document.getElementById('ticket-impresion');
-      ticket.innerHTML = `
-        <div style="text-align: center; font-weight: bold; font-size: 14px;">ARY LA AREPA</div>
-        <div style="text-align: center; font-size: 10px;">Cra 7 #10N-22 B (Prados del norte)</div>
-        <div style="text-align: center; font-size: 10px;">Tel: 321 5035691</div>
-        <div style="text-align: center;">================================</div>
-        <div style="font-size: 15px; font-weight: bold; text-align: center;">ORDEN: ${numero}</div>
-        <div style="text-align: center; font-weight: bold; font-size: 11px;">CANAL: ${metodoPagoActual.toUpperCase()}</div>
-        <div>Fecha: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
-        <div>Cajero: ${cajeroActivo ? cajeroActivo.nombre : 'Caja'}</div>
-        <div>Cliente: ${nombre}</div>
-        <div>Destino: ${direccion}</div>
-        <div style="text-align: center;">--------------------------------</div>
-        <div style="font-weight: bold;">CANT  DESCRIPCION            TOTAL</div>
-        ${comandaPOS.map(i => `
-          <div>1x  ${i.nombre.padEnd(18, ' ').substring(0, 18)} $${i.precio.toLocaleString()}</div>
-          ${i.extras.map(e => `<div style="font-size: 9px; padding-left: 10px;">+ ${e.nombre} (+$${e.precio})</div>`).join('')}
-        `).join('')}
-        <div style="text-align: center;">--------------------------------</div>
-        <div>Subtotal:                 $${subtotal.toLocaleString()}</div>
-        ${metodoPagoActual === 'Rappi' ? `<div>Comisión Rappi (-20%):   -$${descuentoTotal.toLocaleString()}</div>` : ''}
-        ${metodoPagoActual === 'Pauta' ? `<div>Descuento Pauta (100%):  -$${descuentoTotal.toLocaleString()}</div>` : ''}
-        <div style="font-weight: bold; font-size: 13px;">TOTAL A COBRAR:       $${total.toLocaleString()}</div>
-        <div>Método: ${metodoPagoActual}</div>
-        <div style="text-align: center;">================================</div>
-        <div style="text-align: center; font-size: 10px; margin-top: 5px;">
-          ${metodoPagoActual === 'Pauta' ? '*** CORTESÍA / PUBLICIDAD ***' : '¡Gracias por su compra!'}
+      document.getElementById('ticket-subtotal').innerText = `$${p.subtotal.toLocaleString()}`;
+      document.getElementById('ticket-envio').innerText = `$${p.costoEnvio.toLocaleString()}`;
+      document.getElementById('ticket-total').innerText = `$${p.total.toLocaleString()}`;
+
+      document.getElementById('ticket-items').innerHTML = p.items.map(it => `
+        <div>
+          <div class="flex justify-between font-bold">
+            <span>1x ${it.nombre}</span>
+            <span>$${(it.precio || 0).toLocaleString()}</span>
+          </div>
+          ${it.extras && it.extras.length ? `
+            <div class="text-[10px] pl-2 text-stone-800">
+              + Extras: ${it.extras.map(e => typeof e === 'object' ? e.nombre : e).join(', ')}
+            </div>
+          ` : ''}
+          ${it.notas ? `
+            <div class="text-[10px] pl-2 italic text-stone-700">
+              * Nota: ${it.notas}
+            </div>
+          ` : ''}
         </div>
-        <div style="height: 30px;">.</div>
-      `;
+      `).join('');
 
-      ticket.classList.remove('hidden');
+      // Desencadena la impresión
       window.print();
-      setTimeout(() => { ticket.classList.add('hidden'); }, 500);
-    }
-
-    async function abrirModalArqueo() {
-      const res = await fetch('/api/caja/resumen');
-      const data = await res.json();
-      if (!data.turnoActivo) return alert('No hay turno abierto.');
-
-      document.getElementById('arq-base').innerText = `$${data.turno.baseInicial.toLocaleString()}`;
-      document.getElementById('arq-efectivo').innerText = `$${data.ventasEfectivo.toLocaleString()}`;
-      document.getElementById('arq-digital').innerText = `$${data.ventasDigital.toLocaleString()}`;
-      document.getElementById('arq-rappi').innerText = `$${(data.ventasRappi || 0).toLocaleString()}`;
-      document.getElementById('arq-pauta').innerText = `${data.ventasPauta || 0} órdenes ($0)`;
-      document.getElementById('arq-total-caja').innerText = `$${data.totalEnCajaEsperado.toLocaleString()}`;
-
-      document.getElementById('modal-arqueo').classList.remove('hidden');
-    }
-
-    function cerrarModalArqueo() { document.getElementById('modal-arqueo').classList.add('hidden'); }
-
-    async function cerrarTurnoDefinitivo() {
-      if (!confirm('¿Cerrar el turno de caja definitivamente?')) return;
-      const res = await fetch('/api/caja/cerrar', { method: 'POST' });
-      const data = await res.json();
-      alert(`Turno cerrado. Total efectivo a entregar: $${data.resumenCierre.totalCajaEsperado.toLocaleString()}`);
-      location.reload();
-    }
-
-    function imprimirCierreTurno() {
-      const base = document.getElementById('arq-base').innerText;
-      const efec = document.getElementById('arq-efectivo').innerText;
-      const digi = document.getElementById('arq-digital').innerText;
-      const rappi = document.getElementById('arq-rappi').innerText;
-      const pauta = document.getElementById('arq-pauta').innerText;
-      const total = document.getElementById('arq-total-caja').innerText;
-
-      const ticket = document.getElementById('ticket-impresion');
-      ticket.innerHTML = `
-        <div style="text-align: center; font-weight: bold; font-size: 14px;">ARY LA AREPA</div>
-        <div style="text-align: center; font-size: 11px; font-weight: bold;">CIERRE DE TURNO Y ARQUEO</div>
-        <div>Fecha: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</div>
-        <div>Cajero: ${cajeroActivo ? cajeroActivo.nombre : 'Cajero'}</div>
-        <div>================================</div>
-        <div>Base Inicial Efectivo:    ${base}</div>
-        <div>Ventas Efectivo (+):      ${efec}</div>
-        <div>Ventas Nequi / Bre-B:     ${digi}</div>
-        <div>Ventas Rappi (Neto):      ${rappi}</div>
-        <div>Cortesías / Pautas:       ${pauta}</div>
-        <div>--------------------------------</div>
-        <div style="font-size: 13px; font-weight: bold;">TOTAL EFECTIVO EN CAJÓN: ${total}</div>
-        <div>================================</div>
-        <div style="font-size: 9px; margin-top: 5px;">* Rappi y Nequi van a cuenta bancaria.</div>
-        <br><br>
-        <div>Firma Cajero: ___________________</div>
-        <div style="height: 30px;">.</div>
-      `;
-      ticket.classList.remove('hidden');
-      window.print();
-      setTimeout(() => { ticket.classList.add('hidden'); }, 500);
     }
   </script>
 </body>
