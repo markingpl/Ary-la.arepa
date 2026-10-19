@@ -8,20 +8,36 @@
   <script src="/socket.io/socket.io.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-stone-950 text-white min-h-screen p-4 flex justify-center items-center">
-  <div class="bg-stone-900 border border-stone-800 rounded-3xl p-6 max-w-sm w-full space-y-6 shadow-2xl">
+<body class="bg-stone-950 text-white min-h-screen p-4 flex justify-center items-center font-sans">
+  <div class="bg-stone-900 border border-stone-800 rounded-3xl p-6 max-w-sm w-full space-y-6 shadow-2xl relative overflow-hidden">
     
+    <!-- Alerta en caso de Cancelación -->
+    <div id="alerta-cancelado" class="hidden bg-red-950/80 border-2 border-red-600 rounded-2xl p-4 text-center space-y-2 animate-pulse">
+      <div class="w-12 h-12 rounded-full bg-red-600/30 border border-red-500 text-red-400 mx-auto flex items-center justify-center text-2xl font-black">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <h2 class="text-base font-black text-red-400 uppercase tracking-wide">Tu Pedido ha sido Cancelado</h2>
+      <p class="text-xs text-stone-200">
+        <span class="font-bold text-red-300">Motivo:</span> <span id="txt-motivo-cancelacion">Rechazado por cocina</span>
+      </p>
+      <div class="pt-2 border-t border-red-800/60">
+        <a id="btn-wa-soporte" href="https://wa.me/573215035691" target="_blank" class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white text-xs font-black px-4 py-2 rounded-xl transition">
+          <i class="fa-brands fa-whatsapp"></i> Hablar con el restaurante
+        </a>
+      </div>
+    </div>
+
     <div class="text-center space-y-1">
-      <div class="inline-flex p-3 rounded-full bg-green-500/10 text-green-400 mb-1">
+      <div id="icono-estado-general" class="inline-flex p-3 rounded-full bg-green-500/10 text-green-400 mb-1">
         <i class="fa-solid fa-circle-check text-2xl"></i>
       </div>
-      <p class="text-xs text-stone-400 font-bold uppercase">Estado de tu orden</p>
+      <p class="text-xs text-stone-400 font-bold uppercase tracking-wider">Estado de tu orden</p>
       <h1 id="num-pedido" class="text-4xl font-black text-amber-400 tracking-wider">#---</h1>
-      <span id="badge-tipo" class="inline-block text-[10px] bg-stone-800 px-3 py-1 rounded-full uppercase font-bold text-stone-300">Cargando...</span>
+      <span id="badge-tipo" class="inline-block text-[10px] bg-stone-800 px-3 py-1 rounded-full uppercase font-black text-stone-300">Cargando...</span>
     </div>
 
     <!-- Stepper de Estados -->
-    <div class="space-y-4 border-y border-stone-800 py-6">
+    <div id="stepper-contenedor" class="space-y-4 border-y border-stone-800 py-6">
       <div id="step-PENDIENTE" class="flex items-center gap-4 text-stone-500 transition">
         <div class="w-8 h-8 rounded-full border border-current flex items-center justify-center font-bold text-xs step-circle">1</div>
         <div>
@@ -34,7 +50,7 @@
         <div class="w-8 h-8 rounded-full border border-current flex items-center justify-center font-bold text-xs step-circle">2</div>
         <div>
           <div class="font-bold text-sm text-white">En preparación</div>
-          <div class="text-[10px]">Cocinando tus salchipapas al toque</div>
+          <div class="text-[10px]">Cocinando tus arepas al toque</div>
         </div>
       </div>
 
@@ -56,17 +72,17 @@
     </div>
 
     <!-- Resumen -->
-    <div class="space-y-2 text-xs">
-      <div class="font-bold text-stone-400 uppercase text-[10px]">Detalle del pedido:</div>
-      <div id="lista-items" class="space-y-1 text-stone-300"></div>
-      <div class="border-t border-stone-800 pt-2 flex justify-between font-black text-sm">
-        <span>Total:</span>
-        <span id="txt-total" class="text-red-500">$0</span>
+    <div class="space-y-2 text-xs bg-neutral-950 p-4 rounded-2xl border border-stone-800">
+      <div class="font-bold text-stone-400 uppercase text-[10px] tracking-wider">Detalle de la compra:</div>
+      <div id="lista-items" class="space-y-2 text-stone-300"></div>
+      <div class="border-t border-stone-800 pt-2 flex justify-between font-black text-sm text-white">
+        <span>Total de la orden:</span>
+        <span id="txt-total" class="text-amber-400">$0</span>
       </div>
     </div>
 
     <a href="/" class="block text-center w-full bg-stone-800 hover:bg-stone-700 py-3 rounded-xl font-bold text-xs text-stone-300">
-      Hacer otro pedido
+      Volver al Menú Principal
     </a>
   </div>
 
@@ -76,30 +92,69 @@
     const pedidoId = urlParams.get('id');
 
     async function cargarPedido() {
-      const res = await fetch(`/api/pedido/${pedidoId}`);
-      if (!res.ok) return alert('Pedido no encontrado');
-      const p = await res.json();
+      if (!pedidoId) return;
+      try {
+        const res = await fetch(`/api/pedido/${pedidoId}`);
+        if (!res.ok) return;
+        const p = await res.json();
 
-      document.getElementById('num-pedido').innerText = p.numero;
-      document.getElementById('badge-tipo').innerText = p.modalidad;
-      document.getElementById('txt-total').innerText = `$${p.total.toLocaleString()}`;
+        document.getElementById('num-pedido').innerText = p.numero;
+        document.getElementById('badge-tipo').innerText = p.modalidad;
+        document.getElementById('txt-total').innerText = `$${(p.total || 0).toLocaleString()}`;
 
-      document.getElementById('lista-items').innerHTML = p.items.map(i => `
-        <div class="flex justify-between">
-          <span>${i.nombre}</span>
-          <span class="font-bold">$${i.precio.toLocaleString()}</span>
-        </div>
-      `).join('');
+        document.getElementById('lista-items').innerHTML = (p.items || []).map(i => `
+          <div class="border-b border-stone-900 pb-1.5 last:border-0">
+            <div class="flex justify-between font-bold text-white">
+              <span>${i.nombre}</span>
+              <span class="text-yellow-400">$${(i.precio || 0).toLocaleString()}</span>
+            </div>
+            ${i.extras && i.extras.length ? `
+              <div class="text-[11px] text-stone-400 pl-2">
+                + Extras: ${i.extras.map(e => typeof e === 'object' ? e.nombre : e).join(', ')}
+              </div>
+            ` : ''}
+            ${i.notas ? `
+              <div class="text-[10px] text-amber-300/90 pl-2 italic">
+                Nota: ${i.notas}
+              </div>
+            ` : ''}
+          </div>
+        `).join('');
 
-      actualizarStepper(p.estado);
+        actualizarVisualizacion(p);
+      } catch (err) {
+        console.error("Error al cargar orden:", err);
+      }
     }
 
-    function actualizarStepper(estado) {
+    function actualizarVisualizacion(p) {
+      const alerta = document.getElementById('alerta-cancelado');
+      const stepper = document.getElementById('stepper-contenedor');
+      const iconoGeneral = document.getElementById('icono-estado-general');
+      const badge = document.getElementById('badge-tipo');
+
+      if (p.estado === 'CANCELADO') {
+        alerta.classList.remove('hidden');
+        stepper.classList.add('opacity-30', 'pointer-events-none');
+        document.getElementById('txt-motivo-cancelacion').innerText = p.motivoCancelacion || 'Insumos agotados o rechazado por cocina';
+        iconoGeneral.className = 'inline-flex p-3 rounded-full bg-red-600/20 text-red-400 mb-1';
+        iconoGeneral.innerHTML = '<i class="fa-solid fa-xmark text-2xl"></i>';
+        badge.className = 'inline-block text-[10px] bg-red-950 border border-red-700 px-3 py-1 rounded-full uppercase font-black text-red-400';
+        badge.innerText = 'CANCELADO';
+        return;
+      }
+
+      alerta.classList.add('hidden');
+      stepper.classList.remove('opacity-30', 'pointer-events-none');
+      iconoGeneral.className = 'inline-flex p-3 rounded-full bg-green-500/10 text-green-400 mb-1';
+      iconoGeneral.innerHTML = '<i class="fa-solid fa-circle-check text-2xl"></i>';
+
       const orden = ['PENDIENTE', 'PREPARANDO', 'LISTO', 'ENTREGADO'];
-      const indexActual = orden.indexOf(estado);
+      const indexActual = orden.indexOf(p.estado);
 
       orden.forEach((est, idx) => {
         const el = document.getElementById(`step-${est}`);
+        if (!el) return;
         const circle = el.querySelector('.step-circle');
         if (idx <= indexActual) {
           el.className = 'flex items-center gap-4 text-green-400 transition';
@@ -113,11 +168,12 @@
       });
     }
 
-    socket.on('estado-actualizado', ({ id, nuevoEstado }) => {
-      if (id === pedidoId) actualizarStepper(nuevoEstado);
+    socket.on('estado-actualizado', ({ id, nuevoEstado, pedido }) => {
+      if (id === pedidoId) cargarPedido();
     });
 
     cargarPedido();
+    setInterval(cargarPedido, 5000);
   </script>
 </body>
 </html>
