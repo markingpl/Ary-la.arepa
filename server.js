@@ -57,12 +57,10 @@ const DB_DEFAULT = {
     valorDescuentoCanje: 5000,
     activo: true
   },
-  // GASTOS DIARIOS (NUEVO)
   gastos: [
     { id: 'gst-1', fecha: '2026-10-18', hora: '10:30', descripcion: 'Gas propano pipa 40lb', cantidad: 1, valorUnitario: 85000, valorTotal: 85000, categoria: 'Servicios' },
     { id: 'gst-2', fecha: '2026-10-18', hora: '12:00', descripcion: 'Bolsas y servilletas', cantidad: 5, valorUnitario: 6000, valorTotal: 30000, categoria: 'Empaques' }
   ],
-  // NÓMINA Y EMPLEADOS (NUEVO)
   nomina: {
     empleados: [
       { id: 1, nombre: 'Carlos Andrés', cargo: 'Parrillero / Cocinero', telefono: '3120001122', pagoTurno: 45000 },
@@ -116,7 +114,6 @@ const DB_DEFAULT = {
     { nombre: 'Palacé / Villa del Viento', costo: 6000 },
     { nombre: 'Santa Clara / Los Hoyos', costo: 4000 }
   ],
-  // PRODUCTOS CON COSTO NETO DE PRODUCCIÓN (NUEVO)
   productos: [
     { id: 1, cat: 'arepas', nombre: 'Campesina', desc: 'Chorizo ahumado • carne desmechada • guacamole • salsas de la casa', precio: 26000, costoNeto: 10500, img: '/img/campesina.png' },
     { id: 2, cat: 'arepas', nombre: 'Doriloca', desc: 'Doritos • pico de gallo • carne desmechada • guacamole • salsas de la casa', precio: 25000, costoNeto: 9800, img: '/img/doriloca.png' },
@@ -227,6 +224,7 @@ async function sincronizarConSupabase() {
         descuento: Number(p.descuento),
         total: Number(p.total),
         estado: p.estado,
+        motivoCancelacion: p.motivo_cancelacion || p.motivoCancelacion || '',
         turnoId: p.turno_id,
         origen: p.origen
       }));
@@ -325,6 +323,7 @@ function registrarPedidoEnSistema(pedidoData) {
       hora: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       timestamp: Date.now(),
       estado: 'PENDIENTE',
+      motivoCancelacion: '',
       turnoId: DB.turnoActual ? DB.turnoActual.id : null,
       ...pedidoData
     };
@@ -379,6 +378,7 @@ function registrarPedidoEnSistema(pedidoData) {
         descuento: nuevoPedido.descuento || 0,
         total: nuevoPedido.total,
         estado: nuevoPedido.estado,
+        motivo_cancelacion: '',
         turno_id: nuevoPedido.turnoId,
         origen: nuevoPedido.origen || 'Web/POS'
       }]).catch(() => {});
@@ -424,9 +424,31 @@ app.post('/api/pedidos', (req, res) => {
   }
 });
 
-// ========================================================
-// CONTABILIDAD: GASTOS DIARIOS (NUEVO)
-// ========================================================
+// Endpoint redundante de cancelación segura (REST)
+app.post('/api/pedidos/:id/cancelar', (req, res) => {
+  const { motivo } = req.body;
+  const pedido = DB.pedidos.find(p => p.id === req.params.id);
+  if (!pedido) return res.status(404).json({ ok: false, error: 'Pedido no encontrado' });
+
+  if (pedido.estado !== 'CANCELADO') {
+    pedido.estado = 'CANCELADO';
+    pedido.motivoCancelacion = (motivo || 'Cancelado por cocina').trim();
+    devolverInventarioCancelado(pedido.items || [], pedido.modalidad);
+    guardarDB();
+
+    if (supabase) {
+      supabase.from('pedidos').update({
+        estado: 'CANCELADO',
+        motivo_cancelacion: pedido.motivoCancelacion
+      }).eq('id', pedido.id).catch(() => {});
+    }
+
+    io.emit('estado-actualizado', { id: pedido.id, nuevoEstado: 'CANCELADO', pedido });
+  }
+  res.json({ ok: true, pedido });
+});
+
+// CONTABILIDAD: GASTOS DIARIOS
 app.get('/api/admin/gastos', (req, res) => res.json(DB.gastos || []));
 
 app.post('/api/admin/gastos', (req, res) => {
@@ -460,9 +482,7 @@ app.delete('/api/admin/gastos/:id', (req, res) => {
   } else res.status(404).json({ error: 'Gasto no encontrado' });
 });
 
-// ========================================================
-// CONTABILIDAD: NÓMINA DE EMPLEADOS (NUEVO)
-// ========================================================
+// CONTABILIDAD: NÓMINA DE EMPLEADOS
 app.get('/api/admin/nomina', (req, res) => res.json(DB.nomina || { empleados: [], pagos: [] }));
 
 app.post('/api/admin/nomina/empleados', (req, res) => {
@@ -521,9 +541,7 @@ app.delete('/api/admin/nomina/pagos/:id', (req, res) => {
   } else res.status(404).json({ error: 'Pago no encontrado' });
 });
 
-// ========================================================
-// SEGURIDAD EXTRA: BACKUP Y RESTORE COMPLETO (NUEVO)
-// ========================================================
+// BACKUP Y RESTORE COMPLETO
 app.get('/api/admin/backup', (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', `attachment; filename=Backup_Ary_La_Arepa_${new Date().toISOString().split('T')[0]}.json`);
@@ -722,18 +740,34 @@ io.on('connection', (socket) => {
     if (pedido) {
       pedido.estado = nuevoEstado;
       guardarDB();
+      if (supabase) {
+        supabase.from('pedidos').update({ estado: nuevoEstado }).eq('id', id).catch(() => {});
+      }
       io.emit('estado-actualizado', { id, nuevoEstado, pedido });
     }
   });
 
+  // CORREGIDO: Se resolvió el bug de variable `nuevoEstado` indefinida y se permite cancelar órdenes activas
   socket.on('cancelar-comanda-cocina', ({ id, motivo }) => {
     const pedido = DB.pedidos.find(p => p.id === id);
-    if (pedido && pedido.estado === 'PENDIENTE') {
+    if (pedido && pedido.estado !== 'CANCELADO') {
       pedido.estado = 'CANCELADO';
-      pedido.motivoCancelacion = motivo || 'Rechazado por cocina';
+      pedido.motivoCancelacion = (motivo || 'Rechazado por cocina').trim();
       devolverInventarioCancelado(pedido.items || [], pedido.modalidad);
       guardarDB();
-      io.emit('estado-actualizado', { id, nuevoEstado, pedido });
+
+      if (supabase) {
+        supabase.from('pedidos').update({ 
+          estado: 'CANCELADO',
+          motivo_cancelacion: pedido.motivoCancelacion
+        }).eq('id', id).catch(() => {});
+      }
+
+      io.emit('estado-actualizado', { 
+        id, 
+        nuevoEstado: 'CANCELADO', 
+        pedido 
+      });
     }
   });
 });
